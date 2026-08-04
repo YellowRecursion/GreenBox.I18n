@@ -44,13 +44,10 @@ internal static class GetCommand
     {
         if (id <= 0)
         {
-            return WriteError(
+            return CommandOutput.WriteError(
                 catalogFile,
-                new CliError
-                {
-                    Code = CliDiagnosticCodes.InvalidId,
-                    Message = $"Entry ID must be positive: {id}.",
-                },
+                CliDiagnosticCodes.InvalidId,
+                $"Entry ID must be positive: {id}.",
                 CliExitCodes.ExecutionError,
                 writeJson,
                 standardOutput,
@@ -60,7 +57,7 @@ internal static class GetCommand
         CatalogLoadResult loadResult = CatalogLoader.Load(catalogFile);
         if (loadResult.Catalog == null)
         {
-            return QueryCommandOutput.WriteLoadError(
+            return CommandOutput.WriteLoadError(
                 catalogFile,
                 loadResult,
                 writeJson,
@@ -71,13 +68,10 @@ internal static class GetCommand
         I18nEntry? entry = loadResult.Catalog.FindById(id);
         if (entry == null)
         {
-            return WriteError(
+            return CommandOutput.WriteError(
                 catalogFile,
-                new CliError
-                {
-                    Code = CliDiagnosticCodes.EntryNotFound,
-                    Message = $"Entry with ID {id} was not found.",
-                },
+                CliDiagnosticCodes.EntryNotFound,
+                $"Entry with ID {id} was not found.",
                 CliExitCodes.InvalidData,
                 writeJson,
                 standardOutput,
@@ -94,33 +88,10 @@ internal static class GetCommand
         }
         else
         {
-            QueryCommandOutput.WriteEntry(entry, standardOutput);
+            CommandOutput.WriteEntry(entry, standardOutput);
         }
 
         return CliExitCodes.Success;
     }
 
-    private static int WriteError(
-        FileInfo catalogFile,
-        CliError error,
-        int exitCode,
-        bool writeJson,
-        TextWriter standardOutput,
-        TextWriter standardError)
-    {
-        if (writeJson)
-        {
-            standardOutput.WriteLine(CliJson.Serialize(new CliErrorReport
-            {
-                File = catalogFile.FullName,
-                Error = error,
-            }));
-        }
-        else
-        {
-            standardError.WriteLine($"ERROR [{error.Code}] {error.Message}");
-        }
-
-        return exitCode;
-    }
 }

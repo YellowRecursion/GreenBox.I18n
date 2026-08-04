@@ -44,32 +44,20 @@ internal static class SearchCommand
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            var error = new CliError
-            {
-                Code = CliDiagnosticCodes.EmptyQuery,
-                Message = "A search query cannot be empty.",
-            };
-
-            if (writeJson)
-            {
-                standardOutput.WriteLine(CliJson.Serialize(new CliErrorReport
-                {
-                    File = catalogFile.FullName,
-                    Error = error,
-                }));
-            }
-            else
-            {
-                standardError.WriteLine($"ERROR [{error.Code}] {error.Message}");
-            }
-
-            return CliExitCodes.ExecutionError;
+            return CommandOutput.WriteError(
+                catalogFile,
+                CliDiagnosticCodes.EmptyQuery,
+                "A search query cannot be empty.",
+                CliExitCodes.ExecutionError,
+                writeJson,
+                standardOutput,
+                standardError);
         }
 
         CatalogLoadResult loadResult = CatalogLoader.Load(catalogFile);
         if (loadResult.Catalog == null)
         {
-            return QueryCommandOutput.WriteLoadError(
+            return CommandOutput.WriteLoadError(
                 catalogFile,
                 loadResult,
                 writeJson,

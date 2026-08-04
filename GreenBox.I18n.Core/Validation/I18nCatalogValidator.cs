@@ -14,10 +14,6 @@ namespace GreenBox.I18n
         /// </summary>
         public const int CurrentSchemaVersion = 1;
 
-        private static readonly Regex PathRegex = new(
-            @"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
-            RegexOptions.CultureInvariant | RegexOptions.Compiled);
-
         private static readonly Regex AssetGuidRegex = new(
             "^[a-fA-F0-9]{32}$",
             RegexOptions.CultureInvariant | RegexOptions.Compiled);
@@ -194,7 +190,7 @@ namespace GreenBox.I18n
                 return;
             }
 
-            if (!PathRegex.IsMatch(path))
+            if (!I18nPathRules.IsValid(path))
             {
                 AddError(
                     diagnostics,

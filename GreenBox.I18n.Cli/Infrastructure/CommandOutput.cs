@@ -2,7 +2,7 @@ using GreenBox.I18n;
 
 namespace GreenBox.I18n.Cli;
 
-internal static class QueryCommandOutput
+internal static class CommandOutput
 {
     public static int WriteLoadError(
         FileInfo catalogFile,
@@ -11,7 +11,45 @@ internal static class QueryCommandOutput
         TextWriter standardOutput,
         TextWriter standardError)
     {
-        CliError error = result.Error!;
+        return WriteError(
+            catalogFile,
+            result.Error!,
+            result.ExitCode,
+            writeJson,
+            standardOutput,
+            standardError);
+    }
+
+    public static int WriteError(
+        FileInfo catalogFile,
+        string code,
+        string message,
+        int exitCode,
+        bool writeJson,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        return WriteError(
+            catalogFile,
+            new CliError
+            {
+                Code = code,
+                Message = message,
+            },
+            exitCode,
+            writeJson,
+            standardOutput,
+            standardError);
+    }
+
+    private static int WriteError(
+        FileInfo catalogFile,
+        CliError error,
+        int exitCode,
+        bool writeJson,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
         if (writeJson)
         {
             standardOutput.WriteLine(CliJson.Serialize(new CliErrorReport
@@ -25,7 +63,7 @@ internal static class QueryCommandOutput
             standardError.WriteLine($"ERROR [{error.Code}] {error.Message}");
         }
 
-        return result.ExitCode;
+        return exitCode;
     }
 
     public static void WriteEntry(I18nEntry entry, TextWriter writer)
