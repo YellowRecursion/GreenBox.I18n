@@ -1,0 +1,14 @@
+{
+  "name": "GreenBox.I18n.Unity",
+  "rootNamespace": "GreenBox.I18n.Unity",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
