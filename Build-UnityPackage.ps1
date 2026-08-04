@@ -15,10 +15,21 @@ $artifactNames = @(
     "GreenBox.I18n.Core.xml"
 )
 
+function ConvertTo-LfLineEndings([string] $path) {
+    $content = [System.IO.File]::ReadAllText($path)
+    $content = $content.Replace("`r`n", "`n").Replace("`r", "`n")
+    [System.IO.File]::WriteAllText(
+        $path,
+        $content,
+        [System.Text.UTF8Encoding]::new($false))
+}
+
 dotnet build $coreProject --configuration Release --nologo
 if ($LASTEXITCODE -ne 0) {
     throw "The GreenBox.I18n.Core Release build failed with exit code $LASTEXITCODE."
 }
+
+ConvertTo-LfLineEndings (Join-Path $coreOutput "GreenBox.I18n.Core.xml")
 
 if ($Verify) {
     foreach ($artifactName in $artifactNames) {
