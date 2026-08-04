@@ -17,6 +17,15 @@ namespace GreenBox.I18n.Unity.Editor.Compilation
         private static bool _isScheduled;
 
         /// <summary>
+        /// Restores catalog compilation after a script reload clears an import-time pending queue.
+        /// </summary>
+        [InitializeOnLoadMethod]
+        private static void QueueOutOfDateCatalogsAfterReload()
+        {
+            EditorApplication.delayCall += QueueAllOutOfDateCatalogs;
+        }
+
+        /// <summary>
         /// Queues a catalog for compilation outside the current import or Inspector callback.
         /// </summary>
         internal static void Queue(I18nCatalogAsset catalogAsset)
@@ -88,6 +97,24 @@ namespace GreenBox.I18n.Unity.Editor.Compilation
 
                 string sourcePath = AssetDatabase.GetAssetPath(catalogAsset.SourceCatalog);
                 if (importedJsonPaths.Contains(sourcePath))
+                {
+                    Queue(catalogAsset);
+                }
+            }
+        }
+
+        private static void QueueAllOutOfDateCatalogs()
+        {
+            string[] catalogGuids = AssetDatabase.FindAssets("t:I18nCatalogAsset");
+            for (int catalogIndex = 0; catalogIndex < catalogGuids.Length; catalogIndex++)
+            {
+                string catalogPath = AssetDatabase.GUIDToAssetPath(catalogGuids[catalogIndex]);
+                I18nCatalogAsset? catalogAsset =
+                    AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(catalogPath);
+                if (catalogAsset &&
+                    catalogAsset.SourceCatalog &&
+                    I18nCatalogCompiler.GetState(catalogAsset) !=
+                    I18nCatalogCompilationState.UpToDate)
                 {
                     Queue(catalogAsset);
                 }

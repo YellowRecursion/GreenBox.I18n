@@ -57,7 +57,9 @@ namespace GreenBox.I18n.Unity
             i18n.CatalogChanged -= Refresh;
             i18n.LocaleChanged -= Refresh;
         }
-        
+        /// <summary>
+        /// Applies serialized key changes when the active runtime is available.
+        /// </summary>
         protected virtual void OnValidate()
         {
             Refresh();
