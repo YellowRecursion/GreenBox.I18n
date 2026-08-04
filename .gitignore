@@ -15,3 +15,15 @@ _ReSharper.Caches/
 /packages/
 *.nupkg
 *.snupkg
+
+/Unity/[Ll]ibrary/
+/Unity/[Tt]emp/
+/Unity/[Oo]bj/
+/Unity/[Bb]uild/
+/Unity/[Bb]uilds/
+/Unity/[Ll]ogs/
+/Unity/[Uu]ser[Ss]ettings/
+/Unity/[Mm]emoryCaptures/
+/Unity/[Rr]ecordings/
+/Unity/*.csproj
+/Unity/*.sln

@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 $repositoryRoot = $PSScriptRoot
 $coreProject = Join-Path $repositoryRoot "GreenBox.I18n.Core\GreenBox.I18n.Core.csproj"
 $coreOutput = Join-Path $repositoryRoot "GreenBox.I18n.Core\bin\Release\netstandard2.1"
-$packageOutput = Join-Path $repositoryRoot "UnityPackage\Runtime\Plugins"
+$packageOutput = Join-Path $repositoryRoot "Unity\Packages\com.greenbox.i18n\Runtime\Plugins"
 $artifactNames = @(
     "GreenBox.I18n.Core.dll",
     "GreenBox.I18n.Core.xml"
