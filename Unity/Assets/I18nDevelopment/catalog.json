@@ -20,7 +20,10 @@
       "path": "Menu.Main.PlayButton",
       "locales": {
         "en": {
-          "text": "Play"
+          "text": "Play",
+          "asset": {
+            "assetGuid": "85769732e01d4407ae1e33e51724b245"
+          }
         },
         "ru": {
           "text": "Играть"

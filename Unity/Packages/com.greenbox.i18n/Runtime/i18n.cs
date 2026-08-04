@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using GreenBox.I18n;
 using GreenBox.I18n.Unity;
+using GreenBox.I18n.Unity.Assets;
 using UnityEngine;
 
 /// <summary>
@@ -17,6 +18,7 @@ public static class i18n
     public const string NonePlaceholder = "[none]";
 
     private static I18nRuntime? _runtime;
+    private static I18nUnityAssetResolver? _assetResolver;
     private static bool _hasWarnedAboutNone;
 
     /// <summary>
@@ -49,6 +51,9 @@ public static class i18n
     private static I18nRuntime Runtime => _runtime ?? throw new InvalidOperationException(
         "Localization has not been initialized. Call i18n.Initialize before using it.");
 
+    private static I18nUnityAssetResolver AssetResolver => _assetResolver ?? throw new InvalidOperationException(
+        "Localization has not been initialized. Call i18n.Initialize before using it.");
+
     /// <summary>
     /// Builds a runtime snapshot from a Unity catalog asset.
     /// </summary>
@@ -77,8 +82,10 @@ public static class i18n
         I18nRuntime runtime = localeId == null
             ? new I18nRuntime(catalog)
             : new I18nRuntime(catalog, localeId);
+        var assetResolver = new I18nUnityAssetResolver(catalogAsset.AssetBindings);
 
         _runtime = runtime;
+        _assetResolver = assetResolver;
         _hasWarnedAboutNone = false;
         CatalogChanged?.Invoke();
     }
@@ -127,6 +134,78 @@ public static class i18n
     }
 
     /// <summary>
+    /// Gets the localized Unity object through the current locale fallback chain.
+    /// </summary>
+    /// <param name="id">Positive entry ID, or zero for an unassigned key.</param>
+    /// <returns>The resolved Unity object, or <see langword="null"/> when no asset is assigned.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when localization is not initialized or the catalog was not compiled.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
+    public static UnityEngine.Object? Asset(long id)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return null;
+        }
+
+        I18nAssetReference? reference = Runtime.Asset(id);
+        return reference == null ? null : AssetResolver.Resolve(reference);
+    }
+
+    /// <summary>
+    /// Gets a localized Unity object of the requested type.
+    /// </summary>
+    /// <typeparam name="T">Expected Unity object type.</typeparam>
+    /// <param name="id">Positive entry ID, or zero for an unassigned key.</param>
+    /// <returns>The resolved object, or <see langword="null"/> when no asset is assigned.</returns>
+    /// <exception cref="InvalidCastException">Thrown when the assigned object has an incompatible type.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when localization is not initialized or the catalog was not compiled.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
+    public static T? Asset<T>(long id)
+        where T : UnityEngine.Object
+    {
+        UnityEngine.Object? asset = Asset(id);
+        if (!asset)
+        {
+            return null;
+        }
+
+        if (asset is T typedAsset)
+        {
+            return typedAsset;
+        }
+
+        throw new InvalidCastException(
+            $"Localization asset for entry ID '{id}' is '{asset.GetType().FullName}', " +
+            $"not '{typeof(T).FullName}'.");
+    }
+
+    /// <summary>
+    /// Attempts to get a localized Unity object of the requested type.
+    /// </summary>
+    /// <typeparam name="T">Expected Unity object type.</typeparam>
+    /// <param name="id">Positive entry ID, or zero for an unassigned key.</param>
+    /// <param name="asset">Receives the compatible resolved object.</param>
+    /// <returns>
+    /// <see langword="true"/> when a compatible asset is assigned; otherwise, <see langword="false"/>.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when localization is not initialized or the catalog was not compiled.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
+    public static bool TryGetAsset<T>(long id, out T? asset)
+        where T : UnityEngine.Object
+    {
+        UnityEngine.Object? resolvedAsset = Asset(id);
+        asset = resolvedAsset as T;
+        return asset;
+    }
+
+    /// <summary>
     /// Changes the active locale.
     /// </summary>
     /// <param name="localeId">Declared locale identifier to select.</param>
@@ -152,6 +231,7 @@ public static class i18n
     private static void ResetState()
     {
         _runtime = null;
+        _assetResolver = null;
         _hasWarnedAboutNone = false;
         CatalogChanged = null;
         LocaleChanged = null;

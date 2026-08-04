@@ -40,6 +40,9 @@ namespace GreenBox.I18n.Development
 
             i18n.SetLocale("ru");
             Debug.Log(i18n.Text(Existing), this);
+
+            TextAsset asset = i18n.Asset<TextAsset>(Existing);
+            Debug.Log($"Resolved asset: {asset.name}", asset);
         }
     }
 }
