@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B978230F-F778-46C6-85E0-785078459038}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Core", "GreenBox.I18n.Core\GreenBox.I18n.Core.csproj", "{BE6117E5-CA50-4F73-BAE4-F512CA408371}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Cli", "GreenBox.I18n.Cli\GreenBox.I18n.Cli.csproj", "{C4D61E85-553D-48B1-84CE-74BFDBEDD872}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{BE6117E5-CA50-4F73-BAE4-F512CA408371} = {3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}
+		{C4D61E85-553D-48B1-84CE-74BFDBEDD872} = {3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BE6117E5-CA50-4F73-BAE4-F512CA408371}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE6117E5-CA50-4F73-BAE4-F512CA408371}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE6117E5-CA50-4F73-BAE4-F512CA408371}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE6117E5-CA50-4F73-BAE4-F512CA408371}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4D61E85-553D-48B1-84CE-74BFDBEDD872}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4D61E85-553D-48B1-84CE-74BFDBEDD872}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4D61E85-553D-48B1-84CE-74BFDBEDD872}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4D61E85-553D-48B1-84CE-74BFDBEDD872}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

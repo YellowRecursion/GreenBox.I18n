@@ -1,0 +1,17 @@
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+[Tt]est[Rr]esults/
+
+.idea/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+riderModule.iml
+_ReSharper.Caches/
+
+/packages/
+*.nupkg
+*.snupkg
