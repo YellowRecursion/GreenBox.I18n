@@ -8,6 +8,8 @@ internal static class CliApplication
     {
         var rootCommand = new RootCommand("GreenBox localization tools for humans, automation, and LLMs.");
         rootCommand.Subcommands.Add(ValidateCommand.Create());
+        rootCommand.Subcommands.Add(GetCommand.Create());
+        rootCommand.Subcommands.Add(SearchCommand.Create());
         return rootCommand;
     }
 }

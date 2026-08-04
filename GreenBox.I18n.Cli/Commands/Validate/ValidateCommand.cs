@@ -6,10 +6,6 @@ namespace GreenBox.I18n.Cli;
 
 internal static class ValidateCommand
 {
-    private const string InvalidJsonCode = "invalid_json";
-    private const string FileNotFoundCode = "file_not_found";
-    private const string FileReadFailedCode = "file_read_failed";
-
     public static Command Create()
     {
         var catalogArgument = new Argument<FileInfo>("catalog")
@@ -47,7 +43,7 @@ internal static class ValidateCommand
         {
             ValidationReport report = CreateSingleErrorReport(
                 catalogFile.FullName,
-                FileNotFoundCode,
+                CliDiagnosticCodes.FileNotFound,
                 $"Catalog file was not found: {catalogFile.FullName}");
             WriteExecutionError(report, writeJson, standardOutput, standardError);
             return CliExitCodes.ExecutionError;
@@ -62,7 +58,7 @@ internal static class ValidateCommand
         {
             ValidationReport report = CreateSingleErrorReport(
                 catalogFile.FullName,
-                FileReadFailedCode,
+                CliDiagnosticCodes.FileReadFailed,
                 exception.Message);
             WriteExecutionError(report, writeJson, standardOutput, standardError);
             return CliExitCodes.ExecutionError;
@@ -141,7 +137,7 @@ internal static class ValidateCommand
             {
                 new ValidationDiagnosticReport
                 {
-                    Code = InvalidJsonCode,
+                    Code = CliDiagnosticCodes.InvalidJson,
                     Severity = "error",
                     JsonPath = "$",
                     Message = message,
