@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using GreenBox.I18n.Unity.Editor.Compilation;
 using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
@@ -71,7 +72,9 @@ namespace GreenBox.I18n.Unity.Editor
                     I18nCatalogCompilationCodes.MissingSourceCatalog,
                     "$",
                     "A source JSON TextAsset must be assigned before compilation."));
-                return new I18nCatalogCompilationResult(null, errors, false, 0);
+                return Finish(
+                    catalogAsset,
+                    new I18nCatalogCompilationResult(null, errors, false, 0));
             }
 
             I18nCatalog catalog;
@@ -85,20 +88,26 @@ namespace GreenBox.I18n.Unity.Editor
                     I18nCatalogCompilationCodes.InvalidJson,
                     "$",
                     exception.Message));
-                return new I18nCatalogCompilationResult(null, errors, false, 0);
+                return Finish(
+                    catalogAsset,
+                    new I18nCatalogCompilationResult(null, errors, false, 0));
             }
 
             I18nValidationResult validationResult = I18nCatalogValidator.Validate(catalog);
             if (validationResult.HasErrors)
             {
-                return new I18nCatalogCompilationResult(validationResult, errors, false, 0);
+                return Finish(
+                    catalogAsset,
+                    new I18nCatalogCompilationResult(validationResult, errors, false, 0));
             }
 
             List<SourceAssetReference> sourceReferences = CollectAssetReferences(catalog);
             List<I18nAssetBinding> bindings = ResolveAssetBindings(sourceReferences, errors);
             if (errors.Count > 0)
             {
-                return new I18nCatalogCompilationResult(validationResult, errors, false, 0);
+                return Finish(
+                    catalogAsset,
+                    new I18nCatalogCompilationResult(validationResult, errors, false, 0));
             }
 
             string sourceHash = ComputeSourceHash(catalogAsset.SourceCatalog.bytes);
@@ -114,11 +123,21 @@ namespace GreenBox.I18n.Unity.Editor
                 AssetDatabase.SaveAssetIfDirty(catalogAsset);
             }
 
-            return new I18nCatalogCompilationResult(
-                validationResult,
-                errors,
-                hasChanges,
-                bindings.Count);
+            return Finish(
+                catalogAsset,
+                new I18nCatalogCompilationResult(
+                    validationResult,
+                    errors,
+                    hasChanges,
+                    bindings.Count));
+        }
+
+        private static I18nCatalogCompilationResult Finish(
+            I18nCatalogAsset catalogAsset,
+            I18nCatalogCompilationResult result)
+        {
+            I18nCatalogCompilationEvents.Publish(catalogAsset, result);
+            return result;
         }
 
         private static List<SourceAssetReference> CollectAssetReferences(I18nCatalog catalog)

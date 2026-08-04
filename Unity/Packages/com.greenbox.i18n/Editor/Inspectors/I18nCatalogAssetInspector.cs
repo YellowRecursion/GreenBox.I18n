@@ -1,6 +1,7 @@
 #nullable enable
 
 using GreenBox.I18n;
+using GreenBox.I18n.Unity.Editor.Compilation;
 using UnityEditor;
 using UnityEngine;
 
@@ -22,6 +23,15 @@ namespace GreenBox.I18n.Unity.Editor.Inspectors
         private void OnEnable()
         {
             _sourceCatalogProperty = serializedObject.FindProperty(SourceCatalogPropertyName);
+            I18nCatalogCompilationEvents.CompilationFinished += OnCompilationFinished;
+            I18nCatalogCompilationEvents.TryGetLastResult(
+                CatalogAsset,
+                out _lastCompilationResult);
+        }
+
+        private void OnDisable()
+        {
+            I18nCatalogCompilationEvents.CompilationFinished -= OnCompilationFinished;
         }
 
         /// <inheritdoc />
@@ -35,6 +45,7 @@ namespace GreenBox.I18n.Unity.Editor.Inspectors
             {
                 serializedObject.ApplyModifiedProperties();
                 _lastCompilationResult = null;
+                I18nCatalogAutoCompiler.Queue(CatalogAsset);
             }
             else
             {
@@ -123,6 +134,19 @@ namespace GreenBox.I18n.Unity.Editor.Inspectors
             EditorGUILayout.HelpBox(
                 $"{code}\n{jsonPath}\n{message}",
                 messageType);
+        }
+
+        private void OnCompilationFinished(
+            I18nCatalogAsset catalogAsset,
+            I18nCatalogCompilationResult result)
+        {
+            if (catalogAsset != CatalogAsset)
+            {
+                return;
+            }
+
+            _lastCompilationResult = result;
+            Repaint();
         }
     }
 }
