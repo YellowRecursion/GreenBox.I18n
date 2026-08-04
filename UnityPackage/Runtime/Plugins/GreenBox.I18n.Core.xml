@@ -1,0 +1,636 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>GreenBox.I18n.Core</name>
+    </assembly>
+    <members>
+        <member name="T:GreenBox.I18n.I18nCatalogEditing">
+            <summary>
+            Provides operations that safely edit an i18n catalog in memory.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogEditing.MoveEntry(GreenBox.I18n.I18nCatalog,System.Int64,System.String)">
+            <summary>
+            Changes an entry path while preserving its stable ID and localized values.
+            </summary>
+            <param name="catalog">The valid catalog to edit.</param>
+            <param name="id">The positive ID of the entry to move.</param>
+            <param name="newPath">The new full logical path.</param>
+            <returns>The operation result and affected entry.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+        </member>
+        <member name="T:GreenBox.I18n.I18nEditCodes">
+            <summary>
+            Contains stable machine-readable codes produced by catalog editing operations.
+            </summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nEditCodes.InvalidId">
+            <summary>Indicates that an entry ID has an invalid value.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nEditCodes.EntryNotFound">
+            <summary>Indicates that no entry has the requested ID.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nEditCodes.InvalidPath">
+            <summary>Indicates that the requested path has an invalid format.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nEditCodes.DuplicatePath">
+            <summary>Indicates that another entry already uses the requested path.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nEditError">
+            <summary>
+            Describes an expected failure produced by a catalog editing operation.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEditError.Code">
+            <summary>
+            Gets the stable machine-readable error code.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEditError.Message">
+            <summary>
+            Gets the human-readable description of the error.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nEditResult">
+            <summary>
+            Represents the result of an operation that edits one catalog entry.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEditResult.IsSuccess">
+            <summary>
+            Gets a value indicating whether the operation completed successfully.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEditResult.HasChanges">
+            <summary>
+            Gets a value indicating whether the operation changed the catalog.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEditResult.Entry">
+            <summary>
+            Gets the affected entry when the operation completed successfully.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEditResult.Error">
+            <summary>
+            Gets the expected operation error, or <see langword="null"/> after success.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCatalog">
+            <summary>
+            Represents the complete source localization catalog stored in a single file.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalog.SchemaVersion">
+            <summary>
+            Gets or sets the version of the JSON data contract used by this file.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalog.DefaultLocale">
+            <summary>
+            Gets or sets the locale used as the final fallback for localized values.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalog.Locales">
+            <summary>
+            Gets or sets the supported locales in their preferred editor display order.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalog.Entries">
+            <summary>
+            Gets or sets the ordered collection of localisation entries.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nLocaleDefinition">
+            <summary>
+            Declares a supported locale and its runtime fallback behavior.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleDefinition.Id">
+            <summary>
+            Gets or sets the stable locale identifier used by entry values.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleDefinition.DisplayName">
+            <summary>
+            Gets or sets the human-readable locale name shown in language selectors.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleDefinition.Culture">
+            <summary>
+            Gets or sets the .NET culture name used for locale-aware formatting.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleDefinition.Fallback">
+            <summary>
+            Gets or sets the optional locale consulted before the catalog default locale.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleDefinition.Icon">
+            <summary>
+            Gets or sets the optional icon asset shown for the locale in language selectors.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nEntry">
+            <summary>
+            Represents a localisation entry with a stable identity and locale-specific values.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEntry.Id">
+            <summary>
+            Gets or sets the immutable globally unique identifier of the entry.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEntry.Path">
+            <summary>
+            Gets or sets the mutable full logical path of the entry.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEntry.Comment">
+            <summary>
+            Gets or sets an optional contextual note for developers, translators, and tooling.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEntry.Locales">
+            <summary>
+            Gets or sets the values associated with locale identifiers.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nLocaleValue">
+            <summary>
+            Represents the text and assets assigned to an entry for a specific locale.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleValue.Text">
+            <summary>
+            Gets or sets the localized text, or <see langword="null"/> when the entry has no text.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleValue.Asset">
+            <summary>
+            Gets or sets the localized Unity asset reference, or <see langword="null"/> when the entry has no asset.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nAssetReference">
+            <summary>
+            Identifies a Unity asset without depending on its mutable project path.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nAssetReference.AssetGuid">
+            <summary>
+            Gets or sets the GUID stored in the Unity asset's meta file.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nAssetReference.LocalFileId">
+            <summary>
+            Gets or sets the optional Unity local file identifier of a sub-asset.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nEntryComparer">
+            <summary>
+            Compares i18n entries using the canonical natural path order and numeric ID tie-breaker.
+            </summary>
+            <remarks>
+            Text is compared ordinally without case, digit runs are compared by numeric magnitude,
+            and shorter digit runs precede longer runs when their numeric values are equal.
+            </remarks>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEntryComparer.Canonical">
+            <summary>
+            Gets the shared canonical entry comparer.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nEntryComparer.Compare(GreenBox.I18n.I18nEntry,GreenBox.I18n.I18nEntry)">
+            <inheritdoc />
+        </member>
+        <member name="T:GreenBox.I18n.I18nCatalogQueries">
+            <summary>
+            Provides read-only operations for locating entries in an i18n catalog.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogQueries.FindById(GreenBox.I18n.I18nCatalog,System.Int64)">
+            <summary>
+            Finds an entry by its stable numeric identifier.
+            </summary>
+            <param name="catalog">The catalog to search.</param>
+            <param name="id">The positive entry identifier.</param>
+            <returns>The matching entry, or <see langword="null"/> when no entry has the identifier.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogQueries.Search(GreenBox.I18n.I18nCatalog,System.String)">
+            <summary>
+            Searches entry paths, comments, and localized text using a case-insensitive query.
+            </summary>
+            <param name="catalog">The catalog to search.</param>
+            <param name="query">The non-empty text to find.</param>
+            <returns>A deterministically ordered snapshot of matching entries.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="query"/> is empty or whitespace.</exception>
+        </member>
+        <member name="T:GreenBox.I18n.I18nInvalidCatalogException">
+            <summary>
+            Represents an attempt to create a runtime from an invalid source catalog.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nInvalidCatalogException.#ctor(GreenBox.I18n.I18nValidationResult)">
+            <summary>
+            Initializes a new invalid catalog exception.
+            </summary>
+            <param name="validationResult">The validation result that rejected the catalog.</param>
+        </member>
+        <member name="P:GreenBox.I18n.I18nInvalidCatalogException.ValidationResult">
+            <summary>
+            Gets the complete validation result that rejected the catalog.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nLocaleChangedEventArgs">
+            <summary>
+            Provides data for an <see cref="E:GreenBox.I18n.I18nRuntime.LocaleChanged"/> event.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleChangedEventArgs.PreviousLocale">
+            <summary>
+            Gets the locale that was active before the change.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nLocaleChangedEventArgs.CurrentLocale">
+            <summary>
+            Gets the locale that is active after the change.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nRuntime">
+            <summary>
+            Provides indexed, locale-aware access to a validated localization catalog.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.#ctor(GreenBox.I18n.I18nCatalog)">
+            <summary>
+            Initializes a runtime using the catalog default locale.
+            </summary>
+            <param name="catalog">The source catalog used to build the runtime snapshot.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+            <exception cref="T:GreenBox.I18n.I18nInvalidCatalogException">Thrown when the catalog contains validation errors.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.#ctor(GreenBox.I18n.I18nCatalog,System.String)">
+            <summary>
+            Initializes a runtime using the specified locale.
+            </summary>
+            <param name="catalog">The source catalog used to build the runtime snapshot.</param>
+            <param name="localeId">The initially selected locale identifier.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> or <paramref name="localeId"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="localeId"/> is not declared by the catalog.</exception>
+            <exception cref="T:GreenBox.I18n.I18nInvalidCatalogException">Thrown when the catalog contains validation errors.</exception>
+        </member>
+        <member name="E:GreenBox.I18n.I18nRuntime.LocaleChanged">
+            <summary>
+            Occurs after the current locale changes.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nRuntime.Locales">
+            <summary>
+            Gets the locales in their catalog display order.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nRuntime.DefaultLocale">
+            <summary>
+            Gets the catalog default locale.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nRuntime.CurrentLocale">
+            <summary>
+            Gets the currently selected locale.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nRuntime.CurrentCulture">
+            <summary>
+            Gets the culture of the currently selected locale.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.SetLocale(System.String)">
+            <summary>
+            Changes the current locale.
+            </summary>
+            <param name="localeId">The declared locale identifier to select.</param>
+            <returns><see langword="true"/> when the locale changed; otherwise, <see langword="false"/>.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="localeId"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when the locale is not declared by the catalog.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text(System.Int64)">
+            <summary>
+            Gets localized text, falling back to the entry path or numeric ID when no text exists.
+            </summary>
+            <param name="id">The positive stable entry ID.</param>
+            <returns>The resolved text, entry path, or numeric ID.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Format(System.Int64,System.Object[])">
+            <summary>
+            Formats localized text using the current locale culture.
+            </summary>
+            <param name="id">The positive stable entry ID.</param>
+            <param name="arguments">The values inserted into the localized composite format string.</param>
+            <returns>The formatted localized text.</returns>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.TryGetText(System.Int64,System.String@)">
+            <summary>
+            Attempts to resolve localized text through the current locale fallback chain.
+            </summary>
+            <param name="id">The positive stable entry ID.</param>
+            <param name="text">The resolved text when one exists.</param>
+            <returns><see langword="true"/> when text was found; otherwise, <see langword="false"/>.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Asset(System.Int64)">
+            <summary>
+            Gets an asset reference through the current locale fallback chain.
+            </summary>
+            <param name="id">The positive stable entry ID.</param>
+            <returns>The resolved asset reference, or <see langword="null"/> when no asset exists.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.TryGetAsset(System.Int64,GreenBox.I18n.I18nAssetReference@)">
+            <summary>
+            Attempts to resolve an asset reference through the current locale fallback chain.
+            </summary>
+            <param name="id">The positive stable entry ID.</param>
+            <param name="asset">The resolved asset reference when one exists.</param>
+            <returns><see langword="true"/> when an asset was found; otherwise, <see langword="false"/>.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        </member>
+        <member name="T:GreenBox.I18n.I18nRuntimeLocale">
+            <summary>
+            Describes an immutable locale available to an <see cref="T:GreenBox.I18n.I18nRuntime"/>.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nRuntimeLocale.Id">
+            <summary>
+            Gets the stable locale identifier.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nRuntimeLocale.DisplayName">
+            <summary>
+            Gets the human-readable locale name.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nRuntimeLocale.Culture">
+            <summary>
+            Gets the culture used for locale-aware formatting.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nRuntimeLocale.Icon">
+            <summary>
+            Gets the optional icon asset shown for the locale.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCatalogJson">
+            <summary>
+            Serializes and deserializes the canonical JSON representation of an i18n catalog.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogJson.Deserialize(System.String)">
+            <summary>
+            Deserializes an i18n catalog from JSON without validating its contents.
+            </summary>
+            <param name="json">The JSON representation of the catalog.</param>
+            <returns>The deserialized catalog.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
+            <exception cref="T:Newtonsoft.Json.JsonException">Thrown when the JSON cannot be deserialized as a catalog.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogJson.Serialize(GreenBox.I18n.I18nCatalog)">
+            <summary>
+            Serializes an i18n catalog to canonical formatted JSON without validating it.
+            </summary>
+            <param name="catalog">The catalog to serialize.</param>
+            <returns>The canonical JSON followed by a single line-feed character.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCatalogValidator">
+            <summary>
+            Validates the structural integrity of an i18n catalog.
+            </summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nCatalogValidator.CurrentSchemaVersion">
+            <summary>
+            The newest data contract version supported by this validator.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogValidator.Validate(GreenBox.I18n.I18nCatalog)">
+            <summary>
+            Validates a catalog without modifying it.
+            </summary>
+            <param name="catalog">The deserialized source catalog to validate.</param>
+            <returns>An immutable result containing every discovered diagnostic.</returns>
+        </member>
+        <member name="T:GreenBox.I18n.I18nPathRules">
+            <summary>
+            Defines the syntax accepted for full logical entry paths.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nPathRules.IsValid(System.String)">
+            <summary>
+            Determines whether a value is a valid dot-separated i18n entry path.
+            </summary>
+            <param name="path">The path to examine.</param>
+            <returns><see langword="true"/> when the path is valid; otherwise, <see langword="false"/>.</returns>
+        </member>
+        <member name="T:GreenBox.I18n.I18nValidationSeverity">
+            <summary>
+            Defines the severity of an i18n validation diagnostic.
+            </summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationSeverity.Warning">
+            <summary>
+            Identifies a non-blocking problem.
+            </summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationSeverity.Error">
+            <summary>
+            Identifies a problem that makes the validated data invalid.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nValidationCodes">
+            <summary>
+            Contains stable machine-readable codes produced by i18n validation rules.
+            </summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.NullCatalog">
+            <summary>Indicates that the catalog is null.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.UnsupportedSchemaVersion">
+            <summary>Indicates that the schema version is not supported.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.NullEntries">
+            <summary>Indicates that the entries collection is null.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingDefaultLocale">
+            <summary>Indicates that the default locale identifier is missing.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.UnknownDefaultLocale">
+            <summary>Indicates that the default locale is not declared by the catalog.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.NullLocaleDefinitions">
+            <summary>Indicates that the locale definitions collection is null.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingLocaleDefinitions">
+            <summary>Indicates that the catalog declares no supported locales.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.NullLocaleDefinition">
+            <summary>Indicates that a locale definition is null.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingLocaleId">
+            <summary>Indicates that a locale definition has no identifier.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.DuplicateLocaleId">
+            <summary>Indicates that a locale identifier is declared more than once.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingLocaleDisplayName">
+            <summary>Indicates that a locale definition has no human-readable display name.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingLocaleCulture">
+            <summary>Indicates that a locale definition has no culture name.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.InvalidLocaleCulture">
+            <summary>Indicates that a locale culture name is not recognized by .NET.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.UnknownFallbackLocale">
+            <summary>Indicates that a locale fallback is not declared by the catalog.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.DefaultLocaleHasFallback">
+            <summary>Indicates that the default locale declares another fallback locale.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.LocaleFallbackCycle">
+            <summary>Indicates that locale fallback references form a cycle.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.NullEntry">
+            <summary>Indicates that an entry is null.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingId">
+            <summary>Indicates that an entry ID is missing.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.InvalidId">
+            <summary>Indicates that an entry ID has an invalid format or value.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.DuplicateId">
+            <summary>Indicates that an entry ID is used more than once.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingPath">
+            <summary>Indicates that an entry path is missing.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.InvalidPath">
+            <summary>Indicates that an entry path has an invalid format.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.DuplicatePath">
+            <summary>Indicates that an entry path is used more than once.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.EntriesNotSorted">
+            <summary>Indicates that catalog entries are not in canonical order.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingLocales">
+            <summary>Indicates that an entry has no locale values.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.InvalidLocaleId">
+            <summary>Indicates that a locale identifier is invalid.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.UndeclaredLocale">
+            <summary>Indicates that an entry value uses a locale not declared by the catalog.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingLocaleValue">
+            <summary>Indicates that an entry has no value for a declared locale.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.NullLocaleValue">
+            <summary>Indicates that a locale value is null.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.EmptyLocaleValue">
+            <summary>Indicates that a locale value contains neither text nor an asset.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.MissingAssetGuid">
+            <summary>Indicates that an asset reference has no GUID.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.InvalidAssetGuid">
+            <summary>Indicates that an asset GUID has an invalid format.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nValidationCodes.InvalidAssetLocalFileId">
+            <summary>Indicates that an asset local file identifier has an invalid format.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nValidationDiagnostic">
+            <summary>
+            Describes a single problem found while validating i18n source data.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nValidationDiagnostic.#ctor(System.String,GreenBox.I18n.I18nValidationSeverity,System.String,System.String)">
+            <summary>
+            Initializes a new validation diagnostic.
+            </summary>
+            <param name="code">The validation rule that produced the diagnostic.</param>
+            <param name="severity">The severity of the problem.</param>
+            <param name="jsonPath">The JSON path of the invalid value.</param>
+            <param name="message">A human-readable description of the problem.</param>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationDiagnostic.Code">
+            <summary>
+            Gets the validation rule that produced this diagnostic.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationDiagnostic.Severity">
+            <summary>
+            Gets the severity of the problem.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationDiagnostic.JsonPath">
+            <summary>
+            Gets the JSON path of the invalid value.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationDiagnostic.Message">
+            <summary>
+            Gets the human-readable description of the problem.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nValidationDiagnostic.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:GreenBox.I18n.I18nValidationResult">
+            <summary>
+            Contains the complete immutable result of an i18n validation operation.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationResult.Diagnostics">
+            <summary>
+            Gets all diagnostics in deterministic validation order.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationResult.ErrorCount">
+            <summary>
+            Gets the number of error diagnostics.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationResult.WarningCount">
+            <summary>
+            Gets the number of warning diagnostics.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationResult.HasErrors">
+            <summary>
+            Gets a value indicating whether validation produced at least one error.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationResult.HasWarnings">
+            <summary>
+            Gets a value indicating whether validation produced at least one warning.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationResult.IsValid">
+            <summary>
+            Gets a value indicating whether validation completed without errors.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nValidationResult.Contains(System.String)">
+            <summary>
+            Determines whether the result contains a diagnostic with the specified code.
+            </summary>
+            <param name="code">The diagnostic code to find.</param>
+            <returns><see langword="true"/> when a matching diagnostic exists.</returns>
+        </member>
+    </members>
+</doc>
