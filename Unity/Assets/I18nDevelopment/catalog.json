@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "defaultLocale": "en",
+  "locales": [
+    {
+      "id": "en",
+      "displayName": "English",
+      "culture": "en-US"
+    },
+    {
+      "id": "ru",
+      "displayName": "Русский",
+      "culture": "ru-RU",
+      "fallback": "en"
+    }
+  ],
+  "entries": [
+    {
+      "id": "1001",
+      "path": "Menu.Main.PlayButton",
+      "locales": {
+        "en": {
+          "text": "Play"
+        },
+        "ru": {
+          "text": "Играть"
+        }
+      }
+    },
+    {
+      "id": "1002",
+      "path": "Menu.Main.SettingsButton",
+      "locales": {
+        "en": {
+          "text": "Settings"
+        },
+        "ru": {
+          "text": "Настройки"
+        }
+      }
+    },
+    {
+      "id": "2001",
+      "path": "Reports.ContextMenu.ReportNicknameButton",
+      "comment": "Reports the selected player's nickname.",
+      "locales": {
+        "en": {
+          "text": "Report nickname"
+        },
+        "ru": {
+          "text": "Пожаловаться на никнейм"
+        }
+      }
+    }
+  ]
+}
