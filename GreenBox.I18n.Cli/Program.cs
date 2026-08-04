@@ -1,9 +1,25 @@
-﻿namespace GreenBox.I18n.Cli;
+using System.CommandLine;
+using System.CommandLine.Parsing;
 
-class Program
+namespace GreenBox.I18n.Cli;
+
+internal static class Program
 {
-    static void Main(string[] args)
+    private static int Main(string[] args)
     {
-        Console.WriteLine("Hello, World!");
+        RootCommand rootCommand = CliApplication.CreateRootCommand();
+        ParseResult parseResult = rootCommand.Parse(args);
+
+        if (parseResult.Errors.Count > 0)
+        {
+            foreach (ParseError error in parseResult.Errors)
+            {
+                Console.Error.WriteLine(error.Message);
+            }
+
+            return CliExitCodes.ExecutionError;
+        }
+
+        return parseResult.Invoke();
     }
 }
