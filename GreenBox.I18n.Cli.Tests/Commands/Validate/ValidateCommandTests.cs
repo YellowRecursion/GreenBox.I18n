@@ -22,6 +22,14 @@ public sealed class ValidateCommandTests : IDisposable
             """
             {
               "schemaVersion": 1,
+              "defaultLocale": "en",
+              "locales": [
+                {
+                  "id": "en",
+                  "displayName": "English",
+                  "culture": "en-US"
+                }
+              ],
               "entries": [
                 {
                   "id": "1",
@@ -58,6 +66,14 @@ public sealed class ValidateCommandTests : IDisposable
             """
             {
               "schemaVersion": 1,
+              "defaultLocale": "en",
+              "locales": [
+                {
+                  "id": "en",
+                  "displayName": "English",
+                  "culture": "en-US"
+                }
+              ],
               "entries": [
                 {
                   "id": "0",
@@ -140,6 +156,14 @@ public sealed class ValidateCommandTests : IDisposable
             """
             {
               "schemaVersion": 1,
+              "defaultLocale": "en",
+              "locales": [
+                {
+                  "id": "en",
+                  "displayName": "English",
+                  "culture": "en-US"
+                }
+              ],
               "entries": [
                 {
                   "id": "1",

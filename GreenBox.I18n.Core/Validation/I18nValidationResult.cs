@@ -34,6 +34,45 @@ namespace GreenBox.I18n
         /// <summary>Indicates that the entries collection is null.</summary>
         public const string NullEntries = "null_entries";
 
+        /// <summary>Indicates that the default locale identifier is missing.</summary>
+        public const string MissingDefaultLocale = "missing_default_locale";
+
+        /// <summary>Indicates that the default locale is not declared by the catalog.</summary>
+        public const string UnknownDefaultLocale = "unknown_default_locale";
+
+        /// <summary>Indicates that the locale definitions collection is null.</summary>
+        public const string NullLocaleDefinitions = "null_locale_definitions";
+
+        /// <summary>Indicates that the catalog declares no supported locales.</summary>
+        public const string MissingLocaleDefinitions = "missing_locale_definitions";
+
+        /// <summary>Indicates that a locale definition is null.</summary>
+        public const string NullLocaleDefinition = "null_locale_definition";
+
+        /// <summary>Indicates that a locale definition has no identifier.</summary>
+        public const string MissingLocaleId = "missing_locale_id";
+
+        /// <summary>Indicates that a locale identifier is declared more than once.</summary>
+        public const string DuplicateLocaleId = "duplicate_locale_id";
+
+        /// <summary>Indicates that a locale definition has no human-readable display name.</summary>
+        public const string MissingLocaleDisplayName = "missing_locale_display_name";
+
+        /// <summary>Indicates that a locale definition has no culture name.</summary>
+        public const string MissingLocaleCulture = "missing_locale_culture";
+
+        /// <summary>Indicates that a locale culture name is not recognized by .NET.</summary>
+        public const string InvalidLocaleCulture = "invalid_locale_culture";
+
+        /// <summary>Indicates that a locale fallback is not declared by the catalog.</summary>
+        public const string UnknownFallbackLocale = "unknown_fallback_locale";
+
+        /// <summary>Indicates that the default locale declares another fallback locale.</summary>
+        public const string DefaultLocaleHasFallback = "default_locale_has_fallback";
+
+        /// <summary>Indicates that locale fallback references form a cycle.</summary>
+        public const string LocaleFallbackCycle = "locale_fallback_cycle";
+
         /// <summary>Indicates that an entry is null.</summary>
         public const string NullEntry = "null_entry";
 
@@ -63,6 +102,12 @@ namespace GreenBox.I18n
 
         /// <summary>Indicates that a locale identifier is invalid.</summary>
         public const string InvalidLocaleId = "invalid_locale_id";
+
+        /// <summary>Indicates that an entry value uses a locale not declared by the catalog.</summary>
+        public const string UndeclaredLocale = "undeclared_locale";
+
+        /// <summary>Indicates that an entry has no value for a declared locale.</summary>
+        public const string MissingLocaleValue = "missing_locale_value";
 
         /// <summary>Indicates that a locale value is null.</summary>
         public const string NullLocaleValue = "null_locale_value";

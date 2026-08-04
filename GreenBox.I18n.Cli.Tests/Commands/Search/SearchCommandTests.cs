@@ -48,6 +48,14 @@ public sealed class SearchCommandTests : IDisposable
             """
             {
               "schemaVersion": 1,
+              "defaultLocale": "en",
+              "locales": [
+                {
+                  "id": "en",
+                  "displayName": "English",
+                  "culture": "en-US"
+                }
+              ],
               "entries": [
                 {
                   "id": "0",

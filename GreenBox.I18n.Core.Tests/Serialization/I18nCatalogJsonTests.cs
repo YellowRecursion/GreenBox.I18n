@@ -10,6 +10,23 @@ public sealed class I18nCatalogJsonTests
     {
         var catalog = new I18nCatalog
         {
+            DefaultLocale = "en",
+            Locales = new List<I18nLocaleDefinition>
+            {
+                new() { Id = "en", DisplayName = "English", Culture = "en-US" },
+                new()
+                {
+                    Id = "ru",
+                    DisplayName = "Русский",
+                    Culture = "ru-RU",
+                    Fallback = "en",
+                    Icon = new I18nAssetReference
+                    {
+                        AssetGuid = "abcdef0123456789abcdef0123456789",
+                        LocalFileId = "21300000",
+                    },
+                },
+            },
             Entries = new List<I18nEntry>
             {
                 new()
@@ -37,6 +54,24 @@ public sealed class I18nCatalogJsonTests
         const string expected = """
                                 {
                                   "schemaVersion": 1,
+                                  "defaultLocale": "en",
+                                  "locales": [
+                                    {
+                                      "id": "en",
+                                      "displayName": "English",
+                                      "culture": "en-US"
+                                    },
+                                    {
+                                      "id": "ru",
+                                      "displayName": "Русский",
+                                      "culture": "ru-RU",
+                                      "fallback": "en",
+                                      "icon": {
+                                        "assetGuid": "abcdef0123456789abcdef0123456789",
+                                        "localFileId": "21300000"
+                                      }
+                                    }
+                                  ],
                                   "entries": [
                                     {
                                       "id": "1",
@@ -68,6 +103,14 @@ public sealed class I18nCatalogJsonTests
         const string json = """
                             {
                               "schemaVersion": 1,
+                              "defaultLocale": "en",
+                              "locales": [
+                                {
+                                  "id": "en",
+                                  "displayName": "English",
+                                  "culture": "en-US"
+                                }
+                              ],
                               "entries": [
                                 {
                                   "id": "42",
@@ -87,6 +130,11 @@ public sealed class I18nCatalogJsonTests
 
         I18nEntry entry = Assert.Single(catalog.Entries);
         Assert.Equal(1, catalog.SchemaVersion);
+        Assert.Equal("en", catalog.DefaultLocale);
+        I18nLocaleDefinition locale = Assert.Single(catalog.Locales);
+        Assert.Equal("en", locale.Id);
+        Assert.Equal("English", locale.DisplayName);
+        Assert.Equal("en-US", locale.Culture);
         Assert.Equal("42", entry.Id);
         Assert.Equal("Reports.Title", entry.Path);
         Assert.Equal("Reports screen title.", entry.Comment);
@@ -98,6 +146,21 @@ public sealed class I18nCatalogJsonTests
     {
         var source = new I18nCatalog
         {
+            DefaultLocale = "en",
+            Locales = new List<I18nLocaleDefinition>
+            {
+                new()
+                {
+                    Id = "en",
+                    DisplayName = "English",
+                    Culture = "en-US",
+                    Icon = new I18nAssetReference
+                    {
+                        AssetGuid = "0123456789abcdef0123456789abcdef",
+                        LocalFileId = "21300000",
+                    },
+                },
+            },
             Entries = new List<I18nEntry>
             {
                 new()
@@ -130,6 +193,8 @@ public sealed class I18nCatalogJsonTests
         Assert.Equal("Subtitle", entry.Locales["en"].Text);
         Assert.Equal("abcdef0123456789abcdef0123456789", entry.Locales["en"].Asset!.AssetGuid);
         Assert.Equal("21300000", entry.Locales["en"].Asset!.LocalFileId);
+        Assert.Equal("0123456789abcdef0123456789abcdef", result.Locales[0].Icon!.AssetGuid);
+        Assert.Equal("21300000", result.Locales[0].Icon!.LocalFileId);
     }
 
     [Fact]
@@ -140,6 +205,11 @@ public sealed class I18nCatalogJsonTests
         I18nEntry tank2 = CreateEntry("1", "Units.Tank2.Title");
         var catalog = new I18nCatalog
         {
+            DefaultLocale = "en",
+            Locales = new List<I18nLocaleDefinition>
+            {
+                new() { Id = "en", DisplayName = "English", Culture = "en-US" },
+            },
             Entries = new List<I18nEntry> { tank10, tank02, tank2 },
         };
 
@@ -178,6 +248,59 @@ public sealed class I18nCatalogJsonTests
                             """;
 
         Assert.Throws<JsonSerializationException>(() => I18nCatalogJson.Deserialize(json));
+    }
+
+    [Theory]
+    [InlineData(
+        """
+        {
+          "schemaVersion": 1,
+          "locales": [],
+          "entries": []
+        }
+        """, I18nValidationCodes.MissingDefaultLocale)]
+    [InlineData(
+        """
+        {
+          "schemaVersion": 1,
+          "defaultLocale": "en",
+          "entries": []
+        }
+        """, I18nValidationCodes.MissingLocaleDefinitions)]
+    public void Deserialize_MissingLocaleContract_LeavesProblemForValidation(
+        string json,
+        string expectedCode)
+    {
+        I18nCatalog catalog = I18nCatalogJson.Deserialize(json);
+
+        I18nValidationResult validation = I18nCatalogValidator.Validate(catalog);
+
+        Assert.True(validation.Contains(expectedCode));
+    }
+
+    [Fact]
+    public void Deserialize_LocaleWithoutCulture_LeavesProblemForValidation()
+    {
+        const string json =
+            """
+            {
+              "schemaVersion": 1,
+              "defaultLocale": "en",
+              "locales": [
+                {
+                  "id": "en",
+                  "displayName": "English"
+                }
+              ],
+              "entries": []
+            }
+            """;
+
+        I18nCatalog catalog = I18nCatalogJson.Deserialize(json);
+
+        I18nValidationResult validation = I18nCatalogValidator.Validate(catalog);
+
+        Assert.True(validation.Contains(I18nValidationCodes.MissingLocaleCulture));
     }
 
     [Fact]

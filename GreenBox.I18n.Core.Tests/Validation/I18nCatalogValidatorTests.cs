@@ -44,10 +44,8 @@ public sealed class I18nCatalogValidatorTests
     [Fact]
     public void Validate_NullEntries_ReturnsNullEntriesError()
     {
-        var catalog = new I18nCatalog
-        {
-            Entries = null!,
-        };
+        I18nCatalog catalog = CreateCatalog();
+        catalog.Entries = null!;
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
@@ -57,9 +55,266 @@ public sealed class I18nCatalogValidatorTests
     }
 
     [Fact]
+    public void Validate_MissingDefaultLocale_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.DefaultLocale = "";
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.MissingDefaultLocale, diagnostic.Code);
+        Assert.Equal("$.defaultLocale", diagnostic.JsonPath);
+    }
+
+    [Fact]
+    public void Validate_UnknownDefaultLocale_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.DefaultLocale = "ru";
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.UnknownDefaultLocale, diagnostic.Code);
+    }
+
+    [Fact]
+    public void Validate_NullLocaleDefinitions_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales = null!;
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.NullLocaleDefinitions, diagnostic.Code);
+        Assert.Equal("$.locales", diagnostic.JsonPath);
+    }
+
+    [Fact]
+    public void Validate_EmptyLocaleDefinitions_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales.Clear();
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.MissingLocaleDefinitions, diagnostic.Code);
+    }
+
+    [Fact]
+    public void Validate_NullLocaleDefinition_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales.Add(null!);
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.NullLocaleDefinition, diagnostic.Code);
+        Assert.Equal("$.locales[1]", diagnostic.JsonPath);
+    }
+
+    [Theory]
+    [InlineData(null, I18nValidationCodes.MissingLocaleId)]
+    [InlineData("", I18nValidationCodes.MissingLocaleId)]
+    [InlineData("_ru", I18nValidationCodes.InvalidLocaleId)]
+    [InlineData("ru--RU", I18nValidationCodes.InvalidLocaleId)]
+    public void Validate_InvalidLocaleDefinitionId_ReturnsExpectedError(string? localeId, string expectedCode)
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = localeId!,
+            DisplayName = "Test locale",
+            Culture = "ru-RU",
+        });
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(expectedCode, diagnostic.Code);
+        Assert.Equal("$.locales[1].id", diagnostic.JsonPath);
+    }
+
+    [Fact]
+    public void Validate_DuplicateLocaleIdIgnoringCase_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = "EN",
+            DisplayName = "English duplicate",
+            Culture = "en-US",
+        });
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.DuplicateLocaleId, diagnostic.Code);
+        Assert.Equal("$.locales[1].id", diagnostic.JsonPath);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Validate_MissingLocaleDisplayName_ReturnsError(string? displayName)
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales[0].DisplayName = displayName!;
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.MissingLocaleDisplayName, diagnostic.Code);
+        Assert.Equal("$.locales[0].displayName", diagnostic.JsonPath);
+    }
+
+    [Theory]
+    [InlineData(null, I18nValidationCodes.MissingLocaleCulture)]
+    [InlineData("", I18nValidationCodes.MissingLocaleCulture)]
+    [InlineData("invalid culture!", I18nValidationCodes.InvalidLocaleCulture)]
+    public void Validate_InvalidLocaleCulture_ReturnsExpectedError(string? culture, string expectedCode)
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = "ru",
+            DisplayName = "Русский",
+            Culture = culture!,
+        });
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(expectedCode, diagnostic.Code);
+        Assert.Equal("$.locales[1].culture", diagnostic.JsonPath);
+    }
+
+    [Fact]
+    public void Validate_UnknownFallbackLocale_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = "ru",
+            DisplayName = "Русский",
+            Culture = "ru-RU",
+            Fallback = "unknown",
+        });
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.UnknownFallbackLocale, diagnostic.Code);
+        Assert.Equal("$.locales[1].fallback", diagnostic.JsonPath);
+    }
+
+    [Fact]
+    public void Validate_DefaultLocaleWithFallback_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales[0].Fallback = "ru";
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = "ru",
+            DisplayName = "Русский",
+            Culture = "ru-RU",
+        });
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.DefaultLocaleHasFallback, diagnostic.Code);
+        Assert.Equal("$.locales[0].fallback", diagnostic.JsonPath);
+    }
+
+    [Fact]
+    public void Validate_LocaleFallbackCycle_ReturnsError()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = "fr",
+            DisplayName = "Français",
+            Culture = "fr-FR",
+            Fallback = "de",
+        });
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = "de",
+            DisplayName = "Deutsch",
+            Culture = "de-DE",
+            Fallback = "fr",
+        });
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.LocaleFallbackCycle, diagnostic.Code);
+    }
+
+    [Fact]
+    public void Validate_UndeclaredEntryLocale_ReturnsError()
+    {
+        I18nEntry entry = CreateValidEntry();
+        entry.Locales["ru"] = new I18nLocaleValue { Text = "Текст" };
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(CreateCatalog(entry));
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.UndeclaredLocale, diagnostic.Code);
+        Assert.Equal("$.entries[0].locales['ru']", diagnostic.JsonPath);
+    }
+
+    [Fact]
+    public void Validate_MissingDeclaredLocaleValue_ReturnsWarning()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = "ru",
+            DisplayName = "Русский",
+            Culture = "ru-RU",
+            Fallback = "en",
+        });
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.True(result.IsValid);
+        Assert.Equal(I18nValidationCodes.MissingLocaleValue, diagnostic.Code);
+        Assert.Equal(I18nValidationSeverity.Warning, diagnostic.Severity);
+        Assert.Equal("$.entries[0].locales['ru']", diagnostic.JsonPath);
+    }
+
+    [Fact]
+    public void Validate_ValidLocaleFallback_ReturnsValidResult()
+    {
+        I18nEntry entry = CreateValidEntry();
+        entry.Locales["ru"] = new I18nLocaleValue { Text = "Текст" };
+        I18nCatalog catalog = CreateCatalog(entry);
+        catalog.Locales.Add(new I18nLocaleDefinition
+        {
+            Id = "ru",
+            DisplayName = "Русский",
+            Culture = "ru-RU",
+            Fallback = "en",
+        });
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
     public void Validate_NullEntry_ReturnsNullEntryError()
     {
-        var catalog = new I18nCatalog();
+        I18nCatalog catalog = CreateCatalog();
         catalog.Entries.Add(null!);
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
@@ -193,6 +448,22 @@ public sealed class I18nCatalogValidatorTests
         Assert.Equal("$.entries[0].locales['en']", diagnostic.JsonPath);
     }
 
+    [Fact]
+    public void Validate_InvalidLocaleIcon_ReturnsAssetDiagnosticAtLocalePath()
+    {
+        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
+        catalog.Locales[0].Icon = new I18nAssetReference
+        {
+            AssetGuid = "invalid",
+        };
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.InvalidAssetGuid, diagnostic.Code);
+        Assert.Equal("$.locales[0].icon.assetGuid", diagnostic.JsonPath);
+    }
+
     [Theory]
     [InlineData(null, I18nValidationCodes.MissingAssetGuid)]
     [InlineData("", I18nValidationCodes.MissingAssetGuid)]
@@ -280,8 +551,15 @@ public sealed class I18nCatalogValidatorTests
         entry.Locales.Clear();
         entry.Locales["z"] = CreateLocaleWithInvalidAsset();
         entry.Locales["a"] = CreateLocaleWithInvalidAsset();
+        I18nCatalog catalog = CreateCatalog(entry);
+        catalog.DefaultLocale = "a";
+        catalog.Locales = new List<I18nLocaleDefinition>
+        {
+            new() { Id = "z", DisplayName = "Zulu", Culture = "en-US" },
+            new() { Id = "a", DisplayName = "Alpha", Culture = "en-US" },
+        };
 
-        I18nValidationResult result = I18nCatalogValidator.Validate(CreateCatalog(entry));
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
         Assert.Equal(
             new[]
@@ -326,6 +604,16 @@ public sealed class I18nCatalogValidatorTests
     {
         return new I18nCatalog
         {
+            DefaultLocale = "en",
+            Locales = new List<I18nLocaleDefinition>
+            {
+                new()
+                {
+                    Id = "en",
+                    DisplayName = "English",
+                    Culture = "en-US",
+                },
+            },
             Entries = new List<I18nEntry>(entries),
         };
     }

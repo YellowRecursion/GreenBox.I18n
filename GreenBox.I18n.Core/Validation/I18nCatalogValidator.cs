@@ -18,6 +18,10 @@ namespace GreenBox.I18n
             "^[a-fA-F0-9]{32}$",
             RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+        private static readonly Regex LocaleIdRegex = new(
+            "^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*$",
+            RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
         /// <summary>
         /// Validates a catalog without modifying it.
         /// </summary>
@@ -46,6 +50,15 @@ namespace GreenBox.I18n
                     $"Schema version {catalog.SchemaVersion} is not supported. Expected {CurrentSchemaVersion}.");
             }
 
+            int localeErrorCountBefore = CountErrors(diagnostics);
+            IReadOnlyList<I18nLocaleDefinition> localeDefinitions = ValidateLocaleDefinitions(
+                catalog.DefaultLocale,
+                catalog.Locales,
+                diagnostics);
+            HashSet<string>? declaredLocaleIds = CountErrors(diagnostics) == localeErrorCountBefore
+                ? new HashSet<string>(GetLocaleIds(localeDefinitions), System.StringComparer.Ordinal)
+                : null;
+
             if (catalog.Entries == null)
             {
                 AddError(
@@ -66,6 +79,8 @@ namespace GreenBox.I18n
                     entryIndex,
                     entryIndexesById,
                     entryIndexesByPath,
+                    localeDefinitions,
+                    declaredLocaleIds,
                     diagnostics);
             }
 
@@ -75,6 +90,214 @@ namespace GreenBox.I18n
             }
 
             return new I18nValidationResult(diagnostics);
+        }
+
+        private static IReadOnlyList<I18nLocaleDefinition> ValidateLocaleDefinitions(
+            string defaultLocale,
+            List<I18nLocaleDefinition> locales,
+            List<I18nValidationDiagnostic> diagnostics)
+        {
+            if (string.IsNullOrWhiteSpace(defaultLocale))
+            {
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.MissingDefaultLocale,
+                    "$.defaultLocale",
+                    "The default locale ID is required.");
+            }
+
+            if (locales == null)
+            {
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.NullLocaleDefinitions,
+                    "$.locales",
+                    "The locale definitions collection cannot be null.");
+                return new List<I18nLocaleDefinition>();
+            }
+
+            if (locales.Count == 0)
+            {
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.MissingLocaleDefinitions,
+                    "$.locales",
+                    "The catalog must declare at least one supported locale.");
+                return locales;
+            }
+
+            var localeIndexesById = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
+            var localesByExactId = new Dictionary<string, I18nLocaleDefinition>(System.StringComparer.Ordinal);
+
+            for (int localeIndex = 0; localeIndex < locales.Count; localeIndex++)
+            {
+                I18nLocaleDefinition locale = locales[localeIndex];
+                string localePath = $"$.locales[{localeIndex}]";
+
+                if (locale == null)
+                {
+                    AddError(
+                        diagnostics,
+                        I18nValidationCodes.NullLocaleDefinition,
+                        localePath,
+                        "A locale definition cannot be null.");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(locale.Id))
+                {
+                    AddError(
+                        diagnostics,
+                        I18nValidationCodes.MissingLocaleId,
+                        localePath + ".id",
+                        "The locale ID is required.");
+                }
+                else if (!LocaleIdRegex.IsMatch(locale.Id))
+                {
+                    AddError(
+                        diagnostics,
+                        I18nValidationCodes.InvalidLocaleId,
+                        localePath + ".id",
+                        "The locale ID must contain hyphen-separated ASCII letter and digit segments.");
+                }
+                else if (localeIndexesById.TryGetValue(locale.Id, out int firstLocaleIndex))
+                {
+                    AddError(
+                        diagnostics,
+                        I18nValidationCodes.DuplicateLocaleId,
+                        localePath + ".id",
+                        $"The locale ID is already used by $.locales[{firstLocaleIndex}].");
+                }
+                else
+                {
+                    localeIndexesById.Add(locale.Id, localeIndex);
+                    localesByExactId.Add(locale.Id, locale);
+                }
+
+                if (string.IsNullOrWhiteSpace(locale.DisplayName))
+                {
+                    AddError(
+                        diagnostics,
+                        I18nValidationCodes.MissingLocaleDisplayName,
+                        localePath + ".displayName",
+                        "The locale display name is required.");
+                }
+
+                ValidateLocaleCulture(locale.Culture, localePath, diagnostics);
+                ValidateAsset(locale.Icon, localePath + ".icon", diagnostics);
+            }
+
+            I18nLocaleDefinition? defaultDefinition = null;
+            if (!string.IsNullOrWhiteSpace(defaultLocale) &&
+                !localesByExactId.TryGetValue(defaultLocale, out defaultDefinition))
+            {
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.UnknownDefaultLocale,
+                    "$.defaultLocale",
+                    $"Default locale '{defaultLocale}' is not declared by the catalog.");
+            }
+            else if (defaultDefinition != null && defaultDefinition.Fallback != null)
+            {
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.DefaultLocaleHasFallback,
+                    $"$.locales[{localeIndexesById[defaultLocale]}].fallback",
+                    "The default locale cannot declare another fallback locale.");
+            }
+
+            ValidateLocaleFallbacks(locales, localesByExactId, diagnostics);
+            return locales;
+        }
+
+        private static void ValidateLocaleCulture(
+            string culture,
+            string localePath,
+            List<I18nValidationDiagnostic> diagnostics)
+        {
+            if (string.IsNullOrWhiteSpace(culture))
+            {
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.MissingLocaleCulture,
+                    localePath + ".culture",
+                    "The locale culture name is required.");
+                return;
+            }
+
+            try
+            {
+                CultureInfo.GetCultureInfo(culture);
+            }
+            catch (CultureNotFoundException)
+            {
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.InvalidLocaleCulture,
+                    localePath + ".culture",
+                    $"Culture '{culture}' is not recognized by .NET.");
+            }
+        }
+
+        private static void ValidateLocaleFallbacks(
+            IReadOnlyList<I18nLocaleDefinition> locales,
+            Dictionary<string, I18nLocaleDefinition> localesById,
+            List<I18nValidationDiagnostic> diagnostics)
+        {
+            for (int localeIndex = 0; localeIndex < locales.Count; localeIndex++)
+            {
+                I18nLocaleDefinition? locale = locales[localeIndex];
+                if (locale == null || locale.Fallback == null)
+                {
+                    continue;
+                }
+
+                if (!localesById.ContainsKey(locale.Fallback))
+                {
+                    AddError(
+                        diagnostics,
+                        I18nValidationCodes.UnknownFallbackLocale,
+                        $"$.locales[{localeIndex}].fallback",
+                        $"Fallback locale '{locale.Fallback}' is not declared by the catalog.");
+                }
+            }
+
+            for (int localeIndex = 0; localeIndex < locales.Count; localeIndex++)
+            {
+                I18nLocaleDefinition? locale = locales[localeIndex];
+                if (locale == null)
+                {
+                    continue;
+                }
+
+                var visitedLocaleIds = new HashSet<string>(System.StringComparer.Ordinal);
+                I18nLocaleDefinition current = locale;
+
+                while (visitedLocaleIds.Add(current.Id) &&
+                       current.Fallback != null &&
+                       localesById.TryGetValue(current.Fallback, out I18nLocaleDefinition? fallback))
+                {
+                    current = fallback;
+                }
+
+                if (current.Fallback != null && visitedLocaleIds.Contains(current.Fallback))
+                {
+                    AddError(
+                        diagnostics,
+                        I18nValidationCodes.LocaleFallbackCycle,
+                        $"$.locales[{localeIndex}].fallback",
+                        $"Locale fallback chain starting at '{locale.Id}' contains a cycle.");
+                    return;
+                }
+            }
+        }
+
+        private static IEnumerable<string> GetLocaleIds(IReadOnlyList<I18nLocaleDefinition> locales)
+        {
+            for (int localeIndex = 0; localeIndex < locales.Count; localeIndex++)
+            {
+                yield return locales[localeIndex].Id;
+            }
         }
 
         private static void ValidateEntryOrder(
@@ -118,6 +341,8 @@ namespace GreenBox.I18n
             int entryIndex,
             Dictionary<long, int> entryIndexesById,
             Dictionary<string, int> entryIndexesByPath,
+            IReadOnlyList<I18nLocaleDefinition> localeDefinitions,
+            HashSet<string>? declaredLocaleIds,
             List<I18nValidationDiagnostic> diagnostics)
         {
             string entryPath = $"$.entries[{entryIndex}]";
@@ -134,7 +359,12 @@ namespace GreenBox.I18n
 
             ValidateId(entry.Id, entryIndex, entryPath, entryIndexesById, diagnostics);
             ValidatePath(entry.Path, entryIndex, entryPath, entryIndexesByPath, diagnostics);
-            ValidateLocales(entry.Locales, entryPath, diagnostics);
+            ValidateLocales(
+                entry.Locales,
+                entryPath,
+                localeDefinitions,
+                declaredLocaleIds,
+                diagnostics);
         }
 
         private static void ValidateId(
@@ -216,6 +446,8 @@ namespace GreenBox.I18n
         private static void ValidateLocales(
             Dictionary<string, I18nLocaleValue> locales,
             string entryPath,
+            IReadOnlyList<I18nLocaleDefinition> localeDefinitions,
+            HashSet<string>? declaredLocaleIds,
             List<I18nValidationDiagnostic> diagnostics)
         {
             string localesPath = entryPath + ".locales";
@@ -232,6 +464,7 @@ namespace GreenBox.I18n
 
             var localeIds = new List<string>(locales.Keys);
             localeIds.Sort(System.StringComparer.Ordinal);
+            bool canValidateCoverage = true;
 
             for (int localeIndex = 0; localeIndex < localeIds.Count; localeIndex++)
             {
@@ -241,11 +474,23 @@ namespace GreenBox.I18n
 
                 if (string.IsNullOrWhiteSpace(localeId))
                 {
+                    canValidateCoverage = false;
                     AddError(
                         diagnostics,
                         I18nValidationCodes.InvalidLocaleId,
                         localesPath,
                         "A locale identifier cannot be empty.");
+                    continue;
+                }
+
+                if (declaredLocaleIds != null && !declaredLocaleIds.Contains(localeId))
+                {
+                    canValidateCoverage = false;
+                    AddError(
+                        diagnostics,
+                        I18nValidationCodes.UndeclaredLocale,
+                        localePath,
+                        $"Locale '{localeId}' is not declared by the catalog.");
                     continue;
                 }
 
@@ -269,6 +514,24 @@ namespace GreenBox.I18n
                 }
 
                 ValidateAsset(localeValue.Asset, localePath + ".asset", diagnostics);
+            }
+
+            if (declaredLocaleIds == null || !canValidateCoverage)
+            {
+                return;
+            }
+
+            for (int localeIndex = 0; localeIndex < localeDefinitions.Count; localeIndex++)
+            {
+                string localeId = localeDefinitions[localeIndex].Id;
+                if (!locales.ContainsKey(localeId))
+                {
+                    AddWarning(
+                        diagnostics,
+                        I18nValidationCodes.MissingLocaleValue,
+                        localesPath + "['" + localeId + "']",
+                        $"The entry does not contain a value for locale '{localeId}'.");
+                }
             }
         }
 
@@ -341,6 +604,20 @@ namespace GreenBox.I18n
                 I18nValidationSeverity.Warning,
                 jsonPath,
                 message));
+        }
+
+        private static int CountErrors(List<I18nValidationDiagnostic> diagnostics)
+        {
+            int count = 0;
+            for (int diagnosticIndex = 0; diagnosticIndex < diagnostics.Count; diagnosticIndex++)
+            {
+                if (diagnostics[diagnosticIndex].Severity == I18nValidationSeverity.Error)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private static void AddError(
