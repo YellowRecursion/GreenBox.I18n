@@ -22,7 +22,7 @@ namespace GreenBox.I18n.Unity.Editor.Build
             {
                 throw new BuildFailedException(
                     "GreenBox I18n build validation failed: Active Catalog is not configured in " +
-                    "Project Settings > GreenBox I18n.");
+                    "Project Settings > GreenBox > i18n.");
             }
 
             I18nCatalogCompilationState state = I18nCatalogCompiler.GetState(catalogAsset);

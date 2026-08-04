@@ -1,15 +1,12 @@
 {
-  "name": "GreenBox.I18n.Unity.Editor",
-  "rootNamespace": "GreenBox.I18n.Unity.Editor",
+  "name": "GreenBox.I18n.Unity.Text",
+  "rootNamespace": "GreenBox.I18n.Unity.Text",
   "references": [
     "GreenBox.I18n.Unity",
-    "GreenBox.I18n.Unity.Text",
     "Unity.TextMeshPro",
     "UnityEngine.UI"
   ],
-  "includePlatforms": [
-    "Editor"
-  ],
+  "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,

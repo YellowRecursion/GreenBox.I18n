@@ -17,9 +17,9 @@ namespace GreenBox.I18n.Unity.Editor.Settings
         [SettingsProvider]
         private static SettingsProvider CreateProvider()
         {
-            return new SettingsProvider("Project/GreenBox I18n", SettingsScope.Project)
+            return new SettingsProvider("Project/GreenBox/i18n", SettingsScope.Project)
             {
-                label = "GreenBox I18n",
+                label = "i18n",
                 guiHandler = DrawSettings,
                 keywords = new HashSet<string>
                 {

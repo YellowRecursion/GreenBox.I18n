@@ -6,7 +6,7 @@ namespace GreenBox.I18n.Unity
     /// <summary>
     /// Stores a source catalog and the Unity objects compiled from its asset references.
     /// </summary>
-    [CreateAssetMenu(fileName = "I18nCatalog", menuName = "GreenBox/I18n Catalog")]
+    [CreateAssetMenu(fileName = "I18nCatalog", menuName = "GreenBox/i18n/Catalog")]
     public sealed class I18nCatalogAsset : ScriptableObject
     {
         [SerializeField]

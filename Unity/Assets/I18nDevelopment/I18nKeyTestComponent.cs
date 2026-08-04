@@ -6,7 +6,7 @@ namespace GreenBox.I18n.Development
     /// <summary>
     /// Provides assigned, unassigned, and missing localization keys for editor testing.
     /// </summary>
-    [AddComponentMenu("GreenBox/I18n Key Test Component")]
+    [AddComponentMenu("GreenBox/i18n/Development/Key Test")]
     public sealed class I18nKeyTestComponent : MonoBehaviour
     {
         /// <summary>
@@ -28,6 +28,11 @@ namespace GreenBox.I18n.Development
         /// Catalog used by the runtime smoke test.
         /// </summary>
         public I18nCatalogAsset Catalog;
+
+        private void Awake()
+        {
+            i18n.Initialize(Catalog, "en");
+        }
 
         /// <summary>
         /// Initializes the runtime and logs the existing key in English and Russian.
