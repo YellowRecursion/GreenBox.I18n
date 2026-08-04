@@ -7,6 +7,27 @@ using System.Collections.ObjectModel;
 namespace GreenBox.I18n.Unity.Editor
 {
     /// <summary>
+    /// Describes whether a Unity catalog asset matches its current JSON source.
+    /// </summary>
+    public enum I18nCatalogCompilationState
+    {
+        /// <summary>
+        /// The catalog has never been compiled or has no source JSON.
+        /// </summary>
+        NotCompiled,
+
+        /// <summary>
+        /// The source or a compiled Unity object changed after compilation.
+        /// </summary>
+        OutOfDate,
+
+        /// <summary>
+        /// The compiled data matches the current source.
+        /// </summary>
+        UpToDate,
+    }
+
+    /// <summary>
     /// Contains stable machine-readable codes produced by Unity catalog compilation.
     /// </summary>
     public static class I18nCatalogCompilationCodes

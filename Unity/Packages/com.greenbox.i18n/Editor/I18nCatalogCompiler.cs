@@ -17,6 +17,41 @@ namespace GreenBox.I18n.Unity.Editor
     public static class I18nCatalogCompiler
     {
         /// <summary>
+        /// Gets the current compilation state without modifying the catalog asset.
+        /// </summary>
+        /// <param name="catalogAsset">Catalog asset to inspect.</param>
+        /// <returns>The state of its generated runtime data.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="catalogAsset"/> is null.</exception>
+        public static I18nCatalogCompilationState GetState(I18nCatalogAsset catalogAsset)
+        {
+            if (catalogAsset == null)
+            {
+                throw new ArgumentNullException(nameof(catalogAsset));
+            }
+
+            if (!catalogAsset.SourceCatalog || string.IsNullOrEmpty(catalogAsset.SourceHash))
+            {
+                return I18nCatalogCompilationState.NotCompiled;
+            }
+
+            string sourceHash = ComputeSourceHash(catalogAsset.SourceCatalog.bytes);
+            if (!string.Equals(sourceHash, catalogAsset.SourceHash, StringComparison.Ordinal))
+            {
+                return I18nCatalogCompilationState.OutOfDate;
+            }
+
+            for (int bindingIndex = 0; bindingIndex < catalogAsset.AssetBindings.Count; bindingIndex++)
+            {
+                if (!catalogAsset.AssetBindings[bindingIndex].Asset)
+                {
+                    return I18nCatalogCompilationState.OutOfDate;
+                }
+            }
+
+            return I18nCatalogCompilationState.UpToDate;
+        }
+
+        /// <summary>
         /// Validates and compiles a catalog asset without modifying it when any error occurs.
         /// </summary>
         /// <param name="catalogAsset">The Unity catalog asset to compile.</param>
