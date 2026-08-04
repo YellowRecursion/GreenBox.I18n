@@ -13,13 +13,13 @@ namespace GreenBox.I18n
         /// <summary>
         /// Gets or sets the version of the JSON data contract used by this file.
         /// </summary>
-        [JsonProperty("schemaVersion")]
+        [JsonProperty("schemaVersion", Order = 0)]
         public int SchemaVersion { get; set; } = 1;
 
         /// <summary>
         /// Gets or sets the ordered collection of localisation entries.
         /// </summary>
-        [JsonProperty("entries")]
+        [JsonProperty("entries", Order = 1)]
         public List<I18nEntry> Entries { get; set; } = new();
     }
 
@@ -32,25 +32,25 @@ namespace GreenBox.I18n
         /// <summary>
         /// Gets or sets the immutable globally unique identifier of the entry.
         /// </summary>
-        [JsonProperty("id")]
+        [JsonProperty("id", Order = 0)]
         public string Id { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the mutable full logical path of the entry.
         /// </summary>
-        [JsonProperty("path")]
+        [JsonProperty("path", Order = 1)]
         public string Path { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets an optional contextual note for developers, translators, and tooling.
         /// </summary>
-        [JsonProperty("comment", NullValueHandling = NullValueHandling.Ignore)]
+        [JsonProperty("comment", Order = 2, NullValueHandling = NullValueHandling.Ignore)]
         public string? Comment { get; set; }
 
         /// <summary>
         /// Gets or sets the values associated with locale identifiers.
         /// </summary>
-        [JsonProperty("locales")]
+        [JsonProperty("locales", Order = 3)]
         public Dictionary<string, I18nLocaleValue> Locales { get; set; } = new();
     }
 
@@ -63,13 +63,13 @@ namespace GreenBox.I18n
         /// <summary>
         /// Gets or sets the localized text, or <see langword="null"/> when the entry has no text.
         /// </summary>
-        [JsonProperty("text")]
+        [JsonProperty("text", Order = 0)]
         public string? Text { get; set; }
 
         /// <summary>
         /// Gets or sets the localized Unity asset reference, or <see langword="null"/> when the entry has no asset.
         /// </summary>
-        [JsonProperty("asset")]
+        [JsonProperty("asset", Order = 1)]
         public I18nAssetReference? Asset { get; set; }
     }
 
@@ -82,7 +82,7 @@ namespace GreenBox.I18n
         /// <summary>
         /// Gets or sets the GUID stored in the Unity asset's meta file.
         /// </summary>
-        [JsonProperty("assetGuid")]
+        [JsonProperty("assetGuid", Order = 0)]
         public string AssetGuid { get; set; } = string.Empty;
     }
 }
