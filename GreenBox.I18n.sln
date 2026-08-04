@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Core", "Green
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Cli", "GreenBox.I18n.Cli\GreenBox.I18n.Cli.csproj", "{C4D61E85-553D-48B1-84CE-74BFDBEDD872}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Core.Tests", "GreenBox.I18n.Core.Tests\GreenBox.I18n.Core.Tests.csproj", "{2AA49C61-BB4E-4D90-A8E0-9BF800B67B0D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -16,6 +18,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{BE6117E5-CA50-4F73-BAE4-F512CA408371} = {3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}
 		{C4D61E85-553D-48B1-84CE-74BFDBEDD872} = {3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}
+		{2AA49C61-BB4E-4D90-A8E0-9BF800B67B0D} = {B978230F-F778-46C6-85E0-785078459038}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BE6117E5-CA50-4F73-BAE4-F512CA408371}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -26,5 +29,9 @@ Global
 		{C4D61E85-553D-48B1-84CE-74BFDBEDD872}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4D61E85-553D-48B1-84CE-74BFDBEDD872}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4D61E85-553D-48B1-84CE-74BFDBEDD872}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AA49C61-BB4E-4D90-A8E0-9BF800B67B0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AA49C61-BB4E-4D90-A8E0-9BF800B67B0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AA49C61-BB4E-4D90-A8E0-9BF800B67B0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AA49C61-BB4E-4D90-A8E0-9BF800B67B0D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
