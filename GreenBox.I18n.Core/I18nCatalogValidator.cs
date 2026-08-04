@@ -265,6 +265,32 @@ namespace GreenBox.I18n
                     guidPath,
                     "The asset GUID must contain exactly 32 hexadecimal characters.");
             }
+
+            ValidateAssetLocalFileId(asset.LocalFileId, assetPath, diagnostics);
+        }
+
+        private static void ValidateAssetLocalFileId(
+            string? localFileId,
+            string assetPath,
+            List<I18nValidationDiagnostic> diagnostics)
+        {
+            if (localFileId == null)
+            {
+                return;
+            }
+
+            if (!long.TryParse(
+                    localFileId,
+                    NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture,
+                    out _))
+            {
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.InvalidAssetLocalFileId,
+                    assetPath + ".localFileId",
+                    "The asset local file ID must be a 64-bit integer written using decimal digits.");
+            }
         }
 
         private static void AddWarning(

@@ -220,12 +220,34 @@ public sealed class I18nCatalogValidatorTests
         entry.Locales["en"].Asset = new I18nAssetReference
         {
             AssetGuid = "0123456789abcdefABCDEF0123456789",
+            LocalFileId = "21300000",
         };
 
         I18nValidationResult result = I18nCatalogValidator.Validate(CreateCatalog(entry));
 
         Assert.True(result.IsValid);
         Assert.Empty(result.Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("1.5")]
+    [InlineData("9223372036854775808")]
+    public void Validate_InvalidAssetLocalFileId_ReturnsError(string localFileId)
+    {
+        I18nEntry entry = CreateValidEntry();
+        entry.Locales["en"].Asset = new I18nAssetReference
+        {
+            AssetGuid = "0123456789abcdef0123456789abcdef",
+            LocalFileId = localFileId,
+        };
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(CreateCatalog(entry));
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.InvalidAssetLocalFileId, diagnostic.Code);
+        Assert.Equal("$.entries[0].locales['en'].asset.localFileId", diagnostic.JsonPath);
     }
 
     [Fact]

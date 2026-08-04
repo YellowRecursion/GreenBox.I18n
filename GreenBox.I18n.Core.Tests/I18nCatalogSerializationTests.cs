@@ -17,4 +17,12 @@ public sealed class I18nCatalogSerializationTests
 
         Assert.DoesNotContain("\"comment\"", json);
     }
+
+    [Fact]
+    public void SerializeLocaleValue_WithoutTextOrAsset_OmitsBothProperties()
+    {
+        string json = JsonConvert.SerializeObject(new I18nLocaleValue());
+
+        Assert.Equal("{}", json);
+    }
 }

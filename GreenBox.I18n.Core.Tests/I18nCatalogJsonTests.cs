@@ -24,6 +24,7 @@ public sealed class I18nCatalogJsonTests
                             Asset = new I18nAssetReference
                             {
                                 AssetGuid = "0123456789abcdef0123456789abcdef",
+                                LocalFileId = "21300000",
                             },
                         },
                     },
@@ -43,7 +44,8 @@ public sealed class I18nCatalogJsonTests
                                       "locales": {
                                         "en": {
                                           "asset": {
-                                            "assetGuid": "0123456789abcdef0123456789abcdef"
+                                            "assetGuid": "0123456789abcdef0123456789abcdef",
+                                            "localFileId": "21300000"
                                           }
                                         },
                                         "ru": {
@@ -111,6 +113,7 @@ public sealed class I18nCatalogJsonTests
                             Asset = new I18nAssetReference
                             {
                                 AssetGuid = "abcdef0123456789abcdef0123456789",
+                                LocalFileId = "21300000",
                             },
                         },
                     },
@@ -126,6 +129,7 @@ public sealed class I18nCatalogJsonTests
         Assert.Equal("Subtitle context.", entry.Comment);
         Assert.Equal("Subtitle", entry.Locales["en"].Text);
         Assert.Equal("abcdef0123456789abcdef0123456789", entry.Locales["en"].Asset!.AssetGuid);
+        Assert.Equal("21300000", entry.Locales["en"].Asset!.LocalFileId);
     }
 
     [Fact]

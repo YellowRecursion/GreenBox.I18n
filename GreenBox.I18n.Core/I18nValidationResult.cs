@@ -72,6 +72,9 @@ namespace GreenBox.I18n
 
         /// <summary>Indicates that an asset GUID has an invalid format.</summary>
         public const string InvalidAssetGuid = "invalid_asset_guid";
+
+        /// <summary>Indicates that an asset local file identifier has an invalid format.</summary>
+        public const string InvalidAssetLocalFileId = "invalid_asset_local_file_id";
     }
 
     /// <summary>

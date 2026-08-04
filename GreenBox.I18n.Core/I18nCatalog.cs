@@ -63,13 +63,13 @@ namespace GreenBox.I18n
         /// <summary>
         /// Gets or sets the localized text, or <see langword="null"/> when the entry has no text.
         /// </summary>
-        [JsonProperty("text", Order = 0)]
+        [JsonProperty("text", Order = 0, NullValueHandling = NullValueHandling.Ignore)]
         public string? Text { get; set; }
 
         /// <summary>
         /// Gets or sets the localized Unity asset reference, or <see langword="null"/> when the entry has no asset.
         /// </summary>
-        [JsonProperty("asset", Order = 1)]
+        [JsonProperty("asset", Order = 1, NullValueHandling = NullValueHandling.Ignore)]
         public I18nAssetReference? Asset { get; set; }
     }
 
@@ -84,5 +84,11 @@ namespace GreenBox.I18n
         /// </summary>
         [JsonProperty("assetGuid", Order = 0)]
         public string AssetGuid { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the optional Unity local file identifier of a sub-asset.
+        /// </summary>
+        [JsonProperty("localFileId", Order = 1, NullValueHandling = NullValueHandling.Ignore)]
+        public string? LocalFileId { get; set; }
     }
 }
