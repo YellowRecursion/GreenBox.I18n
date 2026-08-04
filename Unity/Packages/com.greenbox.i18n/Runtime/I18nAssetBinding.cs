@@ -18,6 +18,20 @@ namespace GreenBox.I18n.Unity
         [SerializeField]
         private UnityEngine.Object _asset;
 
+        internal I18nAssetBinding()
+        {
+        }
+
+        internal I18nAssetBinding(
+            string assetGuid,
+            string localFileId,
+            UnityEngine.Object asset)
+        {
+            _assetGuid = assetGuid;
+            _localFileId = localFileId;
+            _asset = asset;
+        }
+
         /// <summary>
         /// Gets the GUID stored in the Unity asset's meta file.
         /// </summary>

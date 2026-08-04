@@ -41,5 +41,16 @@ namespace GreenBox.I18n.Unity
         {
             return I18nCatalogJson.Deserialize(_sourceCatalog.text);
         }
+
+        /// <summary>
+        /// Replaces the generated runtime data after a successful editor compilation.
+        /// </summary>
+        internal void ReplaceCompiledData(
+            string sourceHash,
+            List<I18nAssetBinding> assetBindings)
+        {
+            _sourceHash = sourceHash;
+            _assetBindings = assetBindings;
+        }
     }
 }

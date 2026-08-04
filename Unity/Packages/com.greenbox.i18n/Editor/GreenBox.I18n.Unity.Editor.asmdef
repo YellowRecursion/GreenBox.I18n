@@ -1,0 +1,18 @@
+{
+  "name": "GreenBox.I18n.Unity.Editor",
+  "rootNamespace": "GreenBox.I18n.Unity.Editor",
+  "references": [
+    "GreenBox.I18n.Unity"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
