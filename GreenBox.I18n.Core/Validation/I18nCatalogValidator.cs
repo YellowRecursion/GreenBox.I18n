@@ -73,7 +73,48 @@ namespace GreenBox.I18n
                     diagnostics);
             }
 
+            if (!ContainsErrors(diagnostics))
+            {
+                ValidateEntryOrder(catalog.Entries, diagnostics);
+            }
+
             return new I18nValidationResult(diagnostics);
+        }
+
+        private static void ValidateEntryOrder(
+            List<I18nEntry> entries,
+            List<I18nValidationDiagnostic> diagnostics)
+        {
+            for (int entryIndex = 1; entryIndex < entries.Count; entryIndex++)
+            {
+                I18nEntry previous = entries[entryIndex - 1];
+                I18nEntry current = entries[entryIndex];
+
+                if (I18nEntryComparer.Canonical.Compare(previous, current) <= 0)
+                {
+                    continue;
+                }
+
+                AddError(
+                    diagnostics,
+                    I18nValidationCodes.EntriesNotSorted,
+                    $"$.entries[{entryIndex}]",
+                    $"Entry '{current.Path}' must appear before '{previous.Path}'.");
+                return;
+            }
+        }
+
+        private static bool ContainsErrors(List<I18nValidationDiagnostic> diagnostics)
+        {
+            for (int diagnosticIndex = 0; diagnosticIndex < diagnostics.Count; diagnosticIndex++)
+            {
+                if (diagnostics[diagnosticIndex].Severity == I18nValidationSeverity.Error)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void ValidateEntry(

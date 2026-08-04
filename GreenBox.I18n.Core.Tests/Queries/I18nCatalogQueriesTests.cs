@@ -72,6 +72,18 @@ public sealed class I18nCatalogQueriesTests
     }
 
     [Fact]
+    public void Search_EqualRanks_UsesCanonicalNaturalOrder()
+    {
+        I18nEntry tank10 = CreateEntry("10", "Units.Tank10.Title");
+        I18nEntry tank2 = CreateEntry("2", "Units.Tank2.Title");
+        I18nCatalog catalog = CreateCatalog(tank10, tank2);
+
+        IReadOnlyList<I18nEntry> result = catalog.Search("Units");
+
+        Assert.Equal(new[] { tank2, tank10 }, result);
+    }
+
+    [Fact]
     public void Search_EmptyQuery_Throws()
     {
         var catalog = new I18nCatalog();

@@ -55,6 +55,9 @@ namespace GreenBox.I18n
         /// <summary>Indicates that an entry path is used more than once.</summary>
         public const string DuplicatePath = "duplicate_path";
 
+        /// <summary>Indicates that catalog entries are not in canonical order.</summary>
+        public const string EntriesNotSorted = "entries_not_sorted";
+
         /// <summary>Indicates that an entry has no locale values.</summary>
         public const string MissingLocales = "missing_locales";
 

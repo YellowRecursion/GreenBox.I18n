@@ -89,6 +89,7 @@ namespace GreenBox.I18n
                 NullValueHandling = NullValueHandling.Ignore,
             };
 
+            settings.Converters.Add(new EntryListJsonConverter());
             settings.Converters.Add(new LocaleDictionaryJsonConverter());
             return settings;
         }
@@ -96,6 +97,39 @@ namespace GreenBox.I18n
         private static string NormalizeLineEndings(string value)
         {
             return value.Replace("\r\n", "\n").Replace('\r', '\n');
+        }
+
+        private sealed class EntryListJsonConverter : JsonConverter
+        {
+            public override bool CanRead => false;
+
+            public override bool CanConvert(Type objectType)
+            {
+                return objectType == typeof(List<I18nEntry>);
+            }
+
+            public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
+            {
+                var entries = (List<I18nEntry>)value!;
+
+                writer.WriteStartArray();
+
+                foreach (I18nEntry entry in entries.OrderBy(entry => entry, I18nEntryComparer.Canonical))
+                {
+                    serializer.Serialize(writer, entry);
+                }
+
+                writer.WriteEndArray();
+            }
+
+            public override object ReadJson(
+                JsonReader reader,
+                Type objectType,
+                object? existingValue,
+                JsonSerializer serializer)
+            {
+                throw new NotSupportedException();
+            }
         }
 
         private sealed class LocaleDictionaryJsonConverter : JsonConverter

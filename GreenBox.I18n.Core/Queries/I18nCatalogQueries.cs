@@ -58,8 +58,7 @@ namespace GreenBox.I18n
                 .Select(entry => new SearchMatch(entry, GetMatchRank(entry, query)))
                 .Where(match => match.Rank != SearchRank.None)
                 .OrderBy(match => match.Rank)
-                .ThenBy(match => match.Entry.Path, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(match => ParseId(match.Entry.Id))
+                .ThenBy(match => match.Entry, I18nEntryComparer.Canonical)
                 .Select(match => match.Entry)
                 .ToArray();
         }
@@ -92,13 +91,6 @@ namespace GreenBox.I18n
         private static bool Contains(string? value, string query)
         {
             return value?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
-        }
-
-        private static long ParseId(string id)
-        {
-            return long.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out long result)
-                ? result
-                : long.MaxValue;
         }
 
         private readonly struct SearchMatch

@@ -133,6 +133,26 @@ public sealed class I18nCatalogJsonTests
     }
 
     [Fact]
+    public void Serialize_UnsortedEntries_WritesNaturalCanonicalOrderWithoutModifyingCatalog()
+    {
+        I18nEntry tank10 = CreateEntry("10", "Units.Tank10.Title");
+        I18nEntry tank02 = CreateEntry("2", "Units.Tank02.Title");
+        I18nEntry tank2 = CreateEntry("1", "Units.Tank2.Title");
+        var catalog = new I18nCatalog
+        {
+            Entries = new List<I18nEntry> { tank10, tank02, tank2 },
+        };
+
+        string json = I18nCatalogJson.Serialize(catalog);
+        I18nCatalog serializedCatalog = I18nCatalogJson.Deserialize(json);
+
+        Assert.Equal(
+            new[] { "Units.Tank2.Title", "Units.Tank02.Title", "Units.Tank10.Title" },
+            serializedCatalog.Entries.Select(entry => entry.Path));
+        Assert.Equal(new[] { tank10, tank02, tank2 }, catalog.Entries);
+    }
+
+    [Fact]
     public void Deserialize_DuplicateProperty_ThrowsJsonReaderException()
     {
         const string json = """
@@ -199,5 +219,14 @@ public sealed class I18nCatalogJsonTests
     public void Serialize_NullCatalog_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() => I18nCatalogJson.Serialize(null!));
+    }
+
+    private static I18nEntry CreateEntry(string id, string path)
+    {
+        return new I18nEntry
+        {
+            Id = id,
+            Path = path,
+        };
     }
 }

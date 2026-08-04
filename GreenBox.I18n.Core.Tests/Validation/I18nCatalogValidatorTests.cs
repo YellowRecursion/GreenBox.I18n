@@ -292,6 +292,36 @@ public sealed class I18nCatalogValidatorTests
             result.Diagnostics.Select(diagnostic => diagnostic.JsonPath));
     }
 
+    [Fact]
+    public void Validate_UnsortedEntries_ReturnsEntriesNotSortedError()
+    {
+        I18nCatalog catalog = CreateCatalog(
+            CreateValidEntry("10", "Units.Tank10.Title"),
+            CreateValidEntry("2", "Units.Tank2.Title"));
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(I18nValidationCodes.EntriesNotSorted, diagnostic.Code);
+        Assert.Equal(I18nValidationSeverity.Error, diagnostic.Severity);
+        Assert.Equal("$.entries[1]", diagnostic.JsonPath);
+        Assert.Contains("'Units.Tank2.Title' must appear before 'Units.Tank10.Title'", diagnostic.Message);
+    }
+
+    [Fact]
+    public void Validate_NaturallySortedEntries_ReturnsValidResult()
+    {
+        I18nCatalog catalog = CreateCatalog(
+            CreateValidEntry("1", "Units.Tank2.Title"),
+            CreateValidEntry("2", "Units.Tank02.Title"),
+            CreateValidEntry("10", "Units.Tank10.Title"));
+
+        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
+
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Diagnostics);
+    }
+
     private static I18nCatalog CreateCatalog(params I18nEntry[] entries)
     {
         return new I18nCatalog
