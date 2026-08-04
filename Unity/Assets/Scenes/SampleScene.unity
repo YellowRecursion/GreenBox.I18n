@@ -375,6 +375,7 @@ MonoBehaviour:
     _id: 1001
   Missing:
     _id: 999999
+  Catalog: {fileID: 11400000, guid: 2fbf4bcb9d352204798cba3f5fb9bb25, type: 2}
 --- !u!4 &1272250232
 Transform:
   m_ObjectHideFlags: 0

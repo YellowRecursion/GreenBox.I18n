@@ -23,5 +23,23 @@ namespace GreenBox.I18n.Development
         /// A localization key intentionally absent from the development catalog.
         /// </summary>
         public I18nKey Missing = new I18nKey(999999);
+
+        /// <summary>
+        /// Catalog used by the runtime smoke test.
+        /// </summary>
+        public I18nCatalogAsset Catalog;
+
+        /// <summary>
+        /// Initializes the runtime and logs the existing key in English and Russian.
+        /// </summary>
+        [ContextMenu("Log Runtime Text")]
+        private void LogRuntimeText()
+        {
+            i18n.Initialize(Catalog, "en");
+            Debug.Log(i18n.Text(Existing), this);
+
+            i18n.SetLocale("ru");
+            Debug.Log(i18n.Text(Existing), this);
+        }
     }
 }
