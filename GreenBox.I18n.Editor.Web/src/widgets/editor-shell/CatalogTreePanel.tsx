@@ -19,6 +19,7 @@ import {
   Tooltip,
   Tree,
   Typography,
+  message,
   theme,
   type InputRef,
   type MenuProps,
@@ -34,6 +35,7 @@ interface CatalogTreePanelProps {
   onExpandedKeysChange: (keys: Key[]) => void
   onAddEntry: (path: string) => Promise<string>
   onAddFolder: (path: string) => string
+  onRemoveNodes: (keys: Key[]) => Promise<void>
 }
 
 interface NodeDraft {
@@ -56,8 +58,10 @@ export function CatalogTreePanel({
   onExpandedKeysChange,
   onAddEntry,
   onAddFolder,
+  onRemoveNodes,
 }: CatalogTreePanelProps) {
   const { token } = theme.useToken()
+  const [messageApi, messageContext] = message.useMessage()
   const [query, setQuery] = useState('')
   const [selectionAnchor, setSelectionAnchor] = useState<Key>()
   const [nodeDraft, setNodeDraft] = useState<NodeDraft>()
@@ -87,11 +91,18 @@ export function CatalogTreePanel({
     })
   }
 
-  const handleAction = (node: CatalogTreeNode, action: string) => {
+  const handleAction = async (node: CatalogTreeNode, action: string) => {
     if (action === 'new-entry') {
       beginCreation(node, 'entry')
     } else if (action === 'new-folder') {
       beginCreation(node, 'folder')
+    } else if (action === 'delete-entry' || action === 'delete-folder') {
+      const keys = selectedKeys.includes(node.key) ? selectedKeys : [node.key]
+      try {
+        await onRemoveNodes(keys)
+      } catch (error: unknown) {
+        messageApi.error(error instanceof Error ? error.message : 'Selection could not be deleted.')
+      }
     }
   }
 
@@ -135,6 +146,7 @@ export function CatalogTreePanel({
 
   return (
     <Flex vertical gap={layoutTokens.spacing.small} style={{ height: '100%', minHeight: 0 }}>
+      {messageContext}
       <Input.Search
         allowClear
         value={query}
@@ -246,7 +258,7 @@ function TreeNodeTitle({
   return (
     <Dropdown
       menu={{
-        items: getContextMenuItems(node.kind),
+        items: getContextMenuItems(node),
         onClick: ({ key }) => {
           onAction(node, key)
         },
@@ -400,8 +412,8 @@ function getQuickActions(kind: CatalogTreeNode['kind']): QuickAction[] {
   }
 }
 
-function getContextMenuItems(kind: CatalogTreeNode['kind']): MenuProps['items'] {
-  switch (kind) {
+function getContextMenuItems(node: CatalogTreeNode): MenuProps['items'] {
+  switch (node.kind) {
     case 'locales-root':
       return [
         { key: 'new-locale', icon: <PlusOutlined />, label: 'New locale' },
@@ -429,7 +441,9 @@ function getContextMenuItems(kind: CatalogTreeNode['kind']): MenuProps['items'] 
   }
 }
 
-function createContainerMenuItems(includeOwnActions: boolean): MenuProps['items'] {
+function createContainerMenuItems(
+  includeOwnActions: boolean,
+): MenuProps['items'] {
   return [
     { key: 'new-entry', icon: <FileAddOutlined />, label: 'New entry' },
     { key: 'new-folder', icon: <FolderAddOutlined />, label: 'New folder' },
@@ -437,7 +451,12 @@ function createContainerMenuItems(includeOwnActions: boolean): MenuProps['items'
       ? [
           { type: 'divider' as const },
           { key: 'rename-folder', icon: <EditOutlined />, label: 'Rename' },
-          { key: 'delete-folder', icon: <DeleteOutlined />, label: 'Delete', danger: true },
+          {
+            key: 'delete-folder',
+            icon: <DeleteOutlined />,
+            label: 'Delete',
+            danger: true,
+          },
         ]
       : []),
   ]

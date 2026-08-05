@@ -9,13 +9,15 @@ namespace GreenBox.I18n.Editor.Host.Contracts;
 /// <param name="Entries">The catalog entries in canonical order.</param>
 /// <param name="Diagnostics">The current validation diagnostics.</param>
 /// <param name="DirtyEntryIds">The IDs of entries changed since the catalog was loaded or saved.</param>
+/// <param name="DirtyPaths">The current and removed entry paths changed since loading or saving.</param>
 public sealed record CatalogResponse(
     long Revision,
     string DefaultLocale,
     IReadOnlyList<CatalogLocaleResponse> Locales,
     IReadOnlyList<CatalogEntryResponse> Entries,
     IReadOnlyList<CatalogDiagnosticResponse> Diagnostics,
-    IReadOnlyList<string> DirtyEntryIds);
+    IReadOnlyList<string> DirtyEntryIds,
+    IReadOnlyList<string> DirtyPaths);
 
 /// <summary>
 /// Describes a validation diagnostic in a catalog snapshot.

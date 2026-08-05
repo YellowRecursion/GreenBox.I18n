@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, type PropsWithChildren } from 'react'
 import { addCatalogEntry } from '../api/addCatalogEntry'
+import { removeCatalogEntries } from '../api/removeCatalogEntries'
 import { getCatalog } from '../api/getCatalog'
 import { CatalogContext } from './catalogContext'
 import { catalogReducer, initialCatalogState } from './catalogReducer'
@@ -48,7 +49,20 @@ export function CatalogProvider({ children }: PropsWithChildren) {
     return catalog
   }, [catalogPath])
 
-  const context = useMemo(() => ({ state, addEntry }), [state, addEntry])
+  const removeEntries = useCallback(async (ids: string[]) => {
+    const catalog = await removeCatalogEntries(ids)
+    if (!catalogPath) {
+      throw new Error('No catalog is open.')
+    }
+
+    dispatch({ type: 'loaded', catalog, catalogPath })
+    return catalog
+  }, [catalogPath])
+
+  const context = useMemo(
+    () => ({ state, addEntry, removeEntries }),
+    [state, addEntry, removeEntries],
+  )
 
   return <CatalogContext.Provider value={context}>{children}</CatalogContext.Provider>
 }

@@ -4,6 +4,7 @@ import type { CatalogSnapshot, CatalogState } from './catalog'
 export interface CatalogContextValue {
   state: CatalogState
   addEntry(path: string): Promise<CatalogSnapshot>
+  removeEntries(ids: string[]): Promise<CatalogSnapshot>
 }
 
 export const CatalogContext = createContext<CatalogContextValue | undefined>(undefined)

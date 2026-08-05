@@ -19,6 +19,7 @@ export interface CatalogTreeNode {
   path?: string
   isDirty?: boolean
   isTemporary?: boolean
+  entryId?: string
   children?: CatalogTreeNode[]
 }
 
@@ -47,6 +48,7 @@ export function buildCatalogTree(
 ): CatalogTreeModel {
   const selectionByKey = new Map<string, CatalogSelectionItem>()
   const dirtyEntryIds = new Set(catalog.dirtyEntryIds)
+  const dirtyPaths = new Set(catalog.dirtyPaths ?? [])
   const localeNodes = catalog.locales.map((locale) => {
     const key = localeKey(locale.id)
     selectionByKey.set(key, { kind: 'locale', locale })
@@ -72,7 +74,7 @@ export function buildCatalogTree(
   sortFolderChildren(rootFolder)
 
   const entryNodes = rootFolder.children.map((child) =>
-    createEntryTreeNode(child, selectionByKey, dirtyEntryIds))
+    createEntryTreeNode(child, selectionByKey, dirtyEntryIds, dirtyPaths))
 
   return {
     nodes: [
@@ -92,7 +94,7 @@ export function buildCatalogTree(
         searchText: 'entries',
         count: catalog.entries.length,
         path: '',
-        isDirty: dirtyEntryIds.size > 0 || temporaryFolderPaths.length > 0,
+        isDirty: dirtyPaths.size > 0 || dirtyEntryIds.size > 0 || temporaryFolderPaths.length > 0,
         selectable: false,
         children: entryNodes,
       },
@@ -303,6 +305,7 @@ function createEntryTreeNode(
   child: FolderBuilder | CatalogEntry,
   selectionByKey: Map<string, CatalogSelectionItem>,
   dirtyEntryIds: ReadonlySet<string>,
+  dirtyPaths: ReadonlySet<string>,
 ): CatalogTreeNode {
   if ('children' in child) {
     const key = folderKey(child.path)
@@ -315,10 +318,13 @@ function createEntryTreeNode(
       searchText: child.path,
       count: child.entryCount,
       path: child.path,
-      isDirty: child.isTemporary || hasDirtyEntry(child, dirtyEntryIds),
+      isDirty:
+        child.isTemporary ||
+        hasDirtyPath(child.path, dirtyPaths) ||
+        hasDirtyEntry(child, dirtyEntryIds),
       isTemporary: child.isTemporary,
       children: child.children.map((nestedChild) =>
-        createEntryTreeNode(nestedChild, selectionByKey, dirtyEntryIds)),
+        createEntryTreeNode(nestedChild, selectionByKey, dirtyEntryIds, dirtyPaths)),
     }
   }
 
@@ -327,13 +333,24 @@ function createEntryTreeNode(
     title: getEntryTitle(child),
     kind: 'entry',
     path: child.path,
-    isDirty: dirtyEntryIds.has(child.id),
+    entryId: child.id,
+    isDirty: dirtyEntryIds.has(child.id) || dirtyPaths.has(child.path),
     searchText: [
       child.id,
       child.path,
       ...Object.values(child.locales).map((value) => value.text ?? ''),
     ].join(' '),
   }
+}
+
+function hasDirtyPath(folderPath: string, dirtyPaths: ReadonlySet<string>): boolean {
+  for (const path of dirtyPaths) {
+    if (path === folderPath || path.startsWith(`${folderPath}.`)) {
+      return true
+    }
+  }
+
+  return false
 }
 
 function hasDirtyEntry(folder: FolderBuilder, dirtyEntryIds: ReadonlySet<string>): boolean {

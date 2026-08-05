@@ -5,6 +5,7 @@ export interface CatalogSnapshot {
   entries: CatalogEntry[]
   diagnostics: CatalogDiagnostic[]
   dirtyEntryIds: string[]
+  dirtyPaths?: string[]
 }
 
 export interface CatalogLocale {

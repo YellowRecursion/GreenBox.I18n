@@ -13,7 +13,7 @@ import { buildCatalogTree } from './catalogTree'
 export function EditorShell() {
   const { token } = theme.useToken()
   const { state: session } = useCatalogSession()
-  const { state: catalog, addEntry } = useCatalog()
+  const { state: catalog, addEntry, removeEntries } = useCatalog()
 
   if (session.status === 'error') {
     return (
@@ -63,6 +63,7 @@ export function EditorShell() {
       catalog={catalog.catalog}
       catalogPath={session.snapshot.catalogPath ?? ''}
       onAddEntry={addEntry}
+      onRemoveEntries={removeEntries}
     />
   )
 }
@@ -71,10 +72,12 @@ function CatalogWorkspace({
   catalog,
   catalogPath,
   onAddEntry,
+  onRemoveEntries,
 }: {
   catalog: CatalogSnapshot
   catalogPath: string
   onAddEntry(path: string): Promise<CatalogSnapshot>
+  onRemoveEntries(ids: string[]): Promise<CatalogSnapshot>
 }) {
   const { token } = theme.useToken()
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
@@ -115,6 +118,42 @@ function CatalogWorkspace({
     return key
   }
 
+  const handleRemoveNodes = async (keys: Key[]) => {
+    const items = keys.flatMap((key) => {
+      const item = tree.selectionByKey.get(String(key))
+      return item ? [item] : []
+    })
+    const folderPaths = items
+      .filter((item) => item.kind === 'folder')
+      .map((item) => item.path)
+    const entryIds = new Set(
+      items.filter((item) => item.kind === 'entry').map((item) => item.entry.id),
+    )
+
+    for (const entry of catalog.entries) {
+      if (folderPaths.some((path) => entry.path.startsWith(`${path}.`))) {
+        entryIds.add(entry.id)
+      }
+    }
+
+    if (entryIds.size > 0) {
+      await onRemoveEntries([...entryIds])
+    }
+
+    setTemporaryFolderPaths((paths) => paths.filter((temporaryPath) =>
+      !folderPaths.some((path) =>
+        temporaryPath === path || temporaryPath.startsWith(`${path}.`))))
+    setSelectedKeys((selected) => selected.filter((key) => {
+      const value = String(key)
+      if (value.startsWith('entry:') && entryIds.has(value.slice('entry:'.length))) {
+        return false
+      }
+
+      return !folderPaths.some((path) =>
+        value === `folder:${path}` || value.startsWith(`folder:${path}.`))
+    }))
+  }
+
   return (
     <Flex vertical style={{ height: '100vh', minHeight: 0, background: token.colorBgBase }}>
       <EditorHeader catalogPath={catalogPath} />
@@ -130,6 +169,7 @@ function CatalogWorkspace({
               onExpandedKeysChange={setExpandedKeys}
               onAddEntry={handleAddEntry}
               onAddFolder={handleAddFolder}
+              onRemoveNodes={handleRemoveNodes}
             />
           </div>
         </Splitter.Panel>

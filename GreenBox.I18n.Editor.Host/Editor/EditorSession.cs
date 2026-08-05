@@ -1,4 +1,5 @@
 using GreenBox.I18n.Editor.Host.Contracts;
+using System.Globalization;
 
 namespace GreenBox.I18n.Editor.Host.Editor;
 
@@ -12,6 +13,8 @@ public sealed class EditorSession
     private string? _catalogPath;
     private long _revision = 0;
     private readonly HashSet<string> _dirtyEntryIds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _dirtyPaths = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _createdEntryIds = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Creates an immutable snapshot of the current session state.
@@ -67,6 +70,98 @@ public sealed class EditorSession
             if (editResult.HasChanges)
             {
                 _dirtyEntryIds.Add(editResult.Entry!.Id);
+                _dirtyPaths.Add(editResult.Entry.Path);
+                _createdEntryIds.Add(editResult.Entry.Id);
+                _revision++;
+            }
+
+            return CatalogEditResult.Success(CreateCatalogResponse());
+        }
+    }
+
+    /// <summary>
+    /// Removes an entry from the current working copy.
+    /// </summary>
+    /// <param name="id">The stable numeric ID of the entry to remove.</param>
+    /// <returns>The operation result and updated snapshot.</returns>
+    public CatalogEditResult RemoveEntry(long id)
+    {
+        return RemoveEntries(new[] { id.ToString(CultureInfo.InvariantCulture) });
+    }
+
+    /// <summary>
+    /// Removes entries from the current working copy as one editor operation.
+    /// </summary>
+    /// <param name="ids">The stable decimal IDs of entries to remove.</param>
+    /// <returns>The operation result and updated snapshot.</returns>
+    public CatalogEditResult RemoveEntries(IReadOnlyCollection<string> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+
+        lock (_lock)
+        {
+            if (_catalog == null)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the editor session.");
+            }
+
+            var uniqueIds = new HashSet<long>();
+            foreach (string idText in ids)
+            {
+                if (!long.TryParse(
+                        idText,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out long id) ||
+                    id <= 0)
+                {
+                    return CatalogEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID must be a positive 64-bit integer: '{idText}'.");
+                }
+
+                uniqueIds.Add(id);
+            }
+
+            var entries = new List<I18nEntry>(uniqueIds.Count);
+            foreach (long id in uniqueIds)
+            {
+                I18nEntry? entry = _catalog.FindById(id);
+                if (entry == null)
+                {
+                    return CatalogEditResult.Failure(
+                        I18nEditCodes.EntryNotFound,
+                        $"Entry with ID {id} was not found.");
+                }
+
+                entries.Add(entry);
+            }
+
+            for (int entryIndex = 0; entryIndex < entries.Count; entryIndex++)
+            {
+                I18nEntry entry = entries[entryIndex];
+                I18nEditResult editResult = _catalog.RemoveEntry(
+                    long.Parse(entry.Id, CultureInfo.InvariantCulture));
+                if (!editResult.IsSuccess)
+                {
+                    return CatalogEditResult.Failure(editResult.Error!.Code, editResult.Error.Message);
+                }
+
+                _dirtyEntryIds.Remove(entry.Id);
+                if (_createdEntryIds.Remove(entry.Id))
+                {
+                    _dirtyPaths.Remove(entry.Path);
+                }
+                else
+                {
+                    _dirtyPaths.Add(entry.Path);
+                }
+            }
+
+            if (entries.Count > 0)
+            {
                 _revision++;
             }
 
@@ -90,6 +185,8 @@ public sealed class EditorSession
             _catalogPath = catalogPath;
             _catalog = catalog;
             _dirtyEntryIds.Clear();
+            _dirtyPaths.Clear();
+            _createdEntryIds.Clear();
             _revision++;
             return CreateSnapshot();
         }
@@ -115,7 +212,8 @@ public sealed class EditorSession
             _catalog.Locales.Select(CreateLocaleResponse).ToArray(),
             _catalog.Entries.Select(CreateEntryResponse).ToArray(),
             validation.Diagnostics.Select(CreateDiagnosticResponse).ToArray(),
-            _dirtyEntryIds.OrderBy(id => id, StringComparer.Ordinal).ToArray());
+            _dirtyEntryIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+            _dirtyPaths.OrderBy(path => path, StringComparer.Ordinal).ToArray());
     }
 
     private static CatalogLocaleResponse CreateLocaleResponse(I18nLocaleDefinition locale)
