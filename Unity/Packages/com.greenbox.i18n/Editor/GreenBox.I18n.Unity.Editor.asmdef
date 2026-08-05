@@ -3,6 +3,7 @@
   "rootNamespace": "GreenBox.I18n.Unity.Editor",
   "references": [
     "GreenBox.I18n.Unity",
+    "GreenBox.I18n.Unity.Audio",
     "GreenBox.I18n.Unity.Sprites",
     "GreenBox.I18n.Unity.Text",
     "Unity.TextMeshPro",

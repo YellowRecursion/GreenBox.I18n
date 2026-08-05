@@ -7,12 +7,14 @@ using GreenBox.I18n.Unity.Editor.Catalogs;
 using GreenBox.I18n.Unity.Editor.Settings;
 using UnityEngine;
 
-namespace GreenBox.I18n.Unity.Editor.Sprites
+namespace GreenBox.I18n.Unity.Editor.Assets
 {
     /// <summary>
-    /// Resolves default-locale sprites for editor previews from compiled catalog bindings.
+    /// Resolves default-locale Unity assets for editor previews from compiled catalog bindings.
     /// </summary>
-    internal sealed class I18nEditorSpriteResolver
+    /// <typeparam name="TAsset">Expected Unity asset type.</typeparam>
+    internal sealed class I18nEditorAssetResolver<TAsset>
+        where TAsset : UnityEngine.Object
     {
         private I18nCatalog? _catalog;
         private I18nCatalogAsset? _catalogAsset;
@@ -20,11 +22,11 @@ namespace GreenBox.I18n.Unity.Editor.Sprites
         private I18nUnityAssetResolver? _assetResolver;
 
         /// <summary>
-        /// Resolves a sprite for an entry ID without changing the active runtime locale.
+        /// Resolves an asset for an entry ID without changing the active runtime locale.
         /// </summary>
-        internal bool TryResolve(long id, out Sprite? sprite, out string? error)
+        internal bool TryResolve(long id, out TAsset? asset, out string? error)
         {
-            sprite = null;
+            asset = null;
             error = null;
 
             if (id == 0)
@@ -62,16 +64,16 @@ namespace GreenBox.I18n.Unity.Editor.Sprites
                     return true;
                 }
 
-                UnityEngine.Object asset = _assetResolver!.Resolve(reference);
-                if (asset is not Sprite resolvedSprite)
+                UnityEngine.Object resolvedAsset = _assetResolver!.Resolve(reference);
+                if (resolvedAsset is not TAsset typedAsset)
                 {
                     error =
                         $"Localization asset for entry ID '{id.ToString(CultureInfo.InvariantCulture)}' " +
-                        $"is '{asset.GetType().FullName}', not '{typeof(Sprite).FullName}'.";
+                        $"is '{resolvedAsset.GetType().FullName}', not '{typeof(TAsset).FullName}'.";
                     return false;
                 }
 
-                sprite = resolvedSprite;
+                asset = typedAsset;
                 return true;
             }
             catch (Exception exception) when (

@@ -13,8 +13,11 @@ MonoBehaviour:
   m_Name: I18nCatalog
   m_EditorClassIdentifier: GreenBox.I18n.Unity::GreenBox.I18n.Unity.I18nCatalogAsset
   _sourceCatalog: {fileID: 4900000, guid: 85769732e01d4407ae1e33e51724b245, type: 3}
-  _sourceHash: ed2b55167bc7bb82330220dd003c07295efe953f48498ad7450628f894bca446
+  _sourceHash: 9c0ff94dfd2a939dba64d6044191b5000c950ec4ad2e43c53ba9ef775bf0ddcf
   _assetBindings:
   - _assetGuid: 2bf8f4f45fd74f3449a79b200e148281
     _localFileId: 7482667652216324306
     _asset: {fileID: 7482667652216324306, guid: 2bf8f4f45fd74f3449a79b200e148281, type: 3}
+  - _assetGuid: 6eecc5c100a4f604084a8b32c92458da
+    _localFileId: 8300000
+    _asset: {fileID: 8300000, guid: 6eecc5c100a4f604084a8b32c92458da, type: 3}

@@ -16,6 +16,23 @@
   ],
   "entries": [
     {
+      "id": "3001",
+      "path": "Development.Audio.Sound",
+      "comment": "Development entry for localized audio component testing.",
+      "locales": {
+        "en": {
+          "text": "Test sound",
+          "asset": {
+            "assetGuid": "6eecc5c100a4f604084a8b32c92458da",
+            "localFileId": "8300000"
+          }
+        },
+        "ru": {
+          "text": "Тестовый звук"
+        }
+      }
+    },
+    {
       "id": "1001",
       "path": "Menu.Main.PlayButton",
       "locales": {

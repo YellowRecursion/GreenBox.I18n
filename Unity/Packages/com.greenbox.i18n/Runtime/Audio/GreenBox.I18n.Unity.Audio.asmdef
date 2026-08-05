@@ -1,0 +1,16 @@
+{
+  "name": "GreenBox.I18n.Unity.Audio",
+  "rootNamespace": "GreenBox.I18n.Unity.Audio",
+  "references": [
+    "GreenBox.I18n.Unity"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

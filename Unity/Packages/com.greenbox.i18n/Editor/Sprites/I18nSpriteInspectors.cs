@@ -1,6 +1,7 @@
 #nullable enable
 
 using GreenBox.I18n.Unity.Editor.Compilation;
+using GreenBox.I18n.Unity.Editor.Assets;
 using GreenBox.I18n.Unity.Sprites;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -17,7 +18,7 @@ namespace GreenBox.I18n.Unity.Editor.Sprites
         private const string KeyPropertyName = "_key";
         private const string IdPropertyName = "_id";
 
-        private readonly I18nEditorSpriteResolver _resolver = new();
+        private readonly I18nEditorAssetResolver<Sprite> _resolver = new();
         private SerializedProperty? _keyProperty;
         private string? _previewError;
 
