@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  AimOutlined,
   CopyOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -89,6 +90,9 @@ export function CatalogTreePanel({
   const [selectionAnchor, setSelectionAnchor] = useState<Key>()
   const [nodeDraft, setNodeDraft] = useState<NodeDraft>()
   const [nodeRenameDraft, setNodeRenameDraft] = useState<NodeRenameDraft>()
+  const [pendingRevealKey, setPendingRevealKey] = useState<Key>()
+  const [revealedKey, setRevealedKey] = useState<Key>()
+  const treeContainerRef = useRef<HTMLDivElement>(null)
   const filteredNodes = useMemo(() => filterCatalogTree(tree.nodes, query), [tree.nodes, query])
   const nodes = useMemo(
     () => nodeDraft ? insertNodeDraft(filteredNodes, nodeDraft) : filteredNodes,
@@ -98,6 +102,47 @@ export function CatalogTreePanel({
     ? collectExpandableKeys(nodes)
     : expandedKeys
   const visibleSelectionKeys = collectVisibleSelectionKeys(nodes, new Set(visibleExpandedKeys))
+
+  const revealInTree = (key?: Key) => {
+    setQuery('')
+    if (key === undefined) {
+      return
+    }
+
+    const ancestorKeys = findAncestorKeys(tree.nodes, key)
+    if (!ancestorKeys) {
+      return
+    }
+
+    onExpandedKeysChange(mergeKeys(expandedKeys, ancestorKeys))
+    setPendingRevealKey(key)
+  }
+
+  const revealCurrentSelection = () => {
+    revealInTree(selectionAnchor ?? selectedKeys.at(-1))
+  }
+
+  useEffect(() => {
+    if (pendingRevealKey === undefined || query.trim()) {
+      return
+    }
+
+    const element = treeContainerRef.current?.querySelector<HTMLElement>(
+      `[data-node-key="${CSS.escape(String(pendingRevealKey))}"]`,
+    )
+    element?.scrollIntoView({ block: 'nearest' })
+    setRevealedKey(pendingRevealKey)
+    setPendingRevealKey(undefined)
+  }, [expandedKeys, pendingRevealKey, query])
+
+  useEffect(() => {
+    if (revealedKey === undefined) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => setRevealedKey(undefined), 1200)
+    return () => window.clearTimeout(timeout)
+  }, [revealedKey])
 
   const requestDeletion = (keys: Key[]) => {
     const deletableKeys = keys.filter((key) => {
@@ -195,7 +240,9 @@ export function CatalogTreePanel({
   }
 
   const handleAction = async (node: CatalogTreeNode, action: string) => {
-    if (action === 'new-entry') {
+    if (action === 'reveal-in-tree') {
+      revealInTree(node.key)
+    } else if (action === 'new-entry') {
       beginCreation(node, 'entry')
     } else if (action === 'new-folder') {
       beginCreation(node, 'folder')
@@ -290,9 +337,21 @@ export function CatalogTreePanel({
         allowClear
         value={query}
         placeholder="Search paths, IDs, and localized texts"
-        onChange={(event) => setQuery(event.target.value)}
+        onChange={(event) => {
+          if (!event.target.value && query) {
+            revealCurrentSelection()
+          } else {
+            setQuery(event.target.value)
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && query) {
+            event.preventDefault()
+            revealCurrentSelection()
+          }
+        }}
       />
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+      <div ref={treeContainerRef} style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         <Tree<CatalogTreeNode>
           blockNode
           multiple
@@ -327,9 +386,12 @@ export function CatalogTreePanel({
               node={node as CatalogTreeNode}
               iconColor={getIconColor((node as CatalogTreeNode).kind, token)}
               dirtyColor={token.colorWarning}
+              revealColor={token.colorWarningBg}
               rowHeight={token.controlHeightSM}
+              isRevealed={revealedKey === node.key}
               nodeDraft={nodeDraft}
               nodeRenameDraft={nodeRenameDraft}
+              canReveal={Boolean(query.trim())}
               onDraftChange={(name) => setNodeDraft((draft) =>
                 draft ? { ...draft, name, error: undefined } : draft)}
               onDraftSubmit={submitNodeDraft}
@@ -462,9 +524,12 @@ function TreeNodeTitle({
   node,
   iconColor,
   dirtyColor,
+  revealColor,
   rowHeight,
+  isRevealed,
   nodeDraft,
   nodeRenameDraft,
+  canReveal,
   onDraftChange,
   onDraftSubmit,
   onDraftCancel,
@@ -476,9 +541,12 @@ function TreeNodeTitle({
   node: CatalogTreeNode
   iconColor: string
   dirtyColor: string
+  revealColor: string
   rowHeight: number
+  isRevealed: boolean
   nodeDraft?: NodeDraft
   nodeRenameDraft?: NodeRenameDraft
+  canReveal: boolean
   onDraftChange: (name: string) => void
   onDraftSubmit: () => void
   onDraftCancel: () => void
@@ -568,7 +636,7 @@ function TreeNodeTitle({
           }
         }}
         menu={{
-          items: getContextMenuItems(node),
+          items: getContextMenuItems(node, canReveal),
           onClick: ({ key, domEvent }) => {
             domEvent.stopPropagation()
             setIsContextMenuOpen(false)
@@ -586,6 +654,9 @@ function TreeNodeTitle({
           width: '100%',
           height: rowHeight,
           minWidth: 0,
+          backgroundColor: isRevealed ? revealColor : 'transparent',
+          borderRadius: token.borderRadiusSM,
+          transition: 'background-color 600ms ease-out',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -729,7 +800,14 @@ function getQuickActions(kind: CatalogTreeNode['kind']): QuickAction[] {
   }
 }
 
-function getContextMenuItems(node: CatalogTreeNode): MenuProps['items'] {
+function getContextMenuItems(node: CatalogTreeNode, canReveal: boolean): MenuProps['items'] {
+  const revealItems: MenuProps['items'] = canReveal
+    ? [
+        { key: 'reveal-in-tree', icon: <AimOutlined />, label: 'Reveal in tree' },
+        { type: 'divider' },
+      ]
+    : []
+
   switch (node.kind) {
     case 'locales-root':
       return [
@@ -737,16 +815,18 @@ function getContextMenuItems(node: CatalogTreeNode): MenuProps['items'] {
       ]
     case 'locale':
       return [
+        ...revealItems,
         { key: 'rename-locale', icon: <EditOutlined />, label: 'Rename' },
         { type: 'divider' },
         { key: 'delete-locale', icon: <DeleteOutlined />, label: 'Delete', danger: true },
       ]
     case 'entries-root':
-      return createContainerMenuItems(false)
+      return createContainerMenuItems(false, false)
     case 'folder':
-      return createContainerMenuItems(true)
+      return createContainerMenuItems(true, canReveal)
     case 'entry':
       return [
+        ...revealItems,
         { key: 'rename-entry', icon: <EditOutlined />, label: 'Rename' },
         { key: 'copy-entry-id', icon: <CopyOutlined />, label: 'Copy ID' },
         { type: 'divider' },
@@ -766,8 +846,15 @@ function getContextMenuItems(node: CatalogTreeNode): MenuProps['items'] {
 
 function createContainerMenuItems(
   includeOwnActions: boolean,
+  canReveal: boolean,
 ): MenuProps['items'] {
   return [
+    ...(canReveal
+      ? [
+          { key: 'reveal-in-tree', icon: <AimOutlined />, label: 'Reveal in tree' },
+          { type: 'divider' as const },
+        ]
+      : []),
     { key: 'new-entry', icon: <FileAddOutlined />, label: 'New entry' },
     { key: 'new-folder', icon: <FolderAddOutlined />, label: 'New folder' },
     ...(includeOwnActions
@@ -799,6 +886,25 @@ function collectExpandableKeys(nodes: CatalogTreeNode[]): Key[] {
     ...(node.children?.length ? [node.key] : []),
     ...collectExpandableKeys(node.children ?? []),
   ])
+}
+
+function findAncestorKeys(
+  nodes: CatalogTreeNode[],
+  targetKey: Key,
+  ancestors: Key[] = [],
+): Key[] | undefined {
+  for (const node of nodes) {
+    if (node.key === targetKey) {
+      return ancestors
+    }
+
+    const result = findAncestorKeys(node.children ?? [], targetKey, [...ancestors, node.key])
+    if (result) {
+      return result
+    }
+  }
+
+  return undefined
 }
 
 function collectVisibleSelectionKeys(nodes: CatalogTreeNode[], expandedKeys: ReadonlySet<Key>): Key[] {
