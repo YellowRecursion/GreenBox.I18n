@@ -37,4 +37,19 @@ public static class EditorErrorCodes
 
     /// <summary>Indicates that the catalog file could not be written.</summary>
     public const string CatalogWriteFailed = "catalog_write_failed";
+
+    /// <summary>Indicates that the open catalog is not located inside a Unity project.</summary>
+    public const string UnityProjectNotFound = "unity_project_not_found";
+
+    /// <summary>Indicates that a Unity asset GUID cannot be resolved in the current project.</summary>
+    public const string UnityAssetNotFound = "unity_asset_not_found";
+
+    /// <summary>Indicates that Unity has not published a compatible active selection.</summary>
+    public const string UnitySelectionUnavailable = "unity_selection_unavailable";
+
+    /// <summary>Indicates that a dropped file does not match Unity's active selection.</summary>
+    public const string UnitySelectionMismatch = "unity_selection_mismatch";
+
+    /// <summary>Indicates that the operating system could not open a Unity asset.</summary>
+    public const string UnityAssetOpenFailed = "unity_asset_open_failed";
 }

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
 import { Alert, Flex, Spin, Splitter, Typography, theme } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
-import type { CatalogSnapshot } from '../../entities/catalog/model/catalog'
+import type { CatalogAssetReference, CatalogSnapshot } from '../../entities/catalog/model/catalog'
 import type { CatalogEntryMove } from '../../entities/catalog/api/moveCatalogEntries'
 import type { CatalogEntryDelta } from '../../entities/catalog/api/applyCatalogEntryDelta'
 import { useCatalog } from '../../entities/catalog/model/useCatalog'
@@ -483,6 +483,37 @@ function CatalogWorkspace({
     ))
   }
 
+  const handleEntryAssetChange = async (
+    id: string,
+    localeId: string,
+    asset: CatalogAssetReference | null,
+  ) => {
+    const entry = catalog.entries.find((candidate) => candidate.id === id)
+    if (!entry) {
+      throw new Error(`Entry '${id}' does not exist.`)
+    }
+
+    const localeValue = entry.locales[localeId] ?? { text: null, asset: null }
+    const updatedEntry = {
+      ...entry,
+      locales: {
+        ...entry.locales,
+        [localeId]: { ...localeValue, asset },
+      },
+    }
+    const updatedCatalog = await onApplyEntryDelta({
+      entries: [updatedEntry],
+      removedIds: [],
+    }, catalog.revision)
+    recordHistory(createEditorHistoryEntry(
+      `${asset ? 'Assign' : 'Remove'} asset for ${entry.path} (${localeId})`,
+      catalog,
+      updatedCatalog,
+      temporaryFolderPaths,
+      temporaryFolderPaths,
+    ))
+  }
+
   const reloadFromDisk = useCallback(async () => {
     await onRevert()
     setTemporaryFolderPaths([])
@@ -560,6 +591,7 @@ function CatalogWorkspace({
               locales={catalog.locales}
               onEntryPathChange={handleEntryPathChange}
               onEntryCommentChange={handleEntryCommentChange}
+              onEntryAssetChange={handleEntryAssetChange}
             />
           </div>
         </Splitter.Panel>

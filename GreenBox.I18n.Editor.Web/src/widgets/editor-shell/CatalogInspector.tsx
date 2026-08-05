@@ -17,6 +17,7 @@ import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogEntry, CatalogLocale } from '../../entities/catalog/model/catalog'
 import type { CatalogSelectionItem } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
+import { EntryAssetInput } from './EntryAssetInput'
 
 interface CatalogInspectorProps {
   selection: CatalogSelectionItem[]
@@ -24,6 +25,11 @@ interface CatalogInspectorProps {
   locales: CatalogLocale[]
   onEntryPathChange: (id: string, path: string) => Promise<void>
   onEntryCommentChange: (id: string, comment: string | null) => Promise<void>
+  onEntryAssetChange: (
+    id: string,
+    localeId: string,
+    asset: CatalogAssetReference | null,
+  ) => Promise<void>
 }
 
 export function CatalogInspector({
@@ -32,6 +38,7 @@ export function CatalogInspector({
   locales,
   onEntryPathChange,
   onEntryCommentChange,
+  onEntryAssetChange,
 }: CatalogInspectorProps) {
   if (selection.length === 0) {
     return <Empty description="Select a locale, folder, or entry" />
@@ -55,6 +62,7 @@ export function CatalogInspector({
           locales={locales}
           onPathChange={onEntryPathChange}
           onCommentChange={onEntryCommentChange}
+          onAssetChange={onEntryAssetChange}
         />
       )
   }
@@ -101,12 +109,18 @@ function EntryInspector({
   locales,
   onPathChange,
   onCommentChange,
+  onAssetChange,
 }: {
   entry: CatalogEntry
   defaultLocale: string
   locales: CatalogLocale[]
   onPathChange: (id: string, path: string) => Promise<void>
   onCommentChange: (id: string, comment: string | null) => Promise<void>
+  onAssetChange: (
+    id: string,
+    localeId: string,
+    asset: CatalogAssetReference | null,
+  ) => Promise<void>
 }) {
   const { token } = theme.useToken()
 
@@ -136,7 +150,16 @@ function EntryInspector({
                   label: 'Text',
                   children: <Typography.Text style={{ whiteSpace: 'pre-wrap' }}>{value?.text ?? '[none]'}</Typography.Text>,
                 },
-                { key: 'asset', label: 'Asset', children: <AssetReference asset={value?.asset ?? null} /> },
+                {
+                  key: 'asset',
+                  label: 'Asset',
+                  children: (
+                    <EntryAssetInput
+                      asset={value?.asset ?? null}
+                      onChange={(asset) => onAssetChange(entry.id, locale.id, asset)}
+                    />
+                  ),
+                },
               ]}
             />
           </Card>

@@ -6,10 +6,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<EditorSession>();
 builder.Services.AddSingleton<CatalogFileLoader>();
+builder.Services.AddSingleton<UnityAssetReferenceService>();
 
 var app = builder.Build();
 
 app.MapEditorSessionEndpoints();
 app.MapCatalogEndpoints();
+app.MapUnityAssetEndpoints();
 
 app.Run();
