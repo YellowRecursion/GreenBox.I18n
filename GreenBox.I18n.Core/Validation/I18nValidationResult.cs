@@ -31,6 +31,9 @@ namespace GreenBox.I18n
         /// <summary>Indicates that the schema version is not supported.</summary>
         public const string UnsupportedSchemaVersion = "unsupported_schema_version";
 
+        /// <summary>Indicates that the catalog next-ID allocator state is invalid.</summary>
+        public const string InvalidNextId = "invalid_next_id";
+
         /// <summary>Indicates that the entries collection is null.</summary>
         public const string NullEntries = "null_entries";
 

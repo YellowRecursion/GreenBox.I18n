@@ -17,21 +17,27 @@ namespace GreenBox.I18n
         public int SchemaVersion { get; set; } = 1;
 
         /// <summary>
+        /// Gets or sets the next short numeric ID allocated when an entry is added.
+        /// </summary>
+        [JsonProperty("nextId", Order = 1, NullValueHandling = NullValueHandling.Ignore)]
+        public string? NextId { get; set; }
+
+        /// <summary>
         /// Gets or sets the locale used as the final fallback for localized values.
         /// </summary>
-        [JsonProperty("defaultLocale", Order = 1)]
+        [JsonProperty("defaultLocale", Order = 2)]
         public string DefaultLocale { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the supported locales in their preferred editor display order.
         /// </summary>
-        [JsonProperty("locales", Order = 2)]
+        [JsonProperty("locales", Order = 3)]
         public List<I18nLocaleDefinition> Locales { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the ordered collection of localisation entries.
         /// </summary>
-        [JsonProperty("entries", Order = 3)]
+        [JsonProperty("entries", Order = 4)]
         public List<I18nEntry> Entries { get; set; } = new();
     }
 
