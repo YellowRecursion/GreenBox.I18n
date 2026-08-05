@@ -95,7 +95,7 @@ function CatalogWorkspace({
 }) {
   const { token } = theme.useToken()
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
-  const [expandedKeys, setExpandedKeys] = useState<Key[]>(['root:locales', 'root:entries'])
+  const [expandedKeys, setExpandedKeys] = useState<Key[]>(['root:entries'])
   const [temporaryFolderPaths, setTemporaryFolderPaths] = useState<string[]>([])
   const tree = useMemo(
     () => buildCatalogTree(catalog, temporaryFolderPaths),

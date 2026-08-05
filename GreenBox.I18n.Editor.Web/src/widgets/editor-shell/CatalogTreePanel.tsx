@@ -7,6 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -177,7 +178,6 @@ export function CatalogTreePanel({
       name: getLastPathSegment(node.path),
       isSaving: false,
     })
-    onSelectionChange([node.key])
   }
 
   const handlePanelMouseDown = (event: ReactMouseEvent<HTMLElement>) => {
@@ -487,8 +487,25 @@ function TreeNodeTitle({
   onRenameCancel: () => void
   onAction: (node: CatalogTreeNode, action: string) => void
 }) {
+  const { token } = theme.useToken()
   const [isHovered, setIsHovered] = useState(false)
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
   const quickActions = getQuickActions(node.kind)
+
+  useEffect(() => {
+    if (!isContextMenuOpen) {
+      return
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsContextMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isContextMenuOpen])
 
   if ((node.kind === 'entry-draft' || node.kind === 'folder-draft') && nodeDraft) {
     return (
@@ -517,15 +534,49 @@ function TreeNodeTitle({
   }
 
   return (
-    <Dropdown
-      menu={{
-        items: getContextMenuItems(node),
-        onClick: ({ key }) => {
-          onAction(node, key)
-        },
-      }}
-      trigger={['contextMenu']}
-    >
+    <>
+      {isContextMenuOpen && createPortal(
+        <div
+          aria-hidden
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: token.zIndexPopupBase - 1,
+          }}
+          onMouseDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            setIsContextMenuOpen(false)
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            setIsContextMenuOpen(false)
+          }}
+        />,
+        document.body,
+      )}
+      <Dropdown
+        open={isContextMenuOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsContextMenuOpen(true)
+          }
+        }}
+        menu={{
+          items: getContextMenuItems(node),
+          onClick: ({ key, domEvent }) => {
+            domEvent.stopPropagation()
+            setIsContextMenuOpen(false)
+            onAction(node, key)
+          },
+        }}
+        trigger={['contextMenu']}
+      >
       <span
         style={{
           display: 'inline-flex',
@@ -591,7 +642,8 @@ function TreeNodeTitle({
           </Typography.Text>
         ) : null}
       </span>
-    </Dropdown>
+      </Dropdown>
+    </>
   )
 }
 
@@ -782,15 +834,15 @@ function getIconColor(
   switch (kind) {
     case 'locales-root':
     case 'locale':
-      return token.colorInfo
+      return token.colorSuccess
     case 'entries-root':
-      return token.colorPrimary
+      return token.colorError
     case 'folder':
     case 'folder-draft':
       return token.colorWarning
     case 'entry':
     case 'entry-draft':
-      return '#CD4945'
+      return token.colorInfo
   }
 }
 
