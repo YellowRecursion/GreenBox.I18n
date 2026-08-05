@@ -5,6 +5,9 @@ export interface CatalogContextValue {
   state: CatalogState
   addEntry(path: string): Promise<CatalogSnapshot>
   removeEntries(ids: string[]): Promise<CatalogSnapshot>
+  save(overwriteExternalChanges?: boolean): Promise<CatalogSnapshot>
+  revert(): Promise<CatalogSnapshot>
+  mergeSource(): Promise<CatalogSnapshot>
 }
 
 export const CatalogContext = createContext<CatalogContextValue | undefined>(undefined)

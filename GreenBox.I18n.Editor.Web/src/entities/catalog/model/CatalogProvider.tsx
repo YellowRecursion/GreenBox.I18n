@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, type PropsWithChildren } from 'react'
 import { addCatalogEntry } from '../api/addCatalogEntry'
 import { removeCatalogEntries } from '../api/removeCatalogEntries'
+import { revertCatalog } from '../api/revertCatalog'
+import { saveCatalog } from '../api/saveCatalog'
+import { mergeCatalogSource } from '../api/mergeCatalogSource'
 import { getCatalog } from '../api/getCatalog'
 import { CatalogContext } from './catalogContext'
 import { catalogReducer, initialCatalogState } from './catalogReducer'
@@ -59,9 +62,39 @@ export function CatalogProvider({ children }: PropsWithChildren) {
     return catalog
   }, [catalogPath])
 
+  const save = useCallback(async (overwriteExternalChanges = false) => {
+    const catalog = await saveCatalog(overwriteExternalChanges)
+    if (!catalogPath) {
+      throw new Error('No catalog is open.')
+    }
+
+    dispatch({ type: 'loaded', catalog, catalogPath })
+    return catalog
+  }, [catalogPath])
+
+  const revert = useCallback(async () => {
+    const catalog = await revertCatalog()
+    if (!catalogPath) {
+      throw new Error('No catalog is open.')
+    }
+
+    dispatch({ type: 'loaded', catalog, catalogPath })
+    return catalog
+  }, [catalogPath])
+
+  const mergeSource = useCallback(async () => {
+    const catalog = await mergeCatalogSource()
+    if (!catalogPath) {
+      throw new Error('No catalog is open.')
+    }
+
+    dispatch({ type: 'loaded', catalog, catalogPath })
+    return catalog
+  }, [catalogPath])
+
   const context = useMemo(
-    () => ({ state, addEntry, removeEntries }),
-    [state, addEntry, removeEntries],
+    () => ({ state, addEntry, removeEntries, save, revert, mergeSource }),
+    [state, addEntry, removeEntries, save, revert, mergeSource],
   )
 
   return <CatalogContext.Provider value={context}>{children}</CatalogContext.Provider>

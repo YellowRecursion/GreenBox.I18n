@@ -25,4 +25,13 @@ public static class EditorErrorCodes
 
     /// <summary>Indicates that the editor session has no open catalog.</summary>
     public const string CatalogNotOpen = "catalog_not_open";
+
+    /// <summary>Indicates that the catalog file changed after it was loaded.</summary>
+    public const string CatalogChangedExternally = "catalog_changed_externally";
+
+    /// <summary>The catalog contains external changes that cannot be merged safely.</summary>
+    public const string CatalogMergeConflict = "catalog_merge_conflict";
+
+    /// <summary>Indicates that the catalog file could not be written.</summary>
+    public const string CatalogWriteFailed = "catalog_write_failed";
 }

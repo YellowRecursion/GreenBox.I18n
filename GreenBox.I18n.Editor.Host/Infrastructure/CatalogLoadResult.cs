@@ -7,10 +7,15 @@ namespace GreenBox.I18n.Editor.Host.Infrastructure;
 /// </summary>
 public sealed class CatalogLoadResult
 {
-    private CatalogLoadResult(I18nCatalog? catalog, string? catalogPath, EditorErrorResponse? error)
+    private CatalogLoadResult(
+        I18nCatalog? catalog,
+        string? catalogPath,
+        string? contentHash,
+        EditorErrorResponse? error)
     {
         Catalog = catalog;
         CatalogPath = catalogPath;
+        ContentHash = contentHash;
         Error = error;
     }
 
@@ -20,6 +25,9 @@ public sealed class CatalogLoadResult
     /// <summary>Gets the normalized absolute catalog path when the operation succeeded.</summary>
     public string? CatalogPath { get; }
 
+    /// <summary>Gets the SHA-256 hash of the source file bytes.</summary>
+    public string? ContentHash { get; }
+
     /// <summary>Gets the operation error when loading failed.</summary>
     public EditorErrorResponse? Error { get; }
 
@@ -27,14 +35,14 @@ public sealed class CatalogLoadResult
     public bool IsSuccess => Catalog != null;
 
     /// <summary>Creates a successful catalog load result.</summary>
-    public static CatalogLoadResult Success(I18nCatalog catalog, string catalogPath)
+    public static CatalogLoadResult Success(I18nCatalog catalog, string catalogPath, string contentHash)
     {
-        return new CatalogLoadResult(catalog, catalogPath, null);
+        return new CatalogLoadResult(catalog, catalogPath, contentHash, null);
     }
 
     /// <summary>Creates a failed catalog load result.</summary>
     public static CatalogLoadResult Failure(string code, string message)
     {
-        return new CatalogLoadResult(null, null, new EditorErrorResponse(code, message));
+        return new CatalogLoadResult(null, null, null, new EditorErrorResponse(code, message));
     }
 }

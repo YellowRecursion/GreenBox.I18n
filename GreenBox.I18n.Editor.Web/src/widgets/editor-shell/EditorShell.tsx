@@ -1,9 +1,10 @@
-import { useMemo, useState, type Key, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type Key, type ReactNode } from 'react'
 import { Alert, Flex, Spin, Splitter, Typography, theme } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogSnapshot } from '../../entities/catalog/model/catalog'
 import { useCatalog } from '../../entities/catalog/model/useCatalog'
 import { useCatalogSession } from '../../entities/catalog/model/useCatalogSession'
+import { useCatalogSourceMonitor } from '../../entities/catalog/model/useCatalogSourceMonitor'
 import { OpenCatalogDialog } from '../../features/open-catalog/OpenCatalogDialog'
 import { CatalogInspector } from './CatalogInspector'
 import { CatalogTreePanel } from './CatalogTreePanel'
@@ -13,7 +14,7 @@ import { buildCatalogTree } from './catalogTree'
 export function EditorShell() {
   const { token } = theme.useToken()
   const { state: session } = useCatalogSession()
-  const { state: catalog, addEntry, removeEntries } = useCatalog()
+  const { state: catalog, addEntry, removeEntries, save, revert, mergeSource } = useCatalog()
 
   if (session.status === 'error') {
     return (
@@ -64,6 +65,9 @@ export function EditorShell() {
       catalogPath={session.snapshot.catalogPath ?? ''}
       onAddEntry={addEntry}
       onRemoveEntries={removeEntries}
+      onSave={save}
+      onRevert={revert}
+      onMergeSource={mergeSource}
     />
   )
 }
@@ -73,11 +77,17 @@ function CatalogWorkspace({
   catalogPath,
   onAddEntry,
   onRemoveEntries,
+  onSave,
+  onRevert,
+  onMergeSource,
 }: {
   catalog: CatalogSnapshot
   catalogPath: string
   onAddEntry(path: string): Promise<CatalogSnapshot>
   onRemoveEntries(ids: string[]): Promise<CatalogSnapshot>
+  onSave(overwriteExternalChanges?: boolean): Promise<CatalogSnapshot>
+  onRevert(): Promise<CatalogSnapshot>
+  onMergeSource(): Promise<CatalogSnapshot>
 }) {
   const { token } = theme.useToken()
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
@@ -154,9 +164,42 @@ function CatalogWorkspace({
     }))
   }
 
+  const reloadFromDisk = useCallback(async () => {
+    await onRevert()
+    setTemporaryFolderPaths([])
+  }, [onRevert])
+
+  const isDirty =
+    (catalog.hasChanges ??
+      (catalog.dirtyEntryIds.length > 0 || (catalog.dirtyPaths?.length ?? 0) > 0)) ||
+    temporaryFolderPaths.length > 0
+
+  const mergeFromDisk = useCallback(async () => {
+    await onMergeSource()
+  }, [onMergeSource])
+
+  const sourceMonitor = useCatalogSourceMonitor(mergeFromDisk)
+
+  const handleSave = async (overwriteExternalChanges = false) => {
+    await onSave(overwriteExternalChanges)
+    setTemporaryFolderPaths([])
+    sourceMonitor.markCurrent()
+  }
+
+  const handleRevert = async () => {
+    await reloadFromDisk()
+    sourceMonitor.markCurrent()
+  }
+
   return (
     <Flex vertical style={{ height: '100vh', minHeight: 0, background: token.colorBgBase }}>
-      <EditorHeader catalogPath={catalogPath} />
+      <EditorHeader
+        catalogPath={catalogPath}
+        isDirty={isDirty}
+        sourceStatus={sourceMonitor.status}
+        onSave={handleSave}
+        onRevert={handleRevert}
+      />
 
       <Splitter style={{ flex: 1, minHeight: 0 }}>
         <Splitter.Panel defaultSize="34%" min="280" max="60%">

@@ -10,6 +10,7 @@ namespace GreenBox.I18n.Editor.Host.Contracts;
 /// <param name="Diagnostics">The current validation diagnostics.</param>
 /// <param name="DirtyEntryIds">The IDs of entries changed since the catalog was loaded or saved.</param>
 /// <param name="DirtyPaths">The current and removed entry paths changed since loading or saving.</param>
+/// <param name="HasChanges">Whether the complete working copy differs from its source baseline.</param>
 public sealed record CatalogResponse(
     long Revision,
     string DefaultLocale,
@@ -17,7 +18,8 @@ public sealed record CatalogResponse(
     IReadOnlyList<CatalogEntryResponse> Entries,
     IReadOnlyList<CatalogDiagnosticResponse> Diagnostics,
     IReadOnlyList<string> DirtyEntryIds,
-    IReadOnlyList<string> DirtyPaths);
+    IReadOnlyList<string> DirtyPaths,
+    bool HasChanges);
 
 /// <summary>
 /// Describes a validation diagnostic in a catalog snapshot.

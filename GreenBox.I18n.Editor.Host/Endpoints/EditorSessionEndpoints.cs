@@ -40,7 +40,10 @@ public static class EditorSessionEndpoints
             return Results.Json(loadResult.Error, statusCode: statusCode);
         }
 
-        EditorSessionResponse response = session.Open(loadResult.CatalogPath!, loadResult.Catalog!);
+        EditorSessionResponse response = session.Open(
+            loadResult.CatalogPath!,
+            loadResult.Catalog!,
+            loadResult.ContentHash!);
         return Results.Ok(response);
     }
 }

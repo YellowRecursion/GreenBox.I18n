@@ -1,5 +1,7 @@
 using GreenBox.I18n.Editor.Host.Contracts;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace GreenBox.I18n.Editor.Host.Editor;
 
@@ -10,11 +12,12 @@ public sealed class EditorSession
 {
     private readonly Lock _lock = new();
     private I18nCatalog? _catalog;
+    private I18nCatalog? _baselineCatalog;
     private string? _catalogPath;
+    private string? _baselineHash;
     private long _revision = 0;
     private readonly HashSet<string> _dirtyEntryIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _dirtyPaths = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _createdEntryIds = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Creates an immutable snapshot of the current session state.
@@ -46,6 +49,35 @@ public sealed class EditorSession
     }
 
     /// <summary>
+    /// Compares the catalog source file with the version used by the working copy.
+    /// </summary>
+    /// <returns>The current source file status.</returns>
+    public CatalogSourceStatusResponse GetSourceStatus()
+    {
+        lock (_lock)
+        {
+            if (_catalogPath == null || _baselineHash == null)
+            {
+                return new CatalogSourceStatusResponse(false, false, "No catalog is open in the editor session.");
+            }
+
+            try
+            {
+                byte[] sourceBytes = File.ReadAllBytes(_catalogPath);
+                string sourceHash = Convert.ToHexString(SHA256.HashData(sourceBytes));
+                return new CatalogSourceStatusResponse(
+                    !string.Equals(sourceHash, _baselineHash, StringComparison.Ordinal),
+                    true,
+                    null);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return new CatalogSourceStatusResponse(true, false, exception.Message);
+            }
+        }
+    }
+
+    /// <summary>
     /// Adds an entry to the current working copy.
     /// </summary>
     /// <param name="path">The full logical path of the new entry.</param>
@@ -69,9 +101,7 @@ public sealed class EditorSession
 
             if (editResult.HasChanges)
             {
-                _dirtyEntryIds.Add(editResult.Entry!.Id);
-                _dirtyPaths.Add(editResult.Entry.Path);
-                _createdEntryIds.Add(editResult.Entry.Id);
+                RebuildDirtyState();
                 _revision++;
             }
 
@@ -149,19 +179,11 @@ public sealed class EditorSession
                     return CatalogEditResult.Failure(editResult.Error!.Code, editResult.Error.Message);
                 }
 
-                _dirtyEntryIds.Remove(entry.Id);
-                if (_createdEntryIds.Remove(entry.Id))
-                {
-                    _dirtyPaths.Remove(entry.Path);
-                }
-                else
-                {
-                    _dirtyPaths.Add(entry.Path);
-                }
             }
 
             if (entries.Count > 0)
             {
+                RebuildDirtyState();
                 _revision++;
             }
 
@@ -174,21 +196,196 @@ public sealed class EditorSession
     /// </summary>
     /// <param name="catalogPath">The absolute path of the catalog source file.</param>
     /// <param name="catalog">The loaded and validated catalog.</param>
+    /// <param name="contentHash">The SHA-256 hash of the loaded source file.</param>
     /// <returns>A snapshot of the updated session state.</returns>
-    public EditorSessionResponse Open(string catalogPath, I18nCatalog catalog)
+    public EditorSessionResponse Open(string catalogPath, I18nCatalog catalog, string contentHash)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(catalogPath);
         ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
 
         lock (_lock)
         {
             _catalogPath = catalogPath;
             _catalog = catalog;
-            _dirtyEntryIds.Clear();
-            _dirtyPaths.Clear();
-            _createdEntryIds.Clear();
+            _baselineCatalog = CloneCatalog(catalog);
+            _baselineHash = contentHash;
+            ClearDirtyState();
             _revision++;
             return CreateSnapshot();
+        }
+    }
+
+    /// <summary>
+    /// Saves the current working copy to its source file.
+    /// </summary>
+    /// <param name="overwriteExternalChanges">Whether to overwrite a source file changed externally.</param>
+    /// <returns>The operation result and updated catalog snapshot.</returns>
+    public CatalogEditResult Save(bool overwriteExternalChanges)
+    {
+        lock (_lock)
+        {
+            if (_catalog == null || _catalogPath == null || _baselineHash == null)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the editor session.");
+            }
+
+            I18nValidationResult validation = I18nCatalogValidator.Validate(_catalog);
+            if (validation.HasErrors)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.InvalidCatalog,
+                    $"Catalog contains {validation.ErrorCount} validation " +
+                    (validation.ErrorCount == 1 ? "error." : "errors."));
+            }
+
+            try
+            {
+                byte[] sourceBytes = File.ReadAllBytes(_catalogPath);
+                string sourceHash = Convert.ToHexString(SHA256.HashData(sourceBytes));
+                if (!overwriteExternalChanges &&
+                    !string.Equals(sourceHash, _baselineHash, StringComparison.Ordinal))
+                {
+                    return CatalogEditResult.Failure(
+                        EditorErrorCodes.CatalogChangedExternally,
+                        "The catalog file changed on disk after it was loaded.");
+                }
+
+                byte[] savedBytes = new UTF8Encoding(false).GetBytes(I18nCatalogJson.Serialize(_catalog));
+                WriteAtomically(_catalogPath, savedBytes);
+                _baselineHash = Convert.ToHexString(SHA256.HashData(savedBytes));
+                _baselineCatalog = CloneCatalog(_catalog);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogWriteFailed,
+                    exception.Message);
+            }
+
+            ClearDirtyState();
+            _revision++;
+            return CatalogEditResult.Success(CreateCatalogResponse());
+        }
+    }
+
+    private void ClearDirtyState()
+    {
+        _dirtyEntryIds.Clear();
+        _dirtyPaths.Clear();
+    }
+
+    /// <summary>
+    /// Safely merges a newly loaded source catalog into the current working copy.
+    /// </summary>
+    /// <param name="incoming">The current catalog content from disk.</param>
+    /// <param name="contentHash">The SHA-256 hash of the incoming source file.</param>
+    /// <returns>The merge result and updated working copy.</returns>
+    public CatalogSourceMergeResult MergeSource(I18nCatalog incoming, string contentHash)
+    {
+        ArgumentNullException.ThrowIfNull(incoming);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+
+        lock (_lock)
+        {
+            if (_catalog == null || _baselineCatalog == null)
+            {
+                return CatalogSourceMergeResult.Failure(new[]
+                {
+                    new I18nCatalogMergeConflict("$", "No catalog is open in the editor session."),
+                });
+            }
+
+            I18nCatalogMergeResult merge = I18nCatalogMerge.Merge(_baselineCatalog, _catalog, incoming);
+            if (!merge.IsSuccess)
+            {
+                return CatalogSourceMergeResult.Failure(merge.Conflicts);
+            }
+
+            _catalog = merge.Catalog!;
+            _baselineCatalog = CloneCatalog(incoming);
+            _baselineHash = contentHash;
+            RebuildDirtyState();
+            _revision++;
+            return CatalogSourceMergeResult.Success(CreateCatalogResponse());
+        }
+    }
+
+    private void RebuildDirtyState()
+    {
+        ClearDirtyState();
+        if (_catalog == null || _baselineCatalog == null)
+        {
+            return;
+        }
+
+        Dictionary<string, I18nEntry> currentById = _catalog.Entries.ToDictionary(
+            entry => entry.Id,
+            StringComparer.Ordinal);
+        Dictionary<string, I18nEntry> baselineById = _baselineCatalog.Entries.ToDictionary(
+            entry => entry.Id,
+            StringComparer.Ordinal);
+
+        foreach (string id in currentById.Keys.Concat(baselineById.Keys).Distinct(StringComparer.Ordinal))
+        {
+            currentById.TryGetValue(id, out I18nEntry? current);
+            baselineById.TryGetValue(id, out I18nEntry? baseline);
+            if (EntryEquals(current, baseline))
+            {
+                continue;
+            }
+
+            _dirtyEntryIds.Add(id);
+            if (current != null) _dirtyPaths.Add(current.Path);
+            if (baseline != null) _dirtyPaths.Add(baseline.Path);
+        }
+    }
+
+    private static bool EntryEquals(I18nEntry? left, I18nEntry? right)
+    {
+        if (ReferenceEquals(left, right)) return true;
+        if (left == null || right == null || left.Id != right.Id || left.Path != right.Path || left.Comment != right.Comment ||
+            left.Locales.Count != right.Locales.Count)
+        {
+            return false;
+        }
+
+        return left.Locales.All(pair =>
+            right.Locales.TryGetValue(pair.Key, out I18nLocaleValue? value) &&
+            pair.Value.Text == value.Text && AssetEquals(pair.Value.Asset, value.Asset));
+    }
+
+    private static bool AssetEquals(I18nAssetReference? left, I18nAssetReference? right)
+    {
+        return ReferenceEquals(left, right) || left != null && right != null &&
+            left.AssetGuid == right.AssetGuid && left.LocalFileId == right.LocalFileId;
+    }
+
+    private static I18nCatalog CloneCatalog(I18nCatalog catalog)
+    {
+        return I18nCatalogJson.Deserialize(I18nCatalogJson.Serialize(catalog));
+    }
+
+    private static void WriteAtomically(string path, byte[] bytes)
+    {
+        string directory = Path.GetDirectoryName(path)!;
+        string temporaryPath = Path.Combine(
+            directory,
+            $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+
+        try
+        {
+            File.WriteAllBytes(temporaryPath, bytes);
+            File.Move(temporaryPath, path, true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 
@@ -213,7 +410,9 @@ public sealed class EditorSession
             _catalog.Entries.Select(CreateEntryResponse).ToArray(),
             validation.Diagnostics.Select(CreateDiagnosticResponse).ToArray(),
             _dirtyEntryIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
-            _dirtyPaths.OrderBy(path => path, StringComparer.Ordinal).ToArray());
+            _dirtyPaths.OrderBy(path => path, StringComparer.Ordinal).ToArray(),
+            _baselineCatalog == null ||
+            I18nCatalogJson.Serialize(_catalog) != I18nCatalogJson.Serialize(_baselineCatalog));
     }
 
     private static CatalogLocaleResponse CreateLocaleResponse(I18nLocaleDefinition locale)

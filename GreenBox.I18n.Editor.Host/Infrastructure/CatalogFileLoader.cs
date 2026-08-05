@@ -1,5 +1,7 @@
 using GreenBox.I18n.Editor.Host.Editor;
 using Newtonsoft.Json;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace GreenBox.I18n.Editor.Host.Infrastructure;
 
@@ -40,10 +42,10 @@ public sealed class CatalogFileLoader
                 $"Catalog file was not found: {catalogPath}");
         }
 
-        string json;
+        byte[] bytes;
         try
         {
-            json = await File.ReadAllTextAsync(catalogPath, cancellationToken);
+            bytes = await File.ReadAllBytesAsync(catalogPath, cancellationToken);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -53,9 +55,10 @@ public sealed class CatalogFileLoader
         I18nCatalog catalog;
         try
         {
+            string json = new UTF8Encoding(false, true).GetString(bytes);
             catalog = I18nCatalogJson.Deserialize(json);
         }
-        catch (JsonException exception)
+        catch (Exception exception) when (exception is JsonException or DecoderFallbackException)
         {
             return CatalogLoadResult.Failure(EditorErrorCodes.InvalidCatalogJson, exception.Message);
         }
@@ -69,6 +72,9 @@ public sealed class CatalogFileLoader
                 (validation.ErrorCount == 1 ? "error." : "errors."));
         }
 
-        return CatalogLoadResult.Success(catalog, catalogPath);
+        return CatalogLoadResult.Success(
+            catalog,
+            catalogPath,
+            Convert.ToHexString(SHA256.HashData(bytes)));
     }
 }
