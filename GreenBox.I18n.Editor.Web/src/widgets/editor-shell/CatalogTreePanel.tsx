@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Key,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react'
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -16,6 +24,7 @@ import {
   Dropdown,
   Flex,
   Input,
+  Modal,
   Tooltip,
   Tree,
   Typography,
@@ -64,6 +73,7 @@ export function CatalogTreePanel({
 }: CatalogTreePanelProps) {
   const { token } = theme.useToken()
   const [messageApi, messageContext] = message.useMessage()
+  const [modalApi, modalContext] = Modal.useModal()
   const [query, setQuery] = useState('')
   const [selectionAnchor, setSelectionAnchor] = useState<Key>()
   const [nodeDraft, setNodeDraft] = useState<NodeDraft>()
@@ -76,6 +86,54 @@ export function CatalogTreePanel({
     ? collectExpandableKeys(nodes)
     : expandedKeys
   const visibleSelectionKeys = collectVisibleSelectionKeys(nodes, new Set(visibleExpandedKeys))
+
+  const requestDeletion = (keys: Key[]) => {
+    const deletableKeys = keys.filter((key) => {
+      const item = tree.selectionByKey.get(String(key))
+      return item?.kind === 'entry' || item?.kind === 'folder'
+    })
+    if (deletableKeys.length === 0) {
+      return
+    }
+
+    const description = describeDeletion(tree, deletableKeys)
+    modalApi.confirm({
+      title: description.title,
+      content: description.content,
+      okText: 'Delete',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await onRemoveNodes(deletableKeys)
+        } catch (error: unknown) {
+          messageApi.error(error instanceof Error ? error.message : 'Selection could not be deleted.')
+          throw error
+        }
+      },
+    })
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete' || isTextEditingTarget(event.target)) {
+        return
+      }
+
+      const hasDeletableSelection = selectedKeys.some((key) => {
+        const item = tree.selectionByKey.get(String(key))
+        return item?.kind === 'entry' || item?.kind === 'folder'
+      })
+      if (!hasDeletableSelection) {
+        return
+      }
+
+      event.preventDefault()
+      requestDeletion(selectedKeys)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
 
   const beginCreation = (node: CatalogTreeNode, kind: NodeDraft['kind']) => {
     if (node.kind !== 'entries-root' && node.kind !== 'folder') {
@@ -93,18 +151,35 @@ export function CatalogTreePanel({
     })
   }
 
+  const handlePanelMouseDown = (event: ReactMouseEvent<HTMLElement>) => {
+    if (event.button !== 0) {
+      return
+    }
+
+    const target = event.target as HTMLElement
+    if (target.closest('.ant-tree-treenode, .ant-input-affix-wrapper, button')) {
+      return
+    }
+
+    setSelectionAnchor(undefined)
+    onSelectionChange([])
+  }
+
   const handleAction = async (node: CatalogTreeNode, action: string) => {
     if (action === 'new-entry') {
       beginCreation(node, 'entry')
     } else if (action === 'new-folder') {
       beginCreation(node, 'folder')
+    } else if (action === 'copy-entry-id' && node.entryId) {
+      try {
+        await navigator.clipboard.writeText(node.entryId)
+        messageApi.success('Entry ID copied.')
+      } catch {
+        messageApi.error('Entry ID could not be copied.')
+      }
     } else if (action === 'delete-entry' || action === 'delete-folder') {
       const keys = selectedKeys.includes(node.key) ? selectedKeys : [node.key]
-      try {
-        await onRemoveNodes(keys)
-      } catch (error: unknown) {
-        messageApi.error(error instanceof Error ? error.message : 'Selection could not be deleted.')
-      }
+      requestDeletion(keys)
     }
   }
 
@@ -147,8 +222,14 @@ export function CatalogTreePanel({
   }
 
   return (
-    <Flex vertical gap={layoutTokens.spacing.small} style={{ height: '100%', minHeight: 0 }}>
+    <Flex
+      vertical
+      gap={layoutTokens.spacing.small}
+      style={{ height: '100%', minHeight: 0 }}
+      onMouseDown={handlePanelMouseDown}
+    >
       {messageContext}
+      {modalContext}
       <Input.Search
         allowClear
         value={query}
@@ -189,6 +270,7 @@ export function CatalogTreePanel({
             <TreeNodeTitle
               node={node as CatalogTreeNode}
               iconColor={getIconColor((node as CatalogTreeNode).kind, token)}
+              dirtyColor={token.colorWarning}
               rowHeight={token.controlHeightSM}
               nodeDraft={nodeDraft}
               onDraftChange={(name) => setNodeDraft((draft) =>
@@ -249,12 +331,57 @@ export function CatalogTreePanel({
               return
             }
 
+            if (selectedKeys.length === 1 && selectedKeys[0] === key) {
+              setSelectionAnchor(undefined)
+              onSelectionChange([])
+              return
+            }
+
             onSelectionChange([key])
           }}
         />
       </div>
     </Flex>
   )
+}
+
+function describeDeletion(tree: CatalogTreeModel, keys: Key[]) {
+  if (keys.length !== 1) {
+    return {
+      title: `Delete ${keys.length} selected items?`,
+      content: 'Folders and all entries contained in them will be removed from the working copy.',
+    }
+  }
+
+  const item = tree.selectionByKey.get(String(keys[0]))!
+  if (item.kind === 'entry') {
+    return {
+      title: `Delete '${getLastPathSegment(item.entry.path)}'?`,
+      content: 'The entry will be removed from the working copy.',
+    }
+  }
+
+  if (item.kind !== 'folder') {
+    throw new Error('Only entries and folders can be deleted from the catalog tree.')
+  }
+
+  return {
+    title: `Delete folder '${getLastPathSegment(item.path)}'?`,
+    content: item.entryCount === 0
+      ? 'The empty folder will be removed from the working copy.'
+      : `${item.entryCount} ${item.entryCount === 1 ? 'entry' : 'entries'} inside the folder will also be removed.`,
+  }
+}
+
+function getLastPathSegment(path: string) {
+  return path.slice(path.lastIndexOf('.') + 1)
+}
+
+function isTextEditingTarget(target: EventTarget | null) {
+  return target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target instanceof HTMLElement && target.isContentEditable
 }
 
 function canDropInto(tree: CatalogTreeModel, dragKeys: Key[], target: CatalogTreeNode) {
@@ -273,6 +400,7 @@ function canDropInto(tree: CatalogTreeModel, dragKeys: Key[], target: CatalogTre
 function TreeNodeTitle({
   node,
   iconColor,
+  dirtyColor,
   rowHeight,
   nodeDraft,
   onDraftChange,
@@ -282,6 +410,7 @@ function TreeNodeTitle({
 }: {
   node: CatalogTreeNode
   iconColor: string
+  dirtyColor: string
   rowHeight: number
   nodeDraft?: NodeDraft
   onDraftChange: (name: string) => void
@@ -339,9 +468,13 @@ function TreeNodeTitle({
           {treeIcon(node.kind, iconColor)}
           <Typography.Text
             type={node.isTemporary ? 'secondary' : undefined}
-            style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
+            style={{
+              color: node.isDirty ? dirtyColor : undefined,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
           >
-            {node.title}{node.isDirty ? ' *' : ''}
+            {node.title}
           </Typography.Text>
         </span>
         {isHovered && quickActions.length > 0 ? (
@@ -481,9 +614,15 @@ function getContextMenuItems(node: CatalogTreeNode): MenuProps['items'] {
     case 'entry':
       return [
         { key: 'rename-entry', icon: <EditOutlined />, label: 'Rename' },
-        { key: 'duplicate-entry', icon: <CopyOutlined />, label: 'Duplicate' },
+        { key: 'copy-entry-id', icon: <CopyOutlined />, label: 'Copy ID' },
         { type: 'divider' },
-        { key: 'delete-entry', icon: <DeleteOutlined />, label: 'Delete', danger: true },
+        {
+          key: 'delete-entry',
+          icon: <DeleteOutlined />,
+          label: 'Delete',
+          extra: <ShortcutHint>Del</ShortcutHint>,
+          danger: true,
+        },
       ]
     case 'entry-draft':
     case 'folder-draft':
@@ -505,11 +644,20 @@ function createContainerMenuItems(
             key: 'delete-folder',
             icon: <DeleteOutlined />,
             label: 'Delete',
+            extra: <ShortcutHint>Del</ShortcutHint>,
             danger: true,
           },
         ]
       : []),
   ]
+}
+
+function ShortcutHint({ children }: { children: ReactNode }) {
+  return (
+    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+      {children}
+    </Typography.Text>
+  )
 }
 
 function collectExpandableKeys(nodes: CatalogTreeNode[]): Key[] {
