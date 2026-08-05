@@ -8,6 +8,7 @@ import {
   Flex,
   Input,
   Tag,
+  Tabs,
   Tooltip,
   Typography,
   theme,
@@ -123,6 +124,12 @@ function EntryInspector({
   ) => Promise<void>
 }) {
   const { token } = theme.useToken()
+  const orderedLocales = [...locales].sort((left, right) =>
+    Number(right.id === defaultLocale) - Number(left.id === defaultLocale))
+  const textCount = locales.filter((locale) =>
+    Boolean(entry.locales[locale.id]?.text?.trim())).length
+  const assetCount = locales.filter((locale) =>
+    entry.locales[locale.id]?.asset != null).length
 
   return (
     <InspectorSection
@@ -131,42 +138,71 @@ function EntryInspector({
       headerContent={<EntryPathInput entry={entry} onPathChange={onPathChange} />}
     >
       <EntryCommentInput entry={entry} onCommentChange={onCommentChange} />
-      <Flex vertical gap={layoutTokens.spacing.small}>
-        {locales.map((locale) => {
-          const value = entry.locales[locale.id]
-          return (
-          <Card
-            key={locale.id}
-            size="small"
-            title={`${locale.displayName} (${locale.id})`}
-            extra={locale.id === defaultLocale ? <Tag color="blue">Default</Tag> : undefined}
-          >
-            <Descriptions
-              column={1}
-              size="small"
-              items={[
-                {
-                  key: 'text',
-                  label: 'Text',
-                  children: <Typography.Text style={{ whiteSpace: 'pre-wrap' }}>{value?.text ?? '[none]'}</Typography.Text>,
-                },
-                {
-                  key: 'asset',
-                  label: 'Asset',
-                  children: (
+      <Tabs
+        defaultActiveKey="text"
+        items={[
+          {
+            key: 'text',
+            label: `Text ${textCount}/${locales.length}`,
+            children: (
+              <Flex vertical gap={layoutTokens.spacing.small}>
+                {orderedLocales.map((locale) => (
+                  <EntryLocaleCard
+                    key={locale.id}
+                    locale={locale}
+                    defaultLocale={defaultLocale}
+                  >
+                    <Typography.Text style={{ whiteSpace: 'pre-wrap' }}>
+                      {entry.locales[locale.id]?.text ?? '[none]'}
+                    </Typography.Text>
+                  </EntryLocaleCard>
+                ))}
+              </Flex>
+            ),
+          },
+          {
+            key: 'asset',
+            label: `Asset ${assetCount}/${locales.length}`,
+            children: (
+              <Flex vertical gap={layoutTokens.spacing.small}>
+                {orderedLocales.map((locale) => (
+                  <EntryLocaleCard
+                    key={locale.id}
+                    locale={locale}
+                    defaultLocale={defaultLocale}
+                  >
                     <EntryAssetInput
-                      asset={value?.asset ?? null}
+                      asset={entry.locales[locale.id]?.asset ?? null}
                       onChange={(asset) => onAssetChange(entry.id, locale.id, asset)}
                     />
-                  ),
-                },
-              ]}
-            />
-          </Card>
-          )
-        })}
-      </Flex>
+                  </EntryLocaleCard>
+                ))}
+              </Flex>
+            ),
+          },
+        ]}
+      />
     </InspectorSection>
+  )
+}
+
+function EntryLocaleCard({
+  locale,
+  defaultLocale,
+  children,
+}: {
+  locale: CatalogLocale
+  defaultLocale: string
+  children: ReactNode
+}) {
+  return (
+    <Card
+      size="small"
+      title={`${locale.displayName} (${locale.id})`}
+      extra={locale.id === defaultLocale ? <Tag color="blue">Default</Tag> : undefined}
+    >
+      {children}
+    </Card>
   )
 }
 
