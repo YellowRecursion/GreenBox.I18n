@@ -11,6 +11,7 @@ public sealed class EditorSession
     private I18nCatalog? _catalog;
     private string? _catalogPath;
     private long _revision = 0;
+    private readonly HashSet<string> _dirtyEntryIds = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Creates an immutable snapshot of the current session state.
@@ -37,13 +38,39 @@ public sealed class EditorSession
                 return null;
             }
 
-            I18nValidationResult validation = I18nCatalogValidator.Validate(_catalog);
-            return new CatalogResponse(
-                _revision,
-                _catalog.DefaultLocale,
-                _catalog.Locales.Select(CreateLocaleResponse).ToArray(),
-                _catalog.Entries.Select(CreateEntryResponse).ToArray(),
-                validation.Diagnostics.Select(CreateDiagnosticResponse).ToArray());
+            return CreateCatalogResponse();
+        }
+    }
+
+    /// <summary>
+    /// Adds an entry to the current working copy.
+    /// </summary>
+    /// <param name="path">The full logical path of the new entry.</param>
+    /// <returns>The operation result and updated snapshot.</returns>
+    public CatalogEditResult AddEntry(string? path)
+    {
+        lock (_lock)
+        {
+            if (_catalog == null)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the editor session.");
+            }
+
+            I18nEditResult editResult = _catalog.AddEntry(path);
+            if (!editResult.IsSuccess)
+            {
+                return CatalogEditResult.Failure(editResult.Error!.Code, editResult.Error.Message);
+            }
+
+            if (editResult.HasChanges)
+            {
+                _dirtyEntryIds.Add(editResult.Entry!.Id);
+                _revision++;
+            }
+
+            return CatalogEditResult.Success(CreateCatalogResponse());
         }
     }
 
@@ -62,6 +89,7 @@ public sealed class EditorSession
         {
             _catalogPath = catalogPath;
             _catalog = catalog;
+            _dirtyEntryIds.Clear();
             _revision++;
             return CreateSnapshot();
         }
@@ -76,6 +104,18 @@ public sealed class EditorSession
             _catalog?.DefaultLocale,
             _catalog?.Locales?.Count ?? 0,
             _catalog?.Entries?.Count ?? 0);
+    }
+
+    private CatalogResponse CreateCatalogResponse()
+    {
+        I18nValidationResult validation = I18nCatalogValidator.Validate(_catalog);
+        return new CatalogResponse(
+            _revision,
+            _catalog!.DefaultLocale,
+            _catalog.Locales.Select(CreateLocaleResponse).ToArray(),
+            _catalog.Entries.Select(CreateEntryResponse).ToArray(),
+            validation.Diagnostics.Select(CreateDiagnosticResponse).ToArray(),
+            _dirtyEntryIds.OrderBy(id => id, StringComparer.Ordinal).ToArray());
     }
 
     private static CatalogLocaleResponse CreateLocaleResponse(I18nLocaleDefinition locale)

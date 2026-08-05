@@ -13,7 +13,7 @@ import { buildCatalogTree } from './catalogTree'
 export function EditorShell() {
   const { token } = theme.useToken()
   const { state: session } = useCatalogSession()
-  const catalog = useCatalog()
+  const { state: catalog, addEntry } = useCatalog()
 
   if (session.status === 'error') {
     return (
@@ -62,18 +62,40 @@ export function EditorShell() {
       key={session.snapshot.catalogPath ?? ''}
       catalog={catalog.catalog}
       catalogPath={session.snapshot.catalogPath ?? ''}
+      onAddEntry={addEntry}
     />
   )
 }
 
-function CatalogWorkspace({ catalog, catalogPath }: { catalog: CatalogSnapshot; catalogPath: string }) {
+function CatalogWorkspace({
+  catalog,
+  catalogPath,
+  onAddEntry,
+}: {
+  catalog: CatalogSnapshot
+  catalogPath: string
+  onAddEntry(path: string): Promise<CatalogSnapshot>
+}) {
   const { token } = theme.useToken()
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
+  const [expandedKeys, setExpandedKeys] = useState<Key[]>(['root:locales', 'root:entries'])
   const tree = useMemo(() => buildCatalogTree(catalog), [catalog])
   const selection = selectedKeys.flatMap((key) => {
     const item = tree.selectionByKey.get(String(key))
     return item ? [item] : []
   })
+
+  const handleAddEntry = async (path: string) => {
+    const updatedCatalog = await onAddEntry(path)
+    const entry = updatedCatalog.entries.find((candidate) => candidate.path === path)
+    if (!entry) {
+      throw new Error(`Created entry '${path}' was not returned by the editor host.`)
+    }
+
+    const key = `entry:${entry.id}`
+    setSelectedKeys([key])
+    return key
+  }
 
   return (
     <Flex vertical style={{ height: '100vh', minHeight: 0, background: token.colorBgBase }}>
@@ -85,7 +107,10 @@ function CatalogWorkspace({ catalog, catalogPath }: { catalog: CatalogSnapshot; 
             <CatalogTreePanel
               tree={tree}
               selectedKeys={selectedKeys}
+              expandedKeys={expandedKeys}
               onSelectionChange={setSelectedKeys}
+              onExpandedKeysChange={setExpandedKeys}
+              onAddEntry={handleAddEntry}
             />
           </div>
         </Splitter.Panel>

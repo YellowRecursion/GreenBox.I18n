@@ -1,4 +1,9 @@
 import { createContext } from 'react'
-import type { CatalogState } from './catalog'
+import type { CatalogSnapshot, CatalogState } from './catalog'
 
-export const CatalogContext = createContext<CatalogState | undefined>(undefined)
+export interface CatalogContextValue {
+  state: CatalogState
+  addEntry(path: string): Promise<CatalogSnapshot>
+}
+
+export const CatalogContext = createContext<CatalogContextValue | undefined>(undefined)

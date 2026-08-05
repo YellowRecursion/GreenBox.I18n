@@ -1,6 +1,6 @@
 import type { CatalogEntry, CatalogLocale, CatalogSnapshot } from '../../entities/catalog/model/catalog'
 
-export type CatalogTreeNodeKind = 'locales-root' | 'entries-root' | 'locale' | 'folder' | 'entry'
+export type CatalogTreeNodeKind = 'locales-root' | 'entries-root' | 'locale' | 'folder' | 'entry' | 'entry-draft'
 
 export interface CatalogTreeNode {
   key: string
@@ -9,6 +9,8 @@ export interface CatalogTreeNode {
   searchText: string
   count?: number
   selectable?: boolean
+  path?: string
+  isDirty?: boolean
   children?: CatalogTreeNode[]
 }
 
@@ -32,6 +34,7 @@ interface FolderBuilder {
 
 export function buildCatalogTree(catalog: CatalogSnapshot): CatalogTreeModel {
   const selectionByKey = new Map<string, CatalogSelectionItem>()
+  const dirtyEntryIds = new Set(catalog.dirtyEntryIds)
   const localeNodes = catalog.locales.map((locale) => {
     const key = localeKey(locale.id)
     selectionByKey.set(key, { kind: 'locale', locale })
@@ -50,7 +53,8 @@ export function buildCatalogTree(catalog: CatalogSnapshot): CatalogTreeModel {
     selectionByKey.set(entryKey(entry.id), { kind: 'entry', entry })
   }
 
-  const entryNodes = rootFolder.children.map((child) => createEntryTreeNode(child, selectionByKey))
+  const entryNodes = rootFolder.children.map((child) =>
+    createEntryTreeNode(child, selectionByKey, dirtyEntryIds))
 
   return {
     nodes: [
@@ -69,6 +73,8 @@ export function buildCatalogTree(catalog: CatalogSnapshot): CatalogTreeModel {
         kind: 'entries-root',
         searchText: 'entries',
         count: catalog.entries.length,
+        path: '',
+        isDirty: dirtyEntryIds.size > 0,
         selectable: false,
         children: entryNodes,
       },
@@ -129,6 +135,7 @@ function addEntry(root: FolderBuilder, entry: CatalogEntry) {
 function createEntryTreeNode(
   child: FolderBuilder | CatalogEntry,
   selectionByKey: Map<string, CatalogSelectionItem>,
+  dirtyEntryIds: ReadonlySet<string>,
 ): CatalogTreeNode {
   if ('children' in child) {
     const key = folderKey(child.path)
@@ -140,7 +147,10 @@ function createEntryTreeNode(
       kind: 'folder',
       searchText: child.path,
       count: child.entryCount,
-      children: child.children.map((nestedChild) => createEntryTreeNode(nestedChild, selectionByKey)),
+      path: child.path,
+      isDirty: hasDirtyEntry(child, dirtyEntryIds),
+      children: child.children.map((nestedChild) =>
+        createEntryTreeNode(nestedChild, selectionByKey, dirtyEntryIds)),
     }
   }
 
@@ -148,12 +158,19 @@ function createEntryTreeNode(
     key: entryKey(child.id),
     title: child.path.split('.').at(-1) ?? child.path,
     kind: 'entry',
+    path: child.path,
+    isDirty: dirtyEntryIds.has(child.id),
     searchText: [
       child.id,
       child.path,
       ...Object.values(child.locales).map((value) => value.text ?? ''),
     ].join(' '),
   }
+}
+
+function hasDirtyEntry(folder: FolderBuilder, dirtyEntryIds: ReadonlySet<string>): boolean {
+  return folder.children.some((child) =>
+    'children' in child ? hasDirtyEntry(child, dirtyEntryIds) : dirtyEntryIds.has(child.id))
 }
 
 function localeKey(id: string) {

@@ -1,4 +1,4 @@
-import { useMemo, useState, type Key, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -11,26 +11,110 @@ import {
   PlusOutlined,
   TranslationOutlined,
 } from '@ant-design/icons'
-import { Button, Dropdown, Flex, Input, Tooltip, Tree, Typography, theme, type MenuProps } from 'antd'
+import {
+  Button,
+  Dropdown,
+  Flex,
+  Input,
+  Tooltip,
+  Tree,
+  Typography,
+  theme,
+  type InputRef,
+  type MenuProps,
+} from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { filterCatalogTree, type CatalogTreeModel, type CatalogTreeNode } from './catalogTree'
 
 interface CatalogTreePanelProps {
   tree: CatalogTreeModel
   selectedKeys: Key[]
+  expandedKeys: Key[]
   onSelectionChange: (keys: Key[]) => void
+  onExpandedKeysChange: (keys: Key[]) => void
+  onAddEntry: (path: string) => Promise<string>
 }
 
-export function CatalogTreePanel({ tree, selectedKeys, onSelectionChange }: CatalogTreePanelProps) {
+interface EntryDraft {
+  parentKey: Key
+  parentPath: string
+  name: string
+  isSaving: boolean
+  error?: string
+}
+
+const entryDraftKey = 'draft:entry'
+
+export function CatalogTreePanel({
+  tree,
+  selectedKeys,
+  expandedKeys,
+  onSelectionChange,
+  onExpandedKeysChange,
+  onAddEntry,
+}: CatalogTreePanelProps) {
   const { token } = theme.useToken()
   const [query, setQuery] = useState('')
-  const [expandedKeys, setExpandedKeys] = useState<Key[]>(['root:locales', 'root:entries'])
   const [selectionAnchor, setSelectionAnchor] = useState<Key>()
-  const nodes = useMemo(() => filterCatalogTree(tree.nodes, query), [tree.nodes, query])
+  const [entryDraft, setEntryDraft] = useState<EntryDraft>()
+  const filteredNodes = useMemo(() => filterCatalogTree(tree.nodes, query), [tree.nodes, query])
+  const nodes = useMemo(
+    () => entryDraft ? insertEntryDraft(filteredNodes, entryDraft) : filteredNodes,
+    [filteredNodes, entryDraft],
+  )
   const visibleExpandedKeys = query.trim()
     ? collectExpandableKeys(nodes)
     : expandedKeys
   const visibleSelectionKeys = collectVisibleSelectionKeys(nodes, new Set(visibleExpandedKeys))
+
+  const beginEntryCreation = (node: CatalogTreeNode) => {
+    if (node.kind !== 'entries-root' && node.kind !== 'folder') {
+      return
+    }
+
+    setQuery('')
+    onExpandedKeysChange(mergeKeys(expandedKeys, [node.key]))
+    setEntryDraft({
+      parentKey: node.key,
+      parentPath: node.path ?? '',
+      name: 'NewEntry',
+      isSaving: false,
+    })
+  }
+
+  const handleAction = (node: CatalogTreeNode, action: string) => {
+    if (action === 'new-entry') {
+      beginEntryCreation(node)
+    }
+  }
+
+  const submitEntryDraft = async () => {
+    if (!entryDraft || entryDraft.isSaving) {
+      return
+    }
+
+    const name = entryDraft.name.trim()
+    if (!name) {
+      setEntryDraft({ ...entryDraft, error: 'Entry name is required.' })
+      return
+    }
+
+    const path = entryDraft.parentPath ? `${entryDraft.parentPath}.${name}` : name
+    setEntryDraft({ ...entryDraft, name, isSaving: true, error: undefined })
+
+    try {
+      const createdKey = await onAddEntry(path)
+      setEntryDraft(undefined)
+      onSelectionChange([createdKey])
+    } catch (error: unknown) {
+      setEntryDraft({
+        ...entryDraft,
+        name,
+        isSaving: false,
+        error: error instanceof Error ? error.message : 'Entry could not be created.',
+      })
+    }
+  }
 
   return (
     <Flex vertical gap={layoutTokens.spacing.small} style={{ height: '100%', minHeight: 0 }}>
@@ -62,11 +146,19 @@ export function CatalogTreePanel({ tree, selectedKeys, onSelectionChange }: Cata
               node={node as CatalogTreeNode}
               iconColor={getIconColor((node as CatalogTreeNode).kind, token)}
               rowHeight={token.controlHeightSM}
+              entryDraft={entryDraft}
+              onDraftChange={(name) => setEntryDraft((draft) =>
+                draft ? { ...draft, name, error: undefined } : draft)}
+              onDraftSubmit={submitEntryDraft}
+              onDraftCancel={() => setEntryDraft(undefined)}
+              onAction={handleAction}
             />
           )}
-          onExpand={(keys) => {
+          onExpand={(_, info) => {
             if (!query.trim()) {
-              setExpandedKeys(keys)
+              onExpandedKeysChange(info.expanded
+                ? mergeKeys(expandedKeys, [info.node.key])
+                : expandedKeys.filter((key) => key !== info.node.key))
             }
           }}
           onSelect={(_, info) => {
@@ -102,16 +194,47 @@ function TreeNodeTitle({
   node,
   iconColor,
   rowHeight,
+  entryDraft,
+  onDraftChange,
+  onDraftSubmit,
+  onDraftCancel,
+  onAction,
 }: {
   node: CatalogTreeNode
   iconColor: string
   rowHeight: number
+  entryDraft?: EntryDraft
+  onDraftChange: (name: string) => void
+  onDraftSubmit: () => void
+  onDraftCancel: () => void
+  onAction: (node: CatalogTreeNode, action: string) => void
 }) {
   const [isHovered, setIsHovered] = useState(false)
   const quickActions = getQuickActions(node.kind)
 
+  if (node.kind === 'entry-draft' && entryDraft) {
+    return (
+      <DraftEntryTitle
+        draft={entryDraft}
+        iconColor={iconColor}
+        rowHeight={rowHeight}
+        onChange={onDraftChange}
+        onSubmit={onDraftSubmit}
+        onCancel={onDraftCancel}
+      />
+    )
+  }
+
   return (
-    <Dropdown menu={{ items: getContextMenuItems(node.kind) }} trigger={['contextMenu']}>
+    <Dropdown
+      menu={{
+        items: getContextMenuItems(node.kind),
+        onClick: ({ key }) => {
+          onAction(node, key)
+        },
+      }}
+      trigger={['contextMenu']}
+    >
       <span
         style={{
           display: 'inline-flex',
@@ -134,7 +257,9 @@ function TreeNodeTitle({
           }}
         >
           {treeIcon(node.kind, iconColor)}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{node.title}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {node.title}{node.isDirty ? ' *' : ''}
+          </span>
         </span>
         {isHovered && quickActions.length > 0 ? (
           <span
@@ -154,7 +279,10 @@ function TreeNodeTitle({
                   aria-label={action.label}
                   style={{ width: rowHeight, minWidth: rowHeight, height: '100%', padding: 0 }}
                   onMouseDown={(event) => event.stopPropagation()}
-                  onClick={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onAction(node, action.key)
+                  }}
                 />
               </Tooltip>
             ))}
@@ -166,6 +294,64 @@ function TreeNodeTitle({
         ) : null}
       </span>
     </Dropdown>
+  )
+}
+
+function DraftEntryTitle({
+  draft,
+  iconColor,
+  rowHeight,
+  onChange,
+  onSubmit,
+  onCancel,
+}: {
+  draft: EntryDraft
+  iconColor: string
+  rowHeight: number
+  onChange: (name: string) => void
+  onSubmit: () => void
+  onCancel: () => void
+}) {
+  const inputRef = useRef<InputRef>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
+
+  return (
+    <Tooltip title={draft.error} open={draft.error ? undefined : false} placement="right">
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: layoutTokens.spacing.small,
+          width: '100%',
+          height: rowHeight,
+        }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {treeIcon('entry-draft', iconColor)}
+        <Input
+          ref={inputRef}
+          size="small"
+          value={draft.name}
+          status={draft.error ? 'error' : undefined}
+          disabled={draft.isSaving}
+          onChange={(event) => onChange(event.target.value)}
+          onPressEnter={onSubmit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.stopPropagation()
+            } else if (event.key === 'Escape') {
+              event.preventDefault()
+              event.stopPropagation()
+              onCancel()
+            }
+          }}
+        />
+      </span>
+    </Tooltip>
   )
 }
 
@@ -187,6 +373,7 @@ function getQuickActions(kind: CatalogTreeNode['kind']): QuickAction[] {
       ]
     case 'locale':
     case 'entry':
+    case 'entry-draft':
       return []
   }
 }
@@ -214,6 +401,8 @@ function getContextMenuItems(kind: CatalogTreeNode['kind']): MenuProps['items'] 
         { type: 'divider' },
         { key: 'delete-entry', icon: <DeleteOutlined />, label: 'Delete', danger: true },
       ]
+    case 'entry-draft':
+      return []
   }
 }
 
@@ -277,6 +466,7 @@ function getIconColor(
     case 'folder':
       return token.colorWarning
     case 'entry':
+    case 'entry-draft':
       return '#CD4945'
   }
 }
@@ -294,6 +484,31 @@ function treeIcon(kind: CatalogTreeNode['kind'], color: string): ReactNode {
     case 'folder':
       return <FolderOutlined style={style} />
     case 'entry':
+    case 'entry-draft':
       return <FileTextOutlined style={style} />
   }
+}
+
+function insertEntryDraft(nodes: CatalogTreeNode[], draft: EntryDraft): CatalogTreeNode[] {
+  return nodes.map((node) => {
+    if (node.key === draft.parentKey) {
+      return {
+        ...node,
+        children: [
+          ...(node.children ?? []),
+          {
+            key: entryDraftKey,
+            title: draft.name,
+            kind: 'entry-draft',
+            searchText: draft.name,
+            selectable: false,
+          },
+        ],
+      }
+    }
+
+    return node.children?.length
+      ? { ...node, children: insertEntryDraft(node.children, draft) }
+      : node
+  })
 }

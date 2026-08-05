@@ -15,7 +15,9 @@ public static class CatalogEndpoints
     /// <returns>The supplied endpoint route builder.</returns>
     public static IEndpointRouteBuilder MapCatalogEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/catalog", GetCatalog);
+        RouteGroupBuilder catalogEndpoints = endpoints.MapGroup("/api/catalog");
+        catalogEndpoints.MapGet(string.Empty, GetCatalog);
+        catalogEndpoints.MapPost("/entries", AddEntry);
         return endpoints;
     }
 
@@ -27,5 +29,13 @@ public static class CatalogEndpoints
                 EditorErrorCodes.CatalogNotOpen,
                 "No catalog is open in the editor session."))
             : Results.Ok(catalog);
+    }
+
+    private static IResult AddEntry(AddCatalogEntryRequest request, EditorSession session)
+    {
+        CatalogEditResult result = session.AddEntry(request.Path);
+        return result.Error == null
+            ? Results.Ok(result.Catalog)
+            : Results.Json(result.Error, statusCode: StatusCodes.Status422UnprocessableEntity);
     }
 }

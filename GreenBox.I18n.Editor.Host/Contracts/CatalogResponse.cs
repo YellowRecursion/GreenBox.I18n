@@ -8,12 +8,14 @@ namespace GreenBox.I18n.Editor.Host.Contracts;
 /// <param name="Locales">The supported locales in editor display order.</param>
 /// <param name="Entries">The catalog entries in canonical order.</param>
 /// <param name="Diagnostics">The current validation diagnostics.</param>
+/// <param name="DirtyEntryIds">The IDs of entries changed since the catalog was loaded or saved.</param>
 public sealed record CatalogResponse(
     long Revision,
     string DefaultLocale,
     IReadOnlyList<CatalogLocaleResponse> Locales,
     IReadOnlyList<CatalogEntryResponse> Entries,
-    IReadOnlyList<CatalogDiagnosticResponse> Diagnostics);
+    IReadOnlyList<CatalogDiagnosticResponse> Diagnostics,
+    IReadOnlyList<string> DirtyEntryIds);
 
 /// <summary>
 /// Describes a validation diagnostic in a catalog snapshot.

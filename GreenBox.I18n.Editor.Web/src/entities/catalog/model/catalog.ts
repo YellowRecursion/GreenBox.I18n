@@ -3,6 +3,8 @@ export interface CatalogSnapshot {
   defaultLocale: string
   locales: CatalogLocale[]
   entries: CatalogEntry[]
+  diagnostics: CatalogDiagnostic[]
+  dirtyEntryIds: string[]
 }
 
 export interface CatalogLocale {
@@ -28,6 +30,20 @@ export interface CatalogLocaleValue {
 export interface CatalogAssetReference {
   assetGuid: string
   localFileId: string | null
+}
+
+export interface CatalogDiagnostic {
+  code: string
+  severity: 'warning' | 'error'
+  jsonPath: string
+  message: string
+  target: CatalogDiagnosticTarget | null
+}
+
+export interface CatalogDiagnosticTarget {
+  entryId: string | null
+  entryPath: string | null
+  localeId: string | null
 }
 
 export type CatalogState =
