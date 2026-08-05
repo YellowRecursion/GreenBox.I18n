@@ -6,19 +6,6 @@ namespace GreenBox.I18n.Core.Tests;
 public sealed class I18nCatalogJsonTests
 {
     [Fact]
-    public void Serialize_NextId_WritesItAfterSchemaVersion()
-    {
-        var catalog = new I18nCatalog
-        {
-            NextId = "42",
-        };
-
-        string json = I18nCatalogJson.Serialize(catalog);
-
-        Assert.Contains("\"schemaVersion\": 1,\n  \"nextId\": \"42\"", json);
-    }
-
-    [Fact]
     public void Serialize_ReturnsCanonicalFormattedJson()
     {
         var catalog = new I18nCatalog

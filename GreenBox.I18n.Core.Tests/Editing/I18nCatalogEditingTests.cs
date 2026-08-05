@@ -5,7 +5,7 @@ namespace GreenBox.I18n.Core.Tests;
 public sealed class I18nCatalogEditingTests
 {
     [Fact]
-    public void AddEntry_MissingNextId_AllocatesAfterGreatestExistingId()
+    public void AddEntry_ValidPath_AllocatesRandomTwelveDigitId()
     {
         I18nCatalog catalog = CreateCatalog(
             CreateEntry("10", "Menu.Title"),
@@ -15,26 +15,28 @@ public sealed class I18nCatalogEditingTests
 
         Assert.True(result.IsSuccess);
         Assert.True(result.HasChanges);
-        Assert.Equal("21", result.Entry!.Id);
+        long id = long.Parse(result.Entry!.Id);
+        Assert.InRange(id, 100_000_000_000, 999_999_999_999);
         Assert.Equal("Menu.PlayButton", result.Entry.Path);
         Assert.Empty(result.Entry.Locales);
-        Assert.Equal("22", catalog.NextId);
         Assert.Equal(
             new[] { "Menu.PlayButton", "Menu.Title", "Reports.Title" },
             catalog.Entries.Select(entry => entry.Path));
     }
 
     [Fact]
-    public void AddEntry_PersistedNextId_UsesItWithoutFillingGaps()
+    public void AddEntry_RepeatedCalls_AllocateUniqueIds()
     {
-        I18nCatalog catalog = CreateCatalog(CreateEntry("20", "Reports.Title"));
-        catalog.NextId = "100";
+        I18nCatalog catalog = CreateCatalog();
+        var ids = new HashSet<string>();
 
-        I18nEditResult result = catalog.AddEntry("Reports.Subtitle");
+        for (int entryIndex = 0; entryIndex < 100; entryIndex++)
+        {
+            I18nEditResult result = catalog.AddEntry($"Generated.Entry{entryIndex}");
 
-        Assert.True(result.IsSuccess);
-        Assert.Equal("100", result.Entry!.Id);
-        Assert.Equal("101", catalog.NextId);
+            Assert.True(result.IsSuccess);
+            Assert.True(ids.Add(result.Entry!.Id));
+        }
     }
 
     [Fact]
@@ -46,11 +48,10 @@ public sealed class I18nCatalogEditingTests
 
         AssertFailure(result, I18nEditCodes.DuplicatePath);
         Assert.Single(catalog.Entries);
-        Assert.Null(catalog.NextId);
     }
 
     [Fact]
-    public void RemoveEntry_MissingNextId_ConsumesIdsThroughPreRemovalMaximum()
+    public void RemoveEntry_ExistingId_RemovesOnlyRequestedEntry()
     {
         I18nEntry retainedEntry = CreateEntry("10", "Menu.Title");
         I18nEntry removedEntry = CreateEntry("20", "Reports.Title");
@@ -61,21 +62,7 @@ public sealed class I18nCatalogEditingTests
         Assert.True(result.IsSuccess);
         Assert.True(result.HasChanges);
         Assert.Same(removedEntry, result.Entry);
-        Assert.Equal("21", catalog.NextId);
         Assert.Equal(new[] { retainedEntry }, catalog.Entries);
-    }
-
-    [Fact]
-    public void RemoveEntry_PersistedNextId_DoesNotDecreaseIt()
-    {
-        I18nCatalog catalog = CreateCatalog(CreateEntry("20", "Reports.Title"));
-        catalog.NextId = "100";
-
-        I18nEditResult result = catalog.RemoveEntry(20);
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal("100", catalog.NextId);
-        Assert.Empty(catalog.Entries);
     }
 
     [Fact]
@@ -87,7 +74,6 @@ public sealed class I18nCatalogEditingTests
 
         AssertFailure(result, I18nEditCodes.EntryNotFound);
         Assert.Single(catalog.Entries);
-        Assert.Null(catalog.NextId);
     }
 
     [Fact]

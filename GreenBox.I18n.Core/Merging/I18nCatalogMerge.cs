@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 
 namespace GreenBox.I18n
@@ -34,11 +33,6 @@ namespace GreenBox.I18n
                     current.SchemaVersion,
                     incoming.SchemaVersion,
                     "$.schemaVersion",
-                    conflicts),
-                NextId = MergeNextId(
-                    baseline.NextId,
-                    current.NextId,
-                    incoming.NextId,
                     conflicts),
                 DefaultLocale = MergeValue(
                     baseline.DefaultLocale,
@@ -286,27 +280,6 @@ namespace GreenBox.I18n
             if (comparer.Equals(incoming, baseline)) return current;
 
             conflicts.Add(new I18nCatalogMergeConflict(path, "Both sides changed this value differently."));
-            return current;
-        }
-
-        private static string? MergeNextId(
-            string? baseline,
-            string? current,
-            string? incoming,
-            List<I18nCatalogMergeConflict> conflicts)
-        {
-            if (current == incoming) return current;
-            if (current == baseline) return incoming;
-            if (incoming == baseline) return current;
-
-            if (long.TryParse(current, NumberStyles.None, CultureInfo.InvariantCulture, out long currentId) &&
-                long.TryParse(incoming, NumberStyles.None, CultureInfo.InvariantCulture, out long incomingId) &&
-                currentId > 0 && incomingId > 0)
-            {
-                return Math.Max(currentId, incomingId).ToString(CultureInfo.InvariantCulture);
-            }
-
-            conflicts.Add(new I18nCatalogMergeConflict("$.nextId", "Both sides changed this value differently."));
             return current;
         }
 

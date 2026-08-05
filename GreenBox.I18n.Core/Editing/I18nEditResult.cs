@@ -17,10 +17,7 @@ namespace GreenBox.I18n
         /// <summary>Indicates that another entry already uses the requested path.</summary>
         public const string DuplicatePath = "duplicate_path";
 
-        /// <summary>Indicates that the catalog next-ID state is invalid.</summary>
-        public const string InvalidNextId = "invalid_next_id";
-
-        /// <summary>Indicates that no additional positive 64-bit ID can be allocated.</summary>
+        /// <summary>Indicates that a unique random entry ID could not be allocated.</summary>
         public const string IdSpaceExhausted = "id_space_exhausted";
     }
 

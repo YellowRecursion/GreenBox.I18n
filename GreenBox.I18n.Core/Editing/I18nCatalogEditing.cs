@@ -10,7 +10,7 @@ namespace GreenBox.I18n
     public static class I18nCatalogEditing
     {
         /// <summary>
-        /// Adds an empty entry with the next short stable ID and restores canonical order.
+        /// Adds an empty entry with a random 12-digit stable ID and restores canonical order.
         /// </summary>
         /// <param name="catalog">The valid catalog to edit.</param>
         /// <param name="path">The new entry's full logical path.</param>
@@ -41,7 +41,7 @@ namespace GreenBox.I18n
                 }
             }
 
-            if (!TryGetNextId(catalog, out long id, out I18nEditError? error))
+            if (!I18nEntryIdAllocator.TryAllocate(catalog.Entries, out long id, out I18nEditError? error))
             {
                 return I18nEditResult.Failure(error!.Code, error.Message);
             }
@@ -55,12 +55,11 @@ namespace GreenBox.I18n
 
             catalog.Entries.Add(entry);
             catalog.Entries.Sort(I18nEntryComparer.Canonical);
-            catalog.NextId = (id + 1).ToString(CultureInfo.InvariantCulture);
             return I18nEditResult.Success(entry, true);
         }
 
         /// <summary>
-        /// Removes an entry while preserving its ID as consumed by the catalog allocator.
+        /// Removes an entry without modifying any other entry IDs.
         /// </summary>
         /// <param name="catalog">The valid catalog to edit.</param>
         /// <param name="id">The positive ID of the entry to remove.</param>
@@ -86,16 +85,6 @@ namespace GreenBox.I18n
                 return I18nEditResult.Failure(
                     I18nEditCodes.EntryNotFound,
                     $"Entry with ID {id} was not found.");
-            }
-
-            if (catalog.NextId == null)
-            {
-                if (!TryGetNextId(catalog, out long nextId, out I18nEditError? error))
-                {
-                    return I18nEditResult.Failure(error!.Code, error.Message);
-                }
-
-                catalog.NextId = nextId.ToString(CultureInfo.InvariantCulture);
             }
 
             catalog.Entries.Remove(entry);
@@ -161,67 +150,5 @@ namespace GreenBox.I18n
             return I18nEditResult.Success(entry, true);
         }
 
-        private static bool TryGetNextId(
-            I18nCatalog catalog,
-            out long nextId,
-            out I18nEditError? error)
-        {
-            long greatestId = 0;
-            for (int entryIndex = 0; entryIndex < catalog.Entries.Count; entryIndex++)
-            {
-                if (!long.TryParse(
-                        catalog.Entries[entryIndex].Id,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out long entryId) ||
-                    entryId <= 0)
-                {
-                    nextId = 0;
-                    error = new I18nEditError(
-                        I18nEditCodes.InvalidId,
-                        $"Entry ID '{catalog.Entries[entryIndex].Id}' is not a positive 64-bit integer.");
-                    return false;
-                }
-
-                greatestId = Math.Max(greatestId, entryId);
-            }
-
-            if (catalog.NextId == null)
-            {
-                if (greatestId == long.MaxValue)
-                {
-                    nextId = 0;
-                    error = new I18nEditError(
-                        I18nEditCodes.IdSpaceExhausted,
-                        "No additional positive 64-bit entry ID can be allocated.");
-                    return false;
-                }
-
-                nextId = greatestId + 1;
-            }
-            else if (!long.TryParse(
-                         catalog.NextId,
-                         NumberStyles.None,
-                         CultureInfo.InvariantCulture,
-                         out nextId) ||
-                     nextId <= greatestId)
-            {
-                error = new I18nEditError(
-                    I18nEditCodes.InvalidNextId,
-                    "The catalog next ID must be a positive 64-bit integer greater than every existing entry ID.");
-                return false;
-            }
-
-            if (nextId == long.MaxValue)
-            {
-                error = new I18nEditError(
-                    I18nEditCodes.IdSpaceExhausted,
-                    "No additional positive 64-bit entry ID can be allocated.");
-                return false;
-            }
-
-            error = null;
-            return true;
-        }
     }
 }

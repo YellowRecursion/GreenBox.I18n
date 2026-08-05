@@ -42,7 +42,6 @@ public sealed class I18nCatalogMergeTests
         I18nCatalog current = Clone(baseline);
         I18nCatalog incoming = Clone(baseline);
         current.Entries.Add(new I18nEntry { Id = "2", Path = "Menu.Settings" });
-        current.NextId = "3";
         incoming.Entries[0].Comment = "External comment";
 
         I18nCatalogMergeResult result = I18nCatalogMerge.Merge(baseline, current, incoming);
@@ -67,27 +66,11 @@ public sealed class I18nCatalogMergeTests
         Assert.Contains(result.Conflicts, conflict => conflict.JsonPath == "$.entries[id=1]");
     }
 
-    [Fact]
-    public void Merge_IndependentlyAdvancedNextId_UsesGreatestValue()
-    {
-        I18nCatalog baseline = CreateCatalog("Original", null);
-        I18nCatalog current = Clone(baseline);
-        I18nCatalog incoming = Clone(baseline);
-        current.NextId = "10";
-        incoming.NextId = "12";
-
-        I18nCatalogMergeResult result = I18nCatalogMerge.Merge(baseline, current, incoming);
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal("12", result.Catalog!.NextId);
-    }
-
     private static I18nCatalog CreateCatalog(string text, string? comment)
     {
         return new I18nCatalog
         {
             SchemaVersion = 1,
-            NextId = "2",
             DefaultLocale = "en",
             Locales = new List<I18nLocaleDefinition>
             {

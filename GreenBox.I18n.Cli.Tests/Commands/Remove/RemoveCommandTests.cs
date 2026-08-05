@@ -9,7 +9,7 @@ public sealed class RemoveCommandTests : IDisposable
     private readonly TestCatalog _catalog = new();
 
     [Fact]
-    public void Execute_ExistingId_RemovesEntryAndPreservesConsumedIds()
+    public void Execute_ExistingId_RemovesEntryWithoutAllocatorState()
     {
         FileInfo catalogFile = _catalog.Write(TestCatalog.ValidJson);
         var standardOutput = new StringWriter();
@@ -27,7 +27,7 @@ public sealed class RemoveCommandTests : IDisposable
         Assert.Equal(CliExitCodes.Success, exitCode);
         Assert.Equal("20", report.RootElement.GetProperty("id").GetString());
         Assert.Equal("Reports.Title", report.RootElement.GetProperty("path").GetString());
-        Assert.Equal("21", savedCatalog.NextId);
+        Assert.DoesNotContain("nextId", File.ReadAllText(catalogFile.FullName));
         Assert.DoesNotContain(savedCatalog.Entries, entry => entry.Id == "20");
         Assert.Empty(standardError.ToString());
         Assert.Empty(catalogFile.Directory!.EnumerateFiles("*.tmp"));

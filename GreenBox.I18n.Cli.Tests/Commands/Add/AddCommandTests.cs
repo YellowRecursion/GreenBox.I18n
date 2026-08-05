@@ -9,7 +9,7 @@ public sealed class AddCommandTests : IDisposable
     private readonly TestCatalog _catalog = new();
 
     [Fact]
-    public void Execute_ValidPath_AllocatesShortIdAndReturnsJson()
+    public void Execute_ValidPath_AllocatesRandomIdAndReturnsJson()
     {
         FileInfo catalogFile = _catalog.Write(TestCatalog.ValidJson);
         var standardOutput = new StringWriter();
@@ -26,11 +26,12 @@ public sealed class AddCommandTests : IDisposable
         I18nCatalog savedCatalog = I18nCatalogJson.Deserialize(File.ReadAllText(catalogFile.FullName));
         I18nEntry addedEntry = Assert.Single(savedCatalog.Entries, entry => entry.Path == "Menu.PlayButton");
         Assert.Equal(CliExitCodes.Success, exitCode);
-        Assert.Equal("21", report.RootElement.GetProperty("id").GetString());
+        string id = report.RootElement.GetProperty("id").GetString()!;
+        Assert.InRange(long.Parse(id), 100_000_000_000, 999_999_999_999);
         Assert.Equal("Menu.PlayButton", report.RootElement.GetProperty("path").GetString());
-        Assert.Equal("21", addedEntry.Id);
+        Assert.Equal(id, addedEntry.Id);
         Assert.Empty(addedEntry.Locales);
-        Assert.Equal("22", savedCatalog.NextId);
+        Assert.DoesNotContain("nextId", File.ReadAllText(catalogFile.FullName));
         Assert.Empty(standardError.ToString());
         Assert.Empty(catalogFile.Directory!.EnumerateFiles("*.tmp"));
     }

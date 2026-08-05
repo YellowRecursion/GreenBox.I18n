@@ -5,36 +5,6 @@ namespace GreenBox.I18n.Core.Tests;
 public sealed class I18nCatalogValidatorTests
 {
     [Fact]
-    public void Validate_NextIdAfterAllEntries_IsValid()
-    {
-        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
-        catalog.NextId = "2";
-
-        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
-
-        Assert.DoesNotContain(result.Diagnostics, diagnostic =>
-            diagnostic.Code == I18nValidationCodes.InvalidNextId);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("0")]
-    [InlineData("1")]
-    [InlineData("invalid")]
-    public void Validate_InvalidNextId_ReturnsStableError(string nextId)
-    {
-        I18nCatalog catalog = CreateCatalog(CreateValidEntry());
-        catalog.NextId = nextId;
-
-        I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
-
-        I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics, diagnostic =>
-            diagnostic.Code == I18nValidationCodes.InvalidNextId);
-        Assert.Equal("$.nextId", diagnostic.JsonPath);
-        Assert.Equal(I18nValidationSeverity.Error, diagnostic.Severity);
-    }
-
-    [Fact]
     public void Validate_ValidCatalog_ReturnsValidResult()
     {
         I18nCatalog catalog = CreateCatalog(CreateValidEntry());

@@ -84,8 +84,6 @@ namespace GreenBox.I18n
                     diagnostics);
             }
 
-            ValidateNextId(catalog.NextId, entryIndexesById.Keys, diagnostics);
-
             if (!ContainsErrors(diagnostics))
             {
                 ValidateEntryOrder(catalog.Entries, diagnostics);
@@ -185,33 +183,6 @@ namespace GreenBox.I18n
         private static string? NormalizeTargetValue(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? null : value;
-        }
-
-        private static void ValidateNextId(
-            string? nextId,
-            Dictionary<long, int>.KeyCollection entryIds,
-            List<I18nValidationDiagnostic> diagnostics)
-        {
-            if (nextId == null)
-            {
-                return;
-            }
-
-            long greatestId = 0;
-            foreach (long entryId in entryIds)
-            {
-                greatestId = System.Math.Max(greatestId, entryId);
-            }
-
-            if (!long.TryParse(nextId, NumberStyles.None, CultureInfo.InvariantCulture, out long parsedNextId) ||
-                parsedNextId <= greatestId)
-            {
-                AddError(
-                    diagnostics,
-                    I18nValidationCodes.InvalidNextId,
-                    "$.nextId",
-                    "The next ID must be a positive 64-bit integer greater than every existing entry ID.");
-            }
         }
 
         private static IReadOnlyList<I18nLocaleDefinition> ValidateLocaleDefinitions(
