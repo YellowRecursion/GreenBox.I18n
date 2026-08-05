@@ -17,6 +17,7 @@ export interface CatalogTreeNode {
   count?: number
   selectable?: boolean
   path?: string
+  culture?: string
   isDirty?: boolean
   isTemporary?: boolean
   entryId?: string
@@ -57,6 +58,7 @@ export function buildCatalogTree(
       key,
       title: locale.displayName,
       kind: 'locale' as const,
+      culture: locale.culture,
       searchText: `${locale.id} ${locale.displayName} ${locale.culture}`,
     }
   })

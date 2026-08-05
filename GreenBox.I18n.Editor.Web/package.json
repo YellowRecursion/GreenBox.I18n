@@ -12,6 +12,7 @@
   "dependencies": {
     "@ant-design/icons": "^6.3.2",
     "antd": "^6.5.3",
+    "country-flag-icons": "^1.6.20",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

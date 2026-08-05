@@ -32,6 +32,7 @@ import {
   type MenuProps,
 } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
+import { LocaleFlag } from '../../entities/catalog/ui/LocaleFlag'
 import { filterCatalogTree, type CatalogTreeModel, type CatalogTreeNode } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 
@@ -666,7 +667,9 @@ function TreeNodeTitle({
             minWidth: 0,
           }}
         >
-          {renderCatalogNodeIcon(node.kind, iconColor)}
+          {node.kind === 'locale' && node.culture
+            ? <LocaleFlag culture={node.culture} />
+            : renderCatalogNodeIcon(node.kind, iconColor)}
           <Typography.Text
             type={node.isTemporary ? 'secondary' : undefined}
             style={{

@@ -16,6 +16,7 @@ import {
 } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogEntry, CatalogLocale } from '../../entities/catalog/model/catalog'
+import { LocaleFlag } from '../../entities/catalog/ui/LocaleFlag'
 import type { CatalogSelectionItem } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 import { EntryAssetInput } from './EntryAssetInput'
@@ -198,7 +199,12 @@ function EntryLocaleCard({
   return (
     <Card
       size="small"
-      title={`${locale.displayName} (${locale.id})`}
+      title={(
+        <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+          <LocaleFlag culture={locale.culture} />
+          <span>{locale.displayName} ({locale.id})</span>
+        </Flex>
+      )}
       extra={locale.id === defaultLocale ? <Tag color="blue">Default</Tag> : undefined}
     >
       {children}
