@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, type PropsWithChildren } from 'react'
 import { addCatalogEntry } from '../api/addCatalogEntry'
 import { removeCatalogEntries } from '../api/removeCatalogEntries'
+import { moveCatalogEntries, type CatalogEntryMove } from '../api/moveCatalogEntries'
 import { revertCatalog } from '../api/revertCatalog'
 import { saveCatalog } from '../api/saveCatalog'
 import { mergeCatalogSource } from '../api/mergeCatalogSource'
@@ -62,6 +63,16 @@ export function CatalogProvider({ children }: PropsWithChildren) {
     return catalog
   }, [catalogPath])
 
+  const moveEntries = useCallback(async (moves: CatalogEntryMove[]) => {
+    const catalog = await moveCatalogEntries(moves)
+    if (!catalogPath) {
+      throw new Error('No catalog is open.')
+    }
+
+    dispatch({ type: 'loaded', catalog, catalogPath })
+    return catalog
+  }, [catalogPath])
+
   const save = useCallback(async (overwriteExternalChanges = false) => {
     const catalog = await saveCatalog(overwriteExternalChanges)
     if (!catalogPath) {
@@ -93,8 +104,8 @@ export function CatalogProvider({ children }: PropsWithChildren) {
   }, [catalogPath])
 
   const context = useMemo(
-    () => ({ state, addEntry, removeEntries, save, revert, mergeSource }),
-    [state, addEntry, removeEntries, save, revert, mergeSource],
+    () => ({ state, addEntry, removeEntries, moveEntries, save, revert, mergeSource }),
+    [state, addEntry, removeEntries, moveEntries, save, revert, mergeSource],
   )
 
   return <CatalogContext.Provider value={context}>{children}</CatalogContext.Provider>

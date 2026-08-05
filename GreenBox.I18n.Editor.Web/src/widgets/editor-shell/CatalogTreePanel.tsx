@@ -36,6 +36,7 @@ interface CatalogTreePanelProps {
   onAddEntry: (path: string) => Promise<string>
   onAddFolder: (path: string) => string
   onRemoveNodes: (keys: Key[]) => Promise<void>
+  onMoveNodes: (keys: Key[], targetKey: Key) => Promise<void>
 }
 
 interface NodeDraft {
@@ -59,6 +60,7 @@ export function CatalogTreePanel({
   onAddEntry,
   onAddFolder,
   onRemoveNodes,
+  onMoveNodes,
 }: CatalogTreePanelProps) {
   const { token } = theme.useToken()
   const [messageApi, messageContext] = message.useMessage()
@@ -162,6 +164,18 @@ export function CatalogTreePanel({
           expandedKeys={visibleExpandedKeys}
           selectedKeys={selectedKeys}
           treeData={nodes}
+          draggable={{
+            icon: false,
+            nodeDraggable: (node) => {
+              const kind = (node as CatalogTreeNode).kind
+              return !query.trim() && (kind === 'folder' || kind === 'entry')
+            },
+          }}
+          allowDrop={({ dragNode, dropNode, dropPosition }) => {
+            const dragKey = dragNode.key
+            const keys = selectedKeys.includes(dragKey) ? selectedKeys : [dragKey]
+            return dropPosition === 0 && canDropInto(tree, keys, dropNode as CatalogTreeNode)
+          }}
           styles={{
             root: { background: 'transparent', borderRadius: 0 },
             itemTitle: {
@@ -191,6 +205,29 @@ export function CatalogTreePanel({
                 : expandedKeys.filter((key) => key !== info.node.key))
             }
           }}
+          onDragStart={(info) => {
+            const key = info.node.key
+            if (!selectedKeys.includes(key)) {
+              setSelectionAnchor(key)
+              onSelectionChange([key])
+            }
+          }}
+          onDragEnter={(info) => {
+            if (!query.trim()) {
+              onExpandedKeysChange(info.expandedKeys)
+            }
+          }}
+          onDrop={(info) => {
+            if (info.dropToGap) {
+              return
+            }
+
+            const dragKey = info.dragNode.key
+            const keys = selectedKeys.includes(dragKey) ? selectedKeys : [dragKey]
+            void onMoveNodes(keys, info.node.key).catch((error: unknown) => {
+              messageApi.error(error instanceof Error ? error.message : 'Selection could not be moved.')
+            })
+          }}
           onSelect={(_, info) => {
             const key = info.node.key
             const event = info.nativeEvent
@@ -218,6 +255,19 @@ export function CatalogTreePanel({
       </div>
     </Flex>
   )
+}
+
+function canDropInto(tree: CatalogTreeModel, dragKeys: Key[], target: CatalogTreeNode) {
+  if (target.kind !== 'entries-root' && target.kind !== 'folder') {
+    return false
+  }
+
+  const targetPath = target.path ?? ''
+  return !dragKeys.some((key) => {
+    const item = tree.selectionByKey.get(String(key))
+    return item?.kind === 'folder' &&
+      (targetPath === item.path || targetPath.startsWith(`${item.path}.`))
+  })
 }
 
 function TreeNodeTitle({

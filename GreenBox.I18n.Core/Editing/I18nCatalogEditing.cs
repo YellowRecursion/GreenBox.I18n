@@ -150,5 +150,115 @@ namespace GreenBox.I18n
             return I18nEditResult.Success(entry, true);
         }
 
+        /// <summary>
+        /// Changes several entry paths as one atomic operation.
+        /// </summary>
+        /// <param name="catalog">The valid catalog to edit.</param>
+        /// <param name="moves">The requested entry IDs and destination paths.</param>
+        /// <returns>The atomic operation result.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+        public static I18nBatchEditResult MoveEntries(
+            this I18nCatalog catalog,
+            IReadOnlyCollection<I18nEntryMove> moves)
+        {
+            if (catalog == null)
+            {
+                throw new ArgumentNullException(nameof(catalog));
+            }
+
+            if (moves == null)
+            {
+                throw new ArgumentNullException(nameof(moves));
+            }
+
+            var pathsById = new Dictionary<long, string>();
+            foreach (I18nEntryMove move in moves)
+            {
+                if (move.Id <= 0)
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID must be positive: {move.Id}.");
+                }
+
+                if (!I18nPathRules.IsValid(move.Path))
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidPath,
+                        "Every path must contain dot-separated identifier segments using Latin letters, digits, and underscores.");
+                }
+
+                if (!pathsById.TryAdd(move.Id, move.Path!))
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.DuplicateEntryMove,
+                        $"Entry ID {move.Id} occurs more than once in the move operation.");
+                }
+            }
+
+            var entriesById = new Dictionary<long, I18nEntry>();
+            for (int entryIndex = 0; entryIndex < catalog.Entries.Count; entryIndex++)
+            {
+                I18nEntry entry = catalog.Entries[entryIndex];
+                if (!long.TryParse(
+                        entry.Id,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out long entryId) ||
+                    entryId <= 0)
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID '{entry.Id}' is not a positive 64-bit integer.");
+                }
+
+                entriesById.Add(entryId, entry);
+            }
+
+            foreach (long id in pathsById.Keys)
+            {
+                if (!entriesById.ContainsKey(id))
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.EntryNotFound,
+                        $"Entry with ID {id} was not found.");
+                }
+            }
+
+            var finalPathOwners = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            foreach (KeyValuePair<long, I18nEntry> pair in entriesById)
+            {
+                string finalPath = pathsById.TryGetValue(pair.Key, out string? movedPath)
+                    ? movedPath
+                    : pair.Value.Path;
+                if (finalPathOwners.TryGetValue(finalPath, out long conflictingId))
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.DuplicatePath,
+                        $"Entries {conflictingId} and {pair.Key} would both use path '{finalPath}'.");
+                }
+
+                finalPathOwners.Add(finalPath, pair.Key);
+            }
+
+            bool hasChanges = false;
+            foreach (KeyValuePair<long, string> pair in pathsById)
+            {
+                I18nEntry entry = entriesById[pair.Key];
+                if (!string.Equals(entry.Path, pair.Value, StringComparison.Ordinal))
+                {
+                    entry.Path = pair.Value;
+                    hasChanges = true;
+                }
+            }
+
+            if (hasChanges)
+            {
+                catalog.Entries.Sort(I18nEntryComparer.Canonical);
+            }
+
+            return I18nBatchEditResult.Success(hasChanges);
+        }
+
     }
 }

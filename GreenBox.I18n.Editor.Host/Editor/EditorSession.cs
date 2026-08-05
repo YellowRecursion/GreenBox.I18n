@@ -192,6 +192,58 @@ public sealed class EditorSession
     }
 
     /// <summary>
+    /// Changes several entry paths as one editor operation.
+    /// </summary>
+    /// <param name="moves">The stable entry IDs and destination paths.</param>
+    /// <returns>The operation result and updated snapshot.</returns>
+    public CatalogEditResult MoveEntries(IReadOnlyCollection<MoveCatalogEntryRequest> moves)
+    {
+        ArgumentNullException.ThrowIfNull(moves);
+
+        lock (_lock)
+        {
+            if (_catalog == null)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the editor session.");
+            }
+
+            var coreMoves = new List<I18nEntryMove>(moves.Count);
+            foreach (MoveCatalogEntryRequest move in moves)
+            {
+                if (!long.TryParse(
+                        move.Id,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out long id) ||
+                    id <= 0)
+                {
+                    return CatalogEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID must be a positive 64-bit integer: '{move.Id}'.");
+                }
+
+                coreMoves.Add(new I18nEntryMove(id, move.Path));
+            }
+
+            I18nBatchEditResult editResult = _catalog.MoveEntries(coreMoves);
+            if (!editResult.IsSuccess)
+            {
+                return CatalogEditResult.Failure(editResult.Error!.Code, editResult.Error.Message);
+            }
+
+            if (editResult.HasChanges)
+            {
+                RebuildDirtyState();
+                _revision++;
+            }
+
+            return CatalogEditResult.Success(CreateCatalogResponse());
+        }
+    }
+
+    /// <summary>
     /// Replaces the current working copy with a loaded catalog.
     /// </summary>
     /// <param name="catalogPath">The absolute path of the catalog source file.</param>

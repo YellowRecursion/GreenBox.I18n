@@ -11,6 +11,9 @@ namespace GreenBox.I18n
         /// <summary>Indicates that no entry has the requested ID.</summary>
         public const string EntryNotFound = "entry_not_found";
 
+        /// <summary>Indicates that one entry occurs more than once in a batch operation.</summary>
+        public const string DuplicateEntryMove = "duplicate_entry_move";
+
         /// <summary>Indicates that the requested path has an invalid format.</summary>
         public const string InvalidPath = "invalid_path";
 

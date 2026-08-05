@@ -21,6 +21,7 @@ public static class CatalogEndpoints
         catalogEndpoints.MapGet("/source-status", GetSourceStatus);
         catalogEndpoints.MapPost("/entries", AddEntry);
         catalogEndpoints.MapPost("/entries/remove", RemoveEntries);
+        catalogEndpoints.MapPost("/entries/move", MoveEntries);
         catalogEndpoints.MapDelete("/entries/{id:long}", RemoveEntry);
         catalogEndpoints.MapPost("/save", Save);
         catalogEndpoints.MapPost("/revert", RevertAsync);
@@ -69,6 +70,14 @@ public static class CatalogEndpoints
     private static IResult RemoveEntries(RemoveCatalogEntriesRequest request, EditorSession session)
     {
         CatalogEditResult result = session.RemoveEntries(request.Ids);
+        return result.Error == null
+            ? Results.Ok(result.Catalog)
+            : Results.Json(result.Error, statusCode: StatusCodes.Status422UnprocessableEntity);
+    }
+
+    private static IResult MoveEntries(MoveCatalogEntriesRequest request, EditorSession session)
+    {
+        CatalogEditResult result = session.MoveEntries(request.Moves);
         return result.Error == null
             ? Results.Ok(result.Catalog)
             : Results.Json(result.Error, statusCode: StatusCodes.Status422UnprocessableEntity);
