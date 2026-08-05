@@ -1,4 +1,6 @@
 using GreenBox.I18n.Editor.Host.Editor;
+using GreenBox.I18n.Editor.Host.Contracts;
+using GreenBox.I18n.Editor.Host.Infrastructure;
 
 namespace GreenBox.I18n.Editor.Host.Endpoints;
 
@@ -14,7 +16,31 @@ public static class EditorSessionEndpoints
     /// <returns>The supplied endpoint route builder.</returns>
     public static IEndpointRouteBuilder MapEditorSessionEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/session", (EditorSession session) => session.GetSnapshot());
+        RouteGroupBuilder sessionEndpoints = endpoints.MapGroup("/api/session");
+
+        sessionEndpoints.MapGet(string.Empty, (EditorSession session) => session.GetSnapshot());
+        sessionEndpoints.MapPost("/open", OpenCatalogAsync);
+
         return endpoints;
+    }
+
+    private static async Task<IResult> OpenCatalogAsync(
+        OpenCatalogRequest request,
+        CatalogFileLoader loader,
+        EditorSession session,
+        CancellationToken cancellationToken)
+    {
+        CatalogLoadResult loadResult = await loader.LoadAsync(request.Path, cancellationToken);
+        if (!loadResult.IsSuccess)
+        {
+            int statusCode = loadResult.Error!.Code == EditorErrorCodes.CatalogNotFound
+                ? StatusCodes.Status404NotFound
+                : StatusCodes.Status422UnprocessableEntity;
+
+            return Results.Json(loadResult.Error, statusCode: statusCode);
+        }
+
+        EditorSessionResponse response = session.Open(loadResult.CatalogPath!, loadResult.Catalog!);
+        return Results.Ok(response);
     }
 }

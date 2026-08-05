@@ -8,9 +8,19 @@ export function catalogSessionReducer(
 ): CatalogSessionState {
   switch (action.type) {
     case 'loaded':
-      return { status: 'ready', snapshot: action.snapshot }
+      return { status: 'ready', snapshot: action.snapshot, isOpening: false }
     case 'failed':
       return { status: 'error', message: action.message }
+    case 'open_started':
+      return state.status === 'ready'
+        ? { ...state, isOpening: true, operationError: undefined }
+        : state
+    case 'open_succeeded':
+      return { status: 'ready', snapshot: action.snapshot, isOpening: false }
+    case 'open_failed':
+      return state.status === 'ready'
+        ? { ...state, isOpening: false, operationError: action.message }
+        : state
     default:
       return state
   }

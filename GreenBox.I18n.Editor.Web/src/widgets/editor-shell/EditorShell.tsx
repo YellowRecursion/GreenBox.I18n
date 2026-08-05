@@ -1,6 +1,7 @@
 import { Alert, Flex, Spin, Typography, theme } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { useCatalogSession } from '../../entities/catalog/model/useCatalogSession'
+import { OpenCatalogForm } from '../../features/open-catalog/OpenCatalogForm'
 
 export function EditorShell() {
   const { token } = theme.useToken()
@@ -21,26 +22,36 @@ export function EditorShell() {
         GreenBox.I18n Editor
       </Typography.Title>
       <SessionStatus />
+      <OpenCatalogForm />
     </Flex>
   )
 }
 
 function SessionStatus() {
-  const session = useCatalogSession()
+  const { state } = useCatalogSession()
 
-  if (session.status === 'loading') {
+  if (state.status === 'loading') {
     return <Spin size="small" description="Connecting to editor host..." />
   }
 
-  if (session.status === 'error') {
-    return <Alert type="error" showIcon message="Editor host is unavailable" description={session.message} />
+  if (state.status === 'error') {
+    return <Alert type="error" showIcon message="Editor host is unavailable" description={state.message} />
+  }
+
+  if (state.snapshot.hasCatalog) {
+    return (
+      <Flex vertical align="center" gap={layoutTokens.spacing.xSmall}>
+        <Typography.Text>{state.snapshot.catalogPath}</Typography.Text>
+        <Typography.Text type="secondary">
+          {state.snapshot.localeCount} locales · {state.snapshot.entryCount} entries · default {state.snapshot.defaultLocale}
+        </Typography.Text>
+      </Flex>
+    )
   }
 
   return (
     <Typography.Text type="secondary">
-      {session.snapshot.hasCatalog
-        ? `Catalog working copy is ready (revision ${session.snapshot.revision}).`
-        : 'Editor host is connected. No catalog is loaded.'}
+      Editor host is connected. No catalog is loaded.
     </Typography.Text>
   )
 }

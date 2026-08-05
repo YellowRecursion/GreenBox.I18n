@@ -1,5 +1,6 @@
-import { useEffect, useReducer, type PropsWithChildren } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, type PropsWithChildren } from 'react'
 import { getCatalogSession } from '../api/getCatalogSession'
+import { openCatalog as requestOpenCatalog } from '../api/openCatalog'
 import { CatalogSessionContext } from './catalogSessionContext'
 import { catalogSessionReducer, initialCatalogSessionState } from './catalogSessionReducer'
 
@@ -21,8 +22,22 @@ export function CatalogSessionProvider({ children }: PropsWithChildren) {
     return () => abortController.abort()
   }, [])
 
+  const openCatalog = useCallback(async (path: string) => {
+    dispatch({ type: 'open_started' })
+
+    try {
+      const snapshot = await requestOpenCatalog(path)
+      dispatch({ type: 'open_succeeded', snapshot })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error.'
+      dispatch({ type: 'open_failed', message })
+    }
+  }, [])
+
+  const context = useMemo(() => ({ state, openCatalog }), [state, openCatalog])
+
   return (
-    <CatalogSessionContext.Provider value={state}>
+    <CatalogSessionContext.Provider value={context}>
       {children}
     </CatalogSessionContext.Provider>
   )

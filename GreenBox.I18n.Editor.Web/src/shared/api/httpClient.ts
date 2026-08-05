@@ -1,9 +1,30 @@
 export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(path, { signal })
+  return requestJson<T>(path, { signal })
+}
+
+export async function postJson<TResponse>(path: string, body: unknown): Promise<TResponse> {
+  return requestJson<TResponse>(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+async function requestJson<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(path, init)
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}.`)
+    const error = await readError(response)
+    throw new Error(error?.message ?? `Request failed with status ${response.status}.`)
   }
 
   return response.json() as Promise<T>
+}
+
+async function readError(response: Response): Promise<{ message?: string } | undefined> {
+  try {
+    return (await response.json()) as { message?: string }
+  } catch {
+    return undefined
+  }
 }
