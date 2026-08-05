@@ -7,11 +7,20 @@ export function catalogReducer(state: CatalogState, action: CatalogAction): Cata
     case 'unavailable':
       return { status: 'unavailable' }
     case 'load_started':
-      return { status: 'loading' }
+      return state.status === 'ready' && state.catalogPath === action.catalogPath
+        ? { ...state, isRefreshing: true, refreshError: undefined }
+        : { status: 'loading' }
     case 'loaded':
-      return { status: 'ready', catalog: action.catalog }
+      return {
+        status: 'ready',
+        catalog: action.catalog,
+        catalogPath: action.catalogPath,
+        isRefreshing: false,
+      }
     case 'failed':
-      return { status: 'error', message: action.message }
+      return state.status === 'ready'
+        ? { ...state, isRefreshing: false, refreshError: action.message }
+        : { status: 'error', message: action.message }
     default:
       return state
   }

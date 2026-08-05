@@ -33,11 +33,17 @@ export interface CatalogAssetReference {
 export type CatalogState =
   | { status: 'unavailable' }
   | { status: 'loading' }
-  | { status: 'ready'; catalog: CatalogSnapshot }
+  | {
+      status: 'ready'
+      catalog: CatalogSnapshot
+      catalogPath: string
+      isRefreshing: boolean
+      refreshError?: string
+    }
   | { status: 'error'; message: string }
 
 export type CatalogAction =
   | { type: 'unavailable' }
-  | { type: 'load_started' }
-  | { type: 'loaded'; catalog: CatalogSnapshot }
+  | { type: 'load_started'; catalogPath: string }
+  | { type: 'loaded'; catalog: CatalogSnapshot; catalogPath: string }
   | { type: 'failed'; message: string }

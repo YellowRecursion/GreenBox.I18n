@@ -59,7 +59,7 @@ export function EditorShell() {
 
   return (
     <CatalogWorkspace
-      key={catalog.catalog.revision}
+      key={session.snapshot.catalogPath ?? ''}
       catalog={catalog.catalog}
       catalogPath={session.snapshot.catalogPath ?? ''}
     />
