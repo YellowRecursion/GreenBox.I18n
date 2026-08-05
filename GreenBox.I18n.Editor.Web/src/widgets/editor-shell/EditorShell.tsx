@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState, type Key, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
 import { Alert, Flex, Spin, Splitter, Typography, theme } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogSnapshot } from '../../entities/catalog/model/catalog'
 import type { CatalogEntryMove } from '../../entities/catalog/api/moveCatalogEntries'
+import type { CatalogEntryDelta } from '../../entities/catalog/api/applyCatalogEntryDelta'
 import { useCatalog } from '../../entities/catalog/model/useCatalog'
 import { useCatalogSession } from '../../entities/catalog/model/useCatalogSession'
 import { useCatalogSourceMonitor } from '../../entities/catalog/model/useCatalogSourceMonitor'
@@ -10,12 +11,29 @@ import { OpenCatalogDialog } from '../../features/open-catalog/OpenCatalogDialog
 import { CatalogInspector } from './CatalogInspector'
 import { CatalogTreePanel } from './CatalogTreePanel'
 import { EditorHeader } from './EditorHeader'
-import { buildCatalogTree } from './catalogTree'
+import { buildCatalogTree, type CatalogSelectionItem } from './catalogTree'
+import {
+  createEditorHistoryEntry,
+  emptyEditorHistory,
+  type EditorHistoryEntry,
+  type EditorHistoryStateSnapshot,
+} from './editorHistory'
+
+const historyLimit = 100
 
 export function EditorShell() {
   const { token } = theme.useToken()
   const { state: session } = useCatalogSession()
-  const { state: catalog, addEntry, removeEntries, moveEntries, save, revert, mergeSource } = useCatalog()
+  const {
+    state: catalog,
+    addEntry,
+    removeEntries,
+    moveEntries,
+    applyEntryDelta,
+    save,
+    revert,
+    mergeSource,
+  } = useCatalog()
 
   if (session.status === 'error') {
     return (
@@ -67,6 +85,7 @@ export function EditorShell() {
       onAddEntry={addEntry}
       onRemoveEntries={removeEntries}
       onMoveEntries={moveEntries}
+      onApplyEntryDelta={applyEntryDelta}
       onSave={save}
       onRevert={revert}
       onMergeSource={mergeSource}
@@ -80,6 +99,7 @@ function CatalogWorkspace({
   onAddEntry,
   onRemoveEntries,
   onMoveEntries,
+  onApplyEntryDelta,
   onSave,
   onRevert,
   onMergeSource,
@@ -89,6 +109,7 @@ function CatalogWorkspace({
   onAddEntry(path: string): Promise<CatalogSnapshot>
   onRemoveEntries(ids: string[]): Promise<CatalogSnapshot>
   onMoveEntries(moves: CatalogEntryMove[]): Promise<CatalogSnapshot>
+  onApplyEntryDelta(delta: CatalogEntryDelta, expectedRevision: number): Promise<CatalogSnapshot>
   onSave(overwriteExternalChanges?: boolean): Promise<CatalogSnapshot>
   onRevert(): Promise<CatalogSnapshot>
   onMergeSource(): Promise<CatalogSnapshot>
@@ -97,6 +118,9 @@ function CatalogWorkspace({
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
   const [expandedKeys, setExpandedKeys] = useState<Key[]>(['root:entries'])
   const [temporaryFolderPaths, setTemporaryFolderPaths] = useState<string[]>([])
+  const [history, setHistory] = useState(emptyEditorHistory)
+  const [historyDirection, setHistoryDirection] = useState<'undo' | 'redo'>()
+  const historyBusyRef = useRef(false)
   const tree = useMemo(
     () => buildCatalogTree(catalog, temporaryFolderPaths),
     [catalog, temporaryFolderPaths],
@@ -106,7 +130,73 @@ function CatalogWorkspace({
     return item ? [item] : []
   })
 
+  const clearHistory = useCallback(() => {
+    setHistory(emptyEditorHistory)
+  }, [])
+
+  const recordHistory = useCallback((entry: EditorHistoryEntry | undefined) => {
+    if (!entry) {
+      return
+    }
+
+    setHistory((current) => ({
+      undo: [...current.undo, entry].slice(-historyLimit),
+      redo: [],
+    }))
+  }, [])
+
+  const applyHistorySnapshot = useCallback(async (snapshot: EditorHistoryStateSnapshot) => {
+    if (snapshot.entryDelta.entries.length > 0 || snapshot.entryDelta.removedIds.length > 0) {
+      await onApplyEntryDelta(snapshot.entryDelta, catalog.revision)
+    }
+
+    setTemporaryFolderPaths(snapshot.temporaryFolderPaths)
+    setSelectedKeys([])
+  }, [catalog.revision, onApplyEntryDelta])
+
+  const applyHistoryEntry = useCallback(async (
+    direction: 'undo' | 'redo',
+    entry: EditorHistoryEntry,
+  ) => {
+    if (historyBusyRef.current) {
+      return
+    }
+
+    historyBusyRef.current = true
+    setHistoryDirection(direction)
+    try {
+      await applyHistorySnapshot(direction === 'undo' ? entry.before : entry.after)
+      setHistory((current) => direction === 'undo'
+        ? {
+            undo: current.undo.slice(0, -1),
+            redo: [...current.redo, entry].slice(-historyLimit),
+          }
+        : {
+            undo: [...current.undo, entry].slice(-historyLimit),
+            redo: current.redo.slice(0, -1),
+          })
+    } finally {
+      historyBusyRef.current = false
+      setHistoryDirection(undefined)
+    }
+  }, [applyHistorySnapshot])
+
+  const handleUndo = useCallback(async () => {
+    const entry = history.undo.at(-1)
+    if (entry) {
+      await applyHistoryEntry('undo', entry)
+    }
+  }, [applyHistoryEntry, history.undo])
+
+  const handleRedo = useCallback(async () => {
+    const entry = history.redo.at(-1)
+    if (entry) {
+      await applyHistoryEntry('redo', entry)
+    }
+  }, [applyHistoryEntry, history.redo])
+
   const handleAddEntry = async (path: string) => {
+    const beforeTemporaryFolderPaths = temporaryFolderPaths
     const updatedCatalog = await onAddEntry(path)
     const entry = updatedCatalog.entries.find((candidate) => candidate.path === path)
     if (!entry) {
@@ -115,8 +205,16 @@ function CatalogWorkspace({
 
     const key = `entry:${entry.id}`
     const parentPath = path.includes('.') ? path.slice(0, path.lastIndexOf('.')) : ''
-    setTemporaryFolderPaths((paths) => paths.filter((temporaryPath) =>
-      parentPath !== temporaryPath && !parentPath.startsWith(`${temporaryPath}.`)))
+    const afterTemporaryFolderPaths = temporaryFolderPaths.filter((temporaryPath) =>
+      parentPath !== temporaryPath && !parentPath.startsWith(`${temporaryPath}.`))
+    setTemporaryFolderPaths(afterTemporaryFolderPaths)
+    recordHistory(createEditorHistoryEntry(
+      `Add ${path}`,
+      catalog,
+      updatedCatalog,
+      beforeTemporaryFolderPaths,
+      afterTemporaryFolderPaths,
+    ))
     return key
   }
 
@@ -128,11 +226,20 @@ function CatalogWorkspace({
     }
 
     const key = `folder:${path}`
-    setTemporaryFolderPaths((paths) => [...paths, path])
+    const afterTemporaryFolderPaths = [...temporaryFolderPaths, path]
+    setTemporaryFolderPaths(afterTemporaryFolderPaths)
+    recordHistory(createEditorHistoryEntry(
+      `Add folder ${path}`,
+      catalog,
+      catalog,
+      temporaryFolderPaths,
+      afterTemporaryFolderPaths,
+    ))
     return key
   }
 
   const handleRemoveNodes = async (keys: Key[]) => {
+    const beforeTemporaryFolderPaths = temporaryFolderPaths
     const items = keys.flatMap((key) => {
       const item = tree.selectionByKey.get(String(key))
       return item ? [item] : []
@@ -150,13 +257,14 @@ function CatalogWorkspace({
       }
     }
 
-    if (entryIds.size > 0) {
-      await onRemoveEntries([...entryIds])
-    }
+    const updatedCatalog = entryIds.size > 0
+      ? await onRemoveEntries([...entryIds])
+      : catalog
 
-    setTemporaryFolderPaths((paths) => paths.filter((temporaryPath) =>
+    const afterTemporaryFolderPaths = temporaryFolderPaths.filter((temporaryPath) =>
       !folderPaths.some((path) =>
-        temporaryPath === path || temporaryPath.startsWith(`${path}.`))))
+        temporaryPath === path || temporaryPath.startsWith(`${path}.`)))
+    setTemporaryFolderPaths(afterTemporaryFolderPaths)
     setSelectedKeys((selected) => selected.filter((key) => {
       const value = String(key)
       if (value.startsWith('entry:') && entryIds.has(value.slice('entry:'.length))) {
@@ -166,9 +274,17 @@ function CatalogWorkspace({
       return !folderPaths.some((path) =>
         value === `folder:${path}` || value.startsWith(`folder:${path}.`))
     }))
+    recordHistory(createEditorHistoryEntry(
+      describeRemoveOperation(items, entryIds.size),
+      catalog,
+      updatedCatalog,
+      beforeTemporaryFolderPaths,
+      afterTemporaryFolderPaths,
+    ))
   }
 
   const handleMoveNodes = async (keys: Key[], targetKey: Key) => {
+    const beforeTemporaryFolderPaths = temporaryFolderPaths
     const targetPath = getContainerPath(tree, targetKey)
     const selectedItems = keys.flatMap((key) => {
       const item = tree.selectionByKey.get(String(key))
@@ -225,23 +341,32 @@ function CatalogWorkspace({
     const emptySourceFolders = [...possibleEmptySourceFolders].filter((folderPath) =>
       !finalEntryPaths.some((entryPath) => entryPath.startsWith(`${folderPath}.`)))
 
-    if (movesById.size > 0) {
-      await onMoveEntries([...movesById.values()])
-    }
+    const updatedCatalog = movesById.size > 0
+      ? await onMoveEntries([...movesById.values()])
+      : catalog
 
-    setTemporaryFolderPaths((paths) => [...new Set([
-      ...paths.map((path) => replaceMovedFolderPrefix(path, folderDestinations)),
+    const afterTemporaryFolderPaths = [...new Set([
+      ...temporaryFolderPaths.map((path) => replaceMovedFolderPrefix(path, folderDestinations)),
       ...emptySourceFolders,
-    ])])
+    ])]
+    setTemporaryFolderPaths(afterTemporaryFolderPaths)
     setSelectedKeys((selected) => selected.map((key) =>
       replaceMovedFolderKey(key, folderDestinations)))
     setExpandedKeys((expanded) => mergeKeys(
       expanded.map((key) => replaceMovedFolderKey(key, folderDestinations)),
       [...folderDestinations.values()].map((path) => `folder:${path}`),
     ))
+    recordHistory(createEditorHistoryEntry(
+      describeMoveOperation(selectedItems, targetPath),
+      catalog,
+      updatedCatalog,
+      beforeTemporaryFolderPaths,
+      afterTemporaryFolderPaths,
+    ))
   }
 
   const handleRenameNode = async (key: Key, name: string) => {
+    const beforeTemporaryFolderPaths = temporaryFolderPaths
     const item = tree.selectionByKey.get(String(key))
     if (!item || item.kind === 'locale') {
       throw new Error('Only entries and folders can be renamed.')
@@ -249,7 +374,14 @@ function CatalogWorkspace({
 
     if (item.kind === 'entry') {
       const path = joinPath(getParentPath(item.entry.path), name)
-      await onMoveEntries([{ id: item.entry.id, path }])
+      const updatedCatalog = await onMoveEntries([{ id: item.entry.id, path }])
+      recordHistory(createEditorHistoryEntry(
+        `Rename ${item.entry.path} to ${path}`,
+        catalog,
+        updatedCatalog,
+        beforeTemporaryFolderPaths,
+        beforeTemporaryFolderPaths,
+      ))
       return `entry:${item.entry.id}`
     }
 
@@ -268,24 +400,33 @@ function CatalogWorkspace({
         id: entry.id,
         path: `${destinationPath}${entry.path.slice(item.path.length)}`,
       }))
-    if (moves.length > 0) {
-      await onMoveEntries(moves)
-    }
+    const updatedCatalog = moves.length > 0
+      ? await onMoveEntries(moves)
+      : catalog
 
     const destinations = new Map([[item.path, destinationPath]])
-    setTemporaryFolderPaths((paths) => paths.map((path) =>
-      replaceMovedFolderPrefix(path, destinations)))
+    const afterTemporaryFolderPaths = temporaryFolderPaths.map((path) =>
+      replaceMovedFolderPrefix(path, destinations))
+    setTemporaryFolderPaths(afterTemporaryFolderPaths)
     setSelectedKeys((selected) => selected.map((selectedKey) =>
       replaceMovedFolderKey(selectedKey, destinations)))
     setExpandedKeys((expanded) => expanded.map((expandedKey) =>
       replaceMovedFolderKey(expandedKey, destinations)))
+    recordHistory(createEditorHistoryEntry(
+      `Rename ${item.path} to ${destinationPath}`,
+      catalog,
+      updatedCatalog,
+      beforeTemporaryFolderPaths,
+      afterTemporaryFolderPaths,
+    ))
     return `folder:${destinationPath}`
   }
 
   const reloadFromDisk = useCallback(async () => {
     await onRevert()
     setTemporaryFolderPaths([])
-  }, [onRevert])
+    clearHistory()
+  }, [clearHistory, onRevert])
 
   const isDirty =
     (catalog.hasChanges ??
@@ -294,7 +435,8 @@ function CatalogWorkspace({
 
   const mergeFromDisk = useCallback(async () => {
     await onMergeSource()
-  }, [onMergeSource])
+    clearHistory()
+  }, [clearHistory, onMergeSource])
 
   const sourceMonitor = useCatalogSourceMonitor(mergeFromDisk)
 
@@ -315,6 +457,11 @@ function CatalogWorkspace({
         catalogPath={catalogPath}
         isDirty={isDirty}
         sourceStatus={sourceMonitor.status}
+        undoLabel={history.undo.at(-1)?.label}
+        redoLabel={history.redo.at(-1)?.label}
+        historyDirection={historyDirection}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
         onSave={handleSave}
         onRevert={handleRevert}
       />
@@ -361,6 +508,37 @@ function getContainerPath(tree: ReturnType<typeof buildCatalogTree>, key: Key) {
   }
 
   return item.path
+}
+
+function describeRemoveOperation(items: CatalogSelectionItem[], removedEntryCount: number) {
+  if (items.length === 1) {
+    const item = items[0]
+    if (item.kind === 'entry') {
+      return `Delete ${item.entry.path}`
+    }
+
+    if (item.kind === 'folder') {
+      return `Delete folder ${item.path}`
+    }
+  }
+
+  const affectedCount = removedEntryCount || items.length
+  return `Delete ${affectedCount} ${affectedCount === 1 ? 'item' : 'items'}`
+}
+
+function describeMoveOperation(items: CatalogSelectionItem[], targetPath: string) {
+  const destination = targetPath || 'Entries'
+  if (items.length === 1) {
+    const item = items[0]
+    const source = item.kind === 'entry'
+      ? item.entry.path
+      : item.kind === 'folder'
+        ? item.path
+        : item.locale.id
+    return `Move ${source} to ${destination}`
+  }
+
+  return `Move ${items.length} items to ${destination}`
 }
 
 function joinPath(parent: string, name: string) {

@@ -22,6 +22,7 @@ public static class CatalogEndpoints
         catalogEndpoints.MapPost("/entries", AddEntry);
         catalogEndpoints.MapPost("/entries/remove", RemoveEntries);
         catalogEndpoints.MapPost("/entries/move", MoveEntries);
+        catalogEndpoints.MapPost("/entries/apply-delta", ApplyEntryDelta);
         catalogEndpoints.MapDelete("/entries/{id:long}", RemoveEntry);
         catalogEndpoints.MapPost("/save", Save);
         catalogEndpoints.MapPost("/revert", RevertAsync);
@@ -81,6 +82,25 @@ public static class CatalogEndpoints
         return result.Error == null
             ? Results.Ok(result.Catalog)
             : Results.Json(result.Error, statusCode: StatusCodes.Status422UnprocessableEntity);
+    }
+
+    private static IResult ApplyEntryDelta(
+        ApplyCatalogEntryDeltaRequest request,
+        EditorSession session)
+    {
+        CatalogEditResult result = session.ApplyEntryDelta(
+            request.ExpectedRevision,
+            request.Entries,
+            request.RemovedIds);
+        if (result.Error == null)
+        {
+            return Results.Ok(result.Catalog);
+        }
+
+        int statusCode = result.Error.Code == EditorErrorCodes.CatalogRevisionMismatch
+            ? StatusCodes.Status409Conflict
+            : StatusCodes.Status422UnprocessableEntity;
+        return Results.Json(result.Error, statusCode: statusCode);
     }
 
     private static IResult Save(SaveCatalogRequest request, EditorSession session)

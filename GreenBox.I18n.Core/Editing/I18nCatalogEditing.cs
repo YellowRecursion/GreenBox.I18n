@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace GreenBox.I18n
 {
@@ -255,6 +256,147 @@ namespace GreenBox.I18n
             if (hasChanges)
             {
                 catalog.Entries.Sort(I18nEntryComparer.Canonical);
+            }
+
+            return I18nBatchEditResult.Success(hasChanges);
+        }
+
+        /// <summary>
+        /// Atomically adds or replaces complete entries and removes entries by stable ID.
+        /// </summary>
+        /// <param name="catalog">The catalog to edit.</param>
+        /// <param name="entries">The complete entry values to add or replace.</param>
+        /// <param name="removedIds">The stable IDs that must be absent after the operation.</param>
+        /// <returns>The atomic operation result.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when an argument is null.</exception>
+        public static I18nBatchEditResult ApplyEntryDelta(
+            this I18nCatalog catalog,
+            IReadOnlyCollection<I18nEntry> entries,
+            IReadOnlyCollection<long> removedIds)
+        {
+            if (catalog == null)
+            {
+                throw new ArgumentNullException(nameof(catalog));
+            }
+
+            if (entries == null)
+            {
+                throw new ArgumentNullException(nameof(entries));
+            }
+
+            if (removedIds == null)
+            {
+                throw new ArgumentNullException(nameof(removedIds));
+            }
+
+            var removedIdSet = new HashSet<long>();
+            foreach (long id in removedIds)
+            {
+                if (id <= 0)
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID must be positive: {id}.");
+                }
+
+                if (!removedIdSet.Add(id))
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID {id} occurs more than once in the removal delta.");
+                }
+            }
+
+            var replacementsById = new Dictionary<long, I18nEntry>();
+            foreach (I18nEntry entry in entries)
+            {
+                if (!long.TryParse(
+                        entry.Id,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out long id) ||
+                    id <= 0)
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID '{entry.Id}' is not a positive 64-bit integer.");
+                }
+
+                if (!replacementsById.TryAdd(id, entry))
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID {id} occurs more than once in the replacement delta.");
+                }
+
+                if (removedIdSet.Contains(id))
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID {id} cannot be replaced and removed by the same delta.");
+                }
+            }
+
+            var finalEntriesById = new Dictionary<long, I18nEntry>();
+            foreach (I18nEntry entry in catalog.Entries)
+            {
+                if (!long.TryParse(
+                        entry.Id,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out long id) ||
+                    id <= 0)
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID '{entry.Id}' is not a positive 64-bit integer.");
+                }
+
+                if (!finalEntriesById.TryAdd(id, entry))
+                {
+                    return I18nBatchEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID {id} occurs more than once in the catalog.");
+                }
+            }
+
+            foreach (long id in removedIdSet)
+            {
+                finalEntriesById.Remove(id);
+            }
+
+            foreach (KeyValuePair<long, I18nEntry> replacement in replacementsById)
+            {
+                finalEntriesById[replacement.Key] = replacement.Value;
+            }
+
+            List<I18nEntry> finalEntries = finalEntriesById.Values
+                .OrderBy(entry => entry, I18nEntryComparer.Canonical)
+                .ToList();
+            var candidate = new I18nCatalog
+            {
+                SchemaVersion = catalog.SchemaVersion,
+                DefaultLocale = catalog.DefaultLocale,
+                Locales = catalog.Locales,
+                Entries = finalEntries,
+            };
+
+            I18nValidationResult validation = I18nCatalogValidator.Validate(candidate);
+            if (validation.HasErrors)
+            {
+                return I18nBatchEditResult.Failure(
+                    I18nEditCodes.InvalidEntryDelta,
+                    $"Entry delta produced {validation.ErrorCount} validation " +
+                    (validation.ErrorCount == 1 ? "error." : "errors."));
+            }
+
+            bool hasChanges = !string.Equals(
+                I18nCatalogJson.Serialize(catalog),
+                I18nCatalogJson.Serialize(candidate),
+                StringComparison.Ordinal);
+            if (hasChanges)
+            {
+                catalog.Entries = finalEntries;
             }
 
             return I18nBatchEditResult.Success(hasChanges);

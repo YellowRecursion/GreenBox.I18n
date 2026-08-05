@@ -26,6 +26,9 @@ public static class EditorErrorCodes
     /// <summary>Indicates that the editor session has no open catalog.</summary>
     public const string CatalogNotOpen = "catalog_not_open";
 
+    /// <summary>Indicates that an edit was based on an outdated working-copy revision.</summary>
+    public const string CatalogRevisionMismatch = "catalog_revision_mismatch";
+
     /// <summary>Indicates that the catalog file changed after it was loaded.</summary>
     public const string CatalogChangedExternally = "catalog_changed_externally";
 

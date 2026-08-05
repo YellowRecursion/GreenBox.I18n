@@ -22,6 +22,9 @@ namespace GreenBox.I18n
 
         /// <summary>Indicates that a unique random entry ID could not be allocated.</summary>
         public const string IdSpaceExhausted = "id_space_exhausted";
+
+        /// <summary>Indicates that an entry delta would produce an invalid catalog.</summary>
+        public const string InvalidEntryDelta = "invalid_entry_delta";
     }
 
     /// <summary>

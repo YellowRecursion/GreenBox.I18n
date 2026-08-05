@@ -1,6 +1,6 @@
-import { DownOutlined, SaveOutlined, TranslationOutlined, UndoOutlined } from '@ant-design/icons'
+import { DownOutlined, RedoOutlined, SaveOutlined, TranslationOutlined, UndoOutlined } from '@ant-design/icons'
 import { useCallback, useEffect, useState } from 'react'
-import { Button, Dropdown, Flex, Modal, Space, Typography, message, theme, type MenuProps } from 'antd'
+import { Button, Dropdown, Flex, Modal, Space, Tooltip, Typography, message, theme, type MenuProps } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { OpenCatalogDialog } from '../../features/open-catalog/OpenCatalogDialog'
 import { HttpError } from '../../shared/api/httpClient'
@@ -10,11 +10,27 @@ interface EditorHeaderProps {
   catalogPath: string
   isDirty: boolean
   sourceStatus: CatalogSourceStatus
+  undoLabel?: string
+  redoLabel?: string
+  historyDirection?: 'undo' | 'redo'
+  onUndo(): Promise<void>
+  onRedo(): Promise<void>
   onSave(overwriteExternalChanges?: boolean): Promise<void>
   onRevert(): Promise<void>
 }
 
-export function EditorHeader({ catalogPath, isDirty, sourceStatus, onSave, onRevert }: EditorHeaderProps) {
+export function EditorHeader({
+  catalogPath,
+  isDirty,
+  sourceStatus,
+  undoLabel,
+  redoLabel,
+  historyDirection,
+  onUndo,
+  onRedo,
+  onSave,
+  onRevert,
+}: EditorHeaderProps) {
   const { token } = theme.useToken()
   const [isSaving, setIsSaving] = useState(false)
   const [isReverting, setIsReverting] = useState(false)
@@ -67,19 +83,42 @@ export function EditorHeader({ catalogPath, isDirty, sourceStatus, onSave, onRev
     })
   }, [modalApi, revert])
 
+  const applyHistory = useCallback(async (direction: 'undo' | 'redo') => {
+    try {
+      await (direction === 'undo' ? onUndo() : onRedo())
+    } catch (error: unknown) {
+      messageApi.error(error instanceof Error ? error.message : 'History operation failed.')
+    }
+  }, [messageApi, onRedo, onUndo])
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 's') {
+      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyS') {
         event.preventDefault()
         if (isDirty && !isSaving) {
           void save()
         }
+        return
+      }
+
+      if (!(event.ctrlKey || event.metaKey) || isTextEditingTarget(event.target)) {
+        return
+      }
+
+      const wantsRedo = event.code === 'KeyY' || event.code === 'KeyZ' && event.shiftKey
+      const wantsUndo = event.code === 'KeyZ' && !event.shiftKey
+      if (wantsUndo && undoLabel && !historyDirection) {
+        event.preventDefault()
+        void applyHistory('undo')
+      } else if (wantsRedo && redoLabel && !historyDirection) {
+        event.preventDefault()
+        void applyHistory('redo')
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isDirty, isSaving, save])
+  }, [applyHistory, historyDirection, isDirty, isSaving, redoLabel, save, undoLabel])
 
   const saveMenu: MenuProps = {
     items: [
@@ -162,6 +201,27 @@ export function EditorHeader({ catalogPath, isDirty, sourceStatus, onSave, onRev
       )}
 
       <Space.Compact>
+        <Tooltip title={undoLabel ? `Undo ${undoLabel} (Ctrl+Z)` : 'Nothing to undo'}>
+          <Button
+            icon={<UndoOutlined />}
+            aria-label={undoLabel ? `Undo ${undoLabel}` : 'Undo'}
+            disabled={!undoLabel || Boolean(historyDirection)}
+            loading={historyDirection === 'undo'}
+            onClick={() => void applyHistory('undo')}
+          />
+        </Tooltip>
+        <Tooltip title={redoLabel ? `Redo ${redoLabel} (Ctrl+Shift+Z)` : 'Nothing to redo'}>
+          <Button
+            icon={<RedoOutlined />}
+            aria-label={redoLabel ? `Redo ${redoLabel}` : 'Redo'}
+            disabled={!redoLabel || Boolean(historyDirection)}
+            loading={historyDirection === 'redo'}
+            onClick={() => void applyHistory('redo')}
+          />
+        </Tooltip>
+      </Space.Compact>
+
+      <Space.Compact>
         <Button
           type="primary"
           disabled={!isDirty}
@@ -211,6 +271,13 @@ export function EditorHeader({ catalogPath, isDirty, sourceStatus, onSave, onRev
       </Modal>
     </Flex>
   )
+}
+
+function isTextEditingTarget(target: EventTarget | null) {
+  return target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target instanceof HTMLElement && target.isContentEditable
 }
 
 function truncateMiddle(value: string, maxLength: number) {

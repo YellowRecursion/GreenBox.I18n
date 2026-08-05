@@ -244,6 +244,75 @@ public sealed class EditorSession
     }
 
     /// <summary>
+    /// Atomically restores complete entry values and removes entries by stable ID.
+    /// </summary>
+    /// <param name="expectedRevision">The working-copy revision on which the delta is based.</param>
+    /// <param name="entries">The entries to add or replace.</param>
+    /// <param name="removedIds">The IDs that must be absent after the operation.</param>
+    /// <returns>The operation result and updated snapshot.</returns>
+    public CatalogEditResult ApplyEntryDelta(
+        long expectedRevision,
+        IReadOnlyCollection<CatalogEntryEditRequest> entries,
+        IReadOnlyCollection<string> removedIds)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        ArgumentNullException.ThrowIfNull(removedIds);
+
+        lock (_lock)
+        {
+            if (_catalog == null)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the editor session.");
+            }
+
+            if (expectedRevision != _revision)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogRevisionMismatch,
+                    $"The entry delta expected revision {expectedRevision}, but the working copy is at revision {_revision}.");
+            }
+
+            var parsedRemovedIds = new List<long>(removedIds.Count);
+            foreach (string id in removedIds)
+            {
+                if (!long.TryParse(
+                        id,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out long numericId) ||
+                    numericId <= 0)
+                {
+                    return CatalogEditResult.Failure(
+                        I18nEditCodes.InvalidId,
+                        $"Entry ID must be a positive 64-bit integer: '{id}'.");
+                }
+
+                parsedRemovedIds.Add(numericId);
+            }
+
+            I18nBatchEditResult editResult = _catalog.ApplyEntryDelta(
+                entries.Select(CreateEntry).ToArray(),
+                parsedRemovedIds);
+            if (!editResult.IsSuccess)
+            {
+                return CatalogEditResult.Failure(
+                    editResult.Error!.Code,
+                    editResult.Error.Message);
+            }
+
+            if (editResult.HasChanges)
+            {
+                RebuildDirtyState();
+                _revision++;
+            }
+
+            return CatalogEditResult.Success(CreateCatalogResponse());
+        }
+    }
+
+    /// <summary>
     /// Replaces the current working copy with a loaded catalog.
     /// </summary>
     /// <param name="catalogPath">The absolute path of the catalog source file.</param>
@@ -413,6 +482,30 @@ public sealed class EditorSession
     {
         return ReferenceEquals(left, right) || left != null && right != null &&
             left.AssetGuid == right.AssetGuid && left.LocalFileId == right.LocalFileId;
+    }
+
+    private static I18nEntry CreateEntry(CatalogEntryEditRequest source)
+    {
+        return new I18nEntry
+        {
+            Id = source.Id,
+            Path = source.Path,
+            Comment = source.Comment,
+            Locales = source.Locales.ToDictionary(
+                pair => pair.Key,
+                pair => new I18nLocaleValue
+                {
+                    Text = pair.Value.Text,
+                    Asset = pair.Value.Asset == null
+                        ? null
+                        : new I18nAssetReference
+                        {
+                            AssetGuid = pair.Value.Asset.AssetGuid,
+                            LocalFileId = pair.Value.Asset.LocalFileId,
+                        },
+                },
+                StringComparer.Ordinal),
+        };
     }
 
     private static I18nCatalog CloneCatalog(I18nCatalog catalog)
