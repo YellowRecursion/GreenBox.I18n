@@ -261,9 +261,19 @@ function CatalogWorkspace({
       ? await onRemoveEntries([...entryIds])
       : catalog
 
-    const afterTemporaryFolderPaths = temporaryFolderPaths.filter((temporaryPath) =>
-      !folderPaths.some((path) =>
-        temporaryPath === path || temporaryPath.startsWith(`${path}.`)))
+    const possibleEmptySourceFolders = catalog.entries
+      .filter((entry) => entryIds.has(entry.id))
+      .filter((entry) => !folderPaths.some((path) => entry.path.startsWith(`${path}.`)))
+      .map((entry) => getParentPath(entry.path))
+      .filter((path) => Boolean(path))
+    const emptySourceFolders = possibleEmptySourceFolders.filter((folderPath) =>
+      !updatedCatalog.entries.some((entry) => entry.path.startsWith(`${folderPath}.`)))
+    const afterTemporaryFolderPaths = [...new Set([
+      ...temporaryFolderPaths.filter((temporaryPath) =>
+        !folderPaths.some((path) =>
+          temporaryPath === path || temporaryPath.startsWith(`${path}.`))),
+      ...emptySourceFolders,
+    ])]
     setTemporaryFolderPaths(afterTemporaryFolderPaths)
     setSelectedKeys((selected) => selected.filter((key) => {
       const value = String(key)
