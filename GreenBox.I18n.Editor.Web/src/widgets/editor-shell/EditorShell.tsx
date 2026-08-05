@@ -151,8 +151,15 @@ function CatalogWorkspace({
     }
 
     setTemporaryFolderPaths(snapshot.temporaryFolderPaths)
-    setSelectedKeys([])
-  }, [catalog.revision, onApplyEntryDelta])
+    const selectedEntryIds = new Set(selectedKeys
+      .map(String)
+      .filter((key) => key.startsWith('entry:'))
+      .map((key) => key.slice('entry:'.length)))
+    const selectedEntryAncestorKeys = snapshot.entryDelta.entries
+      .filter((entry) => selectedEntryIds.has(entry.id))
+      .flatMap((entry) => getEntryAncestorFolderKeys(entry.path))
+    setExpandedKeys((expanded) => mergeKeys(expanded, selectedEntryAncestorKeys))
+  }, [catalog.revision, onApplyEntryDelta, selectedKeys])
 
   const applyHistoryEntry = useCallback(async (
     direction: 'undo' | 'redo',
@@ -432,6 +439,50 @@ function CatalogWorkspace({
     return `folder:${destinationPath}`
   }
 
+  const handleEntryPathChange = async (id: string, path: string) => {
+    const entry = catalog.entries.find((candidate) => candidate.id === id)
+    if (!entry) {
+      throw new Error(`Entry '${id}' does not exist.`)
+    }
+
+    const beforeTemporaryFolderPaths = temporaryFolderPaths
+    const updatedCatalog = await onMoveEntries([{ id, path }])
+    setExpandedKeys((expanded) => mergeKeys(expanded, getEntryAncestorFolderKeys(path)))
+    const sourceFolderPath = getParentPath(entry.path)
+    const sourceFolderIsEmpty = sourceFolderPath &&
+      !updatedCatalog.entries.some((candidate) => candidate.path.startsWith(`${sourceFolderPath}.`))
+    const afterTemporaryFolderPaths = sourceFolderIsEmpty
+      ? [...new Set([...temporaryFolderPaths, sourceFolderPath])]
+      : temporaryFolderPaths
+    setTemporaryFolderPaths(afterTemporaryFolderPaths)
+    recordHistory(createEditorHistoryEntry(
+      `Move ${entry.path} to ${path}`,
+      catalog,
+      updatedCatalog,
+      beforeTemporaryFolderPaths,
+      afterTemporaryFolderPaths,
+    ))
+  }
+
+  const handleEntryCommentChange = async (id: string, comment: string | null) => {
+    const entry = catalog.entries.find((candidate) => candidate.id === id)
+    if (!entry) {
+      throw new Error(`Entry '${id}' does not exist.`)
+    }
+
+    const updatedCatalog = await onApplyEntryDelta({
+      entries: [{ ...entry, comment }],
+      removedIds: [],
+    }, catalog.revision)
+    recordHistory(createEditorHistoryEntry(
+      `Edit comment for ${entry.path}`,
+      catalog,
+      updatedCatalog,
+      temporaryFolderPaths,
+      temporaryFolderPaths,
+    ))
+  }
+
   const reloadFromDisk = useCallback(async () => {
     await onRevert()
     setTemporaryFolderPaths([])
@@ -494,11 +545,21 @@ function CatalogWorkspace({
           </div>
         </Splitter.Panel>
         <Splitter.Panel min="360">
-          <div style={{ height: '100%', padding: layoutTokens.spacing.xLarge, overflow: 'auto' }}>
+          <div
+            style={{
+              height: '100%',
+              paddingTop: layoutTokens.spacing.large,
+              paddingInline: layoutTokens.spacing.xLarge,
+              paddingBottom: layoutTokens.spacing.xLarge,
+              overflow: 'auto',
+            }}
+          >
             <CatalogInspector
               selection={selection}
               defaultLocale={catalog.defaultLocale}
               locales={catalog.locales}
+              onEntryPathChange={handleEntryPathChange}
+              onEntryCommentChange={handleEntryCommentChange}
             />
           </div>
         </Splitter.Panel>
@@ -562,6 +623,11 @@ function getLastSegment(path: string) {
 function getParentPath(path: string) {
   const separatorIndex = path.lastIndexOf('.')
   return separatorIndex < 0 ? '' : path.slice(0, separatorIndex)
+}
+
+function getEntryAncestorFolderKeys(path: string): Key[] {
+  const segments = path.split('.').slice(0, -1)
+  return segments.map((_, index) => `folder:${segments.slice(0, index + 1).join('.')}`)
 }
 
 function replaceMovedFolderPrefix(path: string, destinations: ReadonlyMap<string, string>) {

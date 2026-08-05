@@ -14,12 +14,8 @@ import {
   DeleteOutlined,
   EditOutlined,
   FileAddOutlined,
-  FileTextOutlined,
   FolderAddOutlined,
-  FolderOutlined,
-  GlobalOutlined,
   PlusOutlined,
-  TranslationOutlined,
 } from '@ant-design/icons'
 import {
   Button,
@@ -37,6 +33,7 @@ import {
 } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { filterCatalogTree, type CatalogTreeModel, type CatalogTreeNode } from './catalogTree'
+import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 
 interface CatalogTreePanelProps {
   tree: CatalogTreeModel
@@ -384,7 +381,7 @@ export function CatalogTreePanel({
           titleRender={(node) => (
             <TreeNodeTitle
               node={node as CatalogTreeNode}
-              iconColor={getIconColor((node as CatalogTreeNode).kind, token)}
+              iconColor={getCatalogNodeIconColor((node as CatalogTreeNode).kind, token)}
               dirtyColor={token.colorWarning}
               revealColor={token.colorWarningBg}
               rowHeight={token.controlHeightSM}
@@ -669,7 +666,7 @@ function TreeNodeTitle({
             minWidth: 0,
           }}
         >
-          {treeIcon(node.kind, iconColor)}
+          {renderCatalogNodeIcon(node.kind, iconColor)}
           <Typography.Text
             type={node.isTemporary ? 'secondary' : undefined}
             style={{
@@ -752,7 +749,7 @@ function DraftNodeTitle({
         }}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {treeIcon(draft.kind === 'entry' ? 'entry-draft' : 'folder-draft', iconColor)}
+        {renderCatalogNodeIcon(draft.kind === 'entry' ? 'entry-draft' : 'folder-draft', iconColor)}
         <Input
           ref={inputRef}
           size="small"
@@ -931,44 +928,6 @@ function getSelectionRange(keys: Key[], anchor: Key, target: Key): Key[] {
 
 function mergeKeys(current: Key[], added: Key[]): Key[] {
   return [...new Set([...current, ...added])]
-}
-
-function getIconColor(
-  kind: CatalogTreeNode['kind'],
-  token: ReturnType<typeof theme.useToken>['token'],
-) {
-  switch (kind) {
-    case 'locales-root':
-    case 'locale':
-      return token.colorSuccess
-    case 'entries-root':
-      return token.colorError
-    case 'folder':
-    case 'folder-draft':
-      return token.colorWarning
-    case 'entry':
-    case 'entry-draft':
-      return token.colorInfo
-  }
-}
-
-function treeIcon(kind: CatalogTreeNode['kind'], color: string): ReactNode {
-  const style = { color }
-
-  switch (kind) {
-    case 'locales-root':
-      return <GlobalOutlined style={style} />
-    case 'entries-root':
-      return <TranslationOutlined style={style} />
-    case 'locale':
-      return <GlobalOutlined style={style} />
-    case 'folder':
-    case 'folder-draft':
-      return <FolderOutlined style={style} />
-    case 'entry':
-    case 'entry-draft':
-      return <FileTextOutlined style={style} />
-  }
 }
 
 function insertNodeDraft(nodes: CatalogTreeNode[], draft: NodeDraft): CatalogTreeNode[] {
