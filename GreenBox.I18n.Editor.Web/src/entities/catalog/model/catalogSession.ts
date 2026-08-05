@@ -23,3 +23,4 @@ export type CatalogSessionAction =
   | { type: 'open_started' }
   | { type: 'open_succeeded'; snapshot: CatalogSessionSnapshot }
   | { type: 'open_failed'; message: string }
+  | { type: 'operation_error_dismissed' }

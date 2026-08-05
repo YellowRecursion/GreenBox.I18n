@@ -25,6 +25,27 @@ public sealed class EditorSession
     }
 
     /// <summary>
+    /// Creates an immutable client-facing snapshot of the catalog working copy.
+    /// </summary>
+    /// <returns>The catalog snapshot, or <see langword="null"/> when no catalog is open.</returns>
+    public CatalogResponse? GetCatalogSnapshot()
+    {
+        lock (_lock)
+        {
+            if (_catalog == null)
+            {
+                return null;
+            }
+
+            return new CatalogResponse(
+                _revision,
+                _catalog.DefaultLocale,
+                _catalog.Locales.Select(CreateLocaleResponse).ToArray(),
+                _catalog.Entries.Select(CreateEntryResponse).ToArray());
+        }
+    }
+
+    /// <summary>
     /// Replaces the current working copy with a loaded catalog.
     /// </summary>
     /// <param name="catalogPath">The absolute path of the catalog source file.</param>
@@ -53,5 +74,34 @@ public sealed class EditorSession
             _catalog?.DefaultLocale,
             _catalog?.Locales?.Count ?? 0,
             _catalog?.Entries?.Count ?? 0);
+    }
+
+    private static CatalogLocaleResponse CreateLocaleResponse(I18nLocaleDefinition locale)
+    {
+        return new CatalogLocaleResponse(
+            locale.Id,
+            locale.DisplayName,
+            locale.Culture,
+            locale.Fallback,
+            CreateAssetResponse(locale.Icon));
+    }
+
+    private static CatalogEntryResponse CreateEntryResponse(I18nEntry entry)
+    {
+        Dictionary<string, CatalogLocaleValueResponse> locales = entry.Locales.ToDictionary(
+            pair => pair.Key,
+            pair => new CatalogLocaleValueResponse(
+                pair.Value.Text,
+                CreateAssetResponse(pair.Value.Asset)),
+            StringComparer.Ordinal);
+
+        return new CatalogEntryResponse(entry.Id, entry.Path, entry.Comment, locales);
+    }
+
+    private static CatalogAssetReferenceResponse? CreateAssetResponse(I18nAssetReference? asset)
+    {
+        return asset == null
+            ? null
+            : new CatalogAssetReferenceResponse(asset.AssetGuid, asset.LocalFileId);
     }
 }

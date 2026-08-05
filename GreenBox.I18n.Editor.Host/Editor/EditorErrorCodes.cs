@@ -22,4 +22,7 @@ public static class EditorErrorCodes
 
     /// <summary>Indicates that the deserialized catalog failed validation.</summary>
     public const string InvalidCatalog = "invalid_catalog";
+
+    /// <summary>Indicates that the editor session has no open catalog.</summary>
+    public const string CatalogNotOpen = "catalog_not_open";
 }

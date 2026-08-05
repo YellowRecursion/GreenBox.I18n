@@ -28,13 +28,22 @@ export function CatalogSessionProvider({ children }: PropsWithChildren) {
     try {
       const snapshot = await requestOpenCatalog(path)
       dispatch({ type: 'open_succeeded', snapshot })
+      return true
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error.'
       dispatch({ type: 'open_failed', message })
+      return false
     }
   }, [])
 
-  const context = useMemo(() => ({ state, openCatalog }), [state, openCatalog])
+  const dismissOperationError = useCallback(() => {
+    dispatch({ type: 'operation_error_dismissed' })
+  }, [])
+
+  const context = useMemo(
+    () => ({ state, openCatalog, dismissOperationError }),
+    [state, openCatalog, dismissOperationError],
+  )
 
   return (
     <CatalogSessionContext.Provider value={context}>

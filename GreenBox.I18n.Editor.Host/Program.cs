@@ -10,5 +10,6 @@ builder.Services.AddSingleton<CatalogFileLoader>();
 var app = builder.Build();
 
 app.MapEditorSessionEndpoints();
+app.MapCatalogEndpoints();
 
 app.Run();

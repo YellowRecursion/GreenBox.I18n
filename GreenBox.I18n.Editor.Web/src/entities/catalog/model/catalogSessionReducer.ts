@@ -21,6 +21,10 @@ export function catalogSessionReducer(
       return state.status === 'ready'
         ? { ...state, isOpening: false, operationError: action.message }
         : state
+    case 'operation_error_dismissed':
+      return state.status === 'ready'
+        ? { ...state, operationError: undefined }
+        : state
     default:
       return state
   }
