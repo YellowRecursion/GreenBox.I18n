@@ -1,6 +1,17 @@
 import { useMemo, useState, type Key, type ReactNode } from 'react'
-import { FileTextOutlined, FolderOutlined, GlobalOutlined, TranslationOutlined } from '@ant-design/icons'
-import { Flex, Input, Tree, Typography, theme } from 'antd'
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  FileAddOutlined,
+  FileTextOutlined,
+  FolderAddOutlined,
+  FolderOutlined,
+  GlobalOutlined,
+  PlusOutlined,
+  TranslationOutlined,
+} from '@ant-design/icons'
+import { Button, Dropdown, Flex, Input, Tooltip, Tree, Typography, theme, type MenuProps } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { filterCatalogTree, type CatalogTreeModel, type CatalogTreeNode } from './catalogTree'
 
@@ -39,12 +50,18 @@ export function CatalogTreePanel({ tree, selectedKeys, onSelectionChange }: Cata
           treeData={nodes}
           styles={{
             root: { background: 'transparent', borderRadius: 0 },
-            itemTitle: { display: 'inline-block', width: '100%', minWidth: 0 },
+            itemTitle: {
+              display: 'inline-block',
+              width: `calc(100% + ${token.paddingXS}px)`,
+              minWidth: 0,
+              marginInlineEnd: -token.paddingXS,
+            },
           }}
           titleRender={(node) => (
             <TreeNodeTitle
               node={node as CatalogTreeNode}
               iconColor={getIconColor((node as CatalogTreeNode).kind, token)}
+              rowHeight={token.controlHeightSM}
             />
           )}
           onExpand={(keys) => {
@@ -81,36 +98,137 @@ export function CatalogTreePanel({ tree, selectedKeys, onSelectionChange }: Cata
   )
 }
 
-function TreeNodeTitle({ node, iconColor }: { node: CatalogTreeNode; iconColor: string }) {
+function TreeNodeTitle({
+  node,
+  iconColor,
+  rowHeight,
+}: {
+  node: CatalogTreeNode
+  iconColor: string
+  rowHeight: number
+}) {
+  const [isHovered, setIsHovered] = useState(false)
+  const quickActions = getQuickActions(node.kind)
+
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: layoutTokens.spacing.small,
-        width: '100%',
-        minWidth: 0,
-      }}
-    >
+    <Dropdown menu={{ items: getContextMenuItems(node.kind) }} trigger={['contextMenu']}>
       <span
         style={{
           display: 'inline-flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: layoutTokens.spacing.small,
+          width: '100%',
+          height: rowHeight,
           minWidth: 0,
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        {treeIcon(node.kind, iconColor)}
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{node.title}</span>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: layoutTokens.spacing.small,
+            minWidth: 0,
+          }}
+        >
+          {treeIcon(node.kind, iconColor)}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{node.title}</span>
+        </span>
+        {isHovered && quickActions.length > 0 ? (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              height: '100%',
+              flex: '0 0 auto',
+            }}
+          >
+            {quickActions.map((action) => (
+              <Tooltip key={action.key} title={action.label} mouseEnterDelay={0.4}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={action.icon}
+                  aria-label={action.label}
+                  style={{ width: rowHeight, minWidth: rowHeight, height: '100%', padding: 0 }}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={(event) => event.stopPropagation()}
+                />
+              </Tooltip>
+            ))}
+          </span>
+        ) : node.count !== undefined ? (
+          <Typography.Text type="secondary" style={{ flex: '0 0 auto', fontSize: 12 }}>
+            {node.count}
+          </Typography.Text>
+        ) : null}
       </span>
-      {node.count !== undefined && (
-        <Typography.Text type="secondary" style={{ flex: '0 0 auto', fontSize: 12 }}>
-          {node.count}
-        </Typography.Text>
-      )}
-    </span>
+    </Dropdown>
   )
+}
+
+interface QuickAction {
+  key: string
+  label: string
+  icon: ReactNode
+}
+
+function getQuickActions(kind: CatalogTreeNode['kind']): QuickAction[] {
+  switch (kind) {
+    case 'locales-root':
+      return [{ key: 'new-locale', label: 'New locale', icon: <PlusOutlined /> }]
+    case 'entries-root':
+    case 'folder':
+      return [
+        { key: 'new-entry', label: 'New entry', icon: <FileAddOutlined /> },
+        { key: 'new-folder', label: 'New folder', icon: <FolderAddOutlined /> },
+      ]
+    case 'locale':
+    case 'entry':
+      return []
+  }
+}
+
+function getContextMenuItems(kind: CatalogTreeNode['kind']): MenuProps['items'] {
+  switch (kind) {
+    case 'locales-root':
+      return [
+        { key: 'new-locale', icon: <PlusOutlined />, label: 'New locale' },
+      ]
+    case 'locale':
+      return [
+        { key: 'rename-locale', icon: <EditOutlined />, label: 'Rename' },
+        { type: 'divider' },
+        { key: 'delete-locale', icon: <DeleteOutlined />, label: 'Delete', danger: true },
+      ]
+    case 'entries-root':
+      return createContainerMenuItems(false)
+    case 'folder':
+      return createContainerMenuItems(true)
+    case 'entry':
+      return [
+        { key: 'rename-entry', icon: <EditOutlined />, label: 'Rename' },
+        { key: 'duplicate-entry', icon: <CopyOutlined />, label: 'Duplicate' },
+        { type: 'divider' },
+        { key: 'delete-entry', icon: <DeleteOutlined />, label: 'Delete', danger: true },
+      ]
+  }
+}
+
+function createContainerMenuItems(includeOwnActions: boolean): MenuProps['items'] {
+  return [
+    { key: 'new-entry', icon: <FileAddOutlined />, label: 'New entry' },
+    { key: 'new-folder', icon: <FolderAddOutlined />, label: 'New folder' },
+    ...(includeOwnActions
+      ? [
+          { type: 'divider' as const },
+          { key: 'rename-folder', icon: <EditOutlined />, label: 'Rename' },
+          { key: 'delete-folder', icon: <DeleteOutlined />, label: 'Delete', danger: true },
+        ]
+      : []),
+  ]
 }
 
 function collectExpandableKeys(nodes: CatalogTreeNode[]): Key[] {
