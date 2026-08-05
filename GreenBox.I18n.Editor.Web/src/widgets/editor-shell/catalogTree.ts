@@ -1,6 +1,13 @@
 import type { CatalogEntry, CatalogLocale, CatalogSnapshot } from '../../entities/catalog/model/catalog'
 
-export type CatalogTreeNodeKind = 'locales-root' | 'entries-root' | 'locale' | 'folder' | 'entry' | 'entry-draft'
+export type CatalogTreeNodeKind =
+  | 'locales-root'
+  | 'entries-root'
+  | 'locale'
+  | 'folder'
+  | 'entry'
+  | 'entry-draft'
+  | 'folder-draft'
 
 export interface CatalogTreeNode {
   key: string
@@ -11,6 +18,7 @@ export interface CatalogTreeNode {
   selectable?: boolean
   path?: string
   isDirty?: boolean
+  isTemporary?: boolean
   children?: CatalogTreeNode[]
 }
 
@@ -30,9 +38,13 @@ interface FolderBuilder {
   entryCount: number
   children: Array<FolderBuilder | CatalogEntry>
   folders: Map<string, FolderBuilder>
+  isTemporary: boolean
 }
 
-export function buildCatalogTree(catalog: CatalogSnapshot): CatalogTreeModel {
+export function buildCatalogTree(
+  catalog: CatalogSnapshot,
+  temporaryFolderPaths: readonly string[] = [],
+): CatalogTreeModel {
   const selectionByKey = new Map<string, CatalogSelectionItem>()
   const dirtyEntryIds = new Set(catalog.dirtyEntryIds)
   const localeNodes = catalog.locales.map((locale) => {
@@ -52,6 +64,12 @@ export function buildCatalogTree(catalog: CatalogSnapshot): CatalogTreeModel {
     addEntry(rootFolder, entry)
     selectionByKey.set(entryKey(entry.id), { kind: 'entry', entry })
   }
+
+  for (const path of temporaryFolderPaths) {
+    addTemporaryFolder(rootFolder, path)
+  }
+
+  sortFolderChildren(rootFolder)
 
   const entryNodes = rootFolder.children.map((child) =>
     createEntryTreeNode(child, selectionByKey, dirtyEntryIds))
@@ -74,7 +92,7 @@ export function buildCatalogTree(catalog: CatalogSnapshot): CatalogTreeModel {
         searchText: 'entries',
         count: catalog.entries.length,
         path: '',
-        isDirty: dirtyEntryIds.size > 0,
+        isDirty: dirtyEntryIds.size > 0 || temporaryFolderPaths.length > 0,
         selectable: false,
         children: entryNodes,
       },
@@ -107,7 +125,7 @@ function filterNode(node: CatalogTreeNode, query: string): CatalogTreeNode | nul
 }
 
 function createFolder(path: string, title: string): FolderBuilder {
-  return { path, title, entryCount: 0, children: [], folders: new Map() }
+  return { path, title, entryCount: 0, children: [], folders: new Map(), isTemporary: false }
 }
 
 function addEntry(root: FolderBuilder, entry: CatalogEntry) {
@@ -132,6 +150,155 @@ function addEntry(root: FolderBuilder, entry: CatalogEntry) {
   folder.children.push(entry)
 }
 
+function addTemporaryFolder(root: FolderBuilder, path: string) {
+  const segments = path.split('.')
+  let folder = root
+
+  for (const title of segments) {
+    const childPath = folder.path ? `${folder.path}.${title}` : title
+    let childFolder = folder.folders.get(title)
+
+    if (!childFolder) {
+      childFolder = createFolder(childPath, title)
+      childFolder.isTemporary = true
+      folder.folders.set(title, childFolder)
+      folder.children.push(childFolder)
+    }
+
+    folder = childFolder
+  }
+
+  if (folder.entryCount === 0) {
+    folder.isTemporary = true
+  }
+}
+
+function sortFolderChildren(folder: FolderBuilder) {
+  folder.children.sort(compareFolderChildren)
+
+  for (const child of folder.children) {
+    if ('children' in child) {
+      sortFolderChildren(child)
+    }
+  }
+}
+
+function compareFolderChildren(
+  left: FolderBuilder | CatalogEntry,
+  right: FolderBuilder | CatalogEntry,
+) {
+  const leftIsFolder = 'children' in left
+  const rightIsFolder = 'children' in right
+  if (leftIsFolder !== rightIsFolder) {
+    return leftIsFolder ? -1 : 1
+  }
+
+  const leftTitle = leftIsFolder ? left.title : getEntryTitle(left)
+  const rightTitle = rightIsFolder ? right.title : getEntryTitle(right)
+  const naturalComparison = compareNaturalIgnoreCase(leftTitle, rightTitle)
+  if (naturalComparison !== 0) {
+    return naturalComparison
+  }
+
+  return compareOrdinal(leftTitle, rightTitle)
+}
+
+function compareNaturalIgnoreCase(left: string, right: string) {
+  let leftIndex = 0
+  let rightIndex = 0
+
+  while (leftIndex < left.length && rightIndex < right.length) {
+    const leftIsDigit = isAsciiDigit(left[leftIndex])
+    const rightIsDigit = isAsciiDigit(right[rightIndex])
+
+    if (leftIsDigit && rightIsDigit) {
+      const comparison = compareNumberRuns(left, leftIndex, right, rightIndex)
+      leftIndex = comparison.leftEnd
+      rightIndex = comparison.rightEnd
+      if (comparison.result !== 0) {
+        return comparison.result
+      }
+
+      continue
+    }
+
+    const leftCharacter = left[leftIndex].toUpperCase()
+    const rightCharacter = right[rightIndex].toUpperCase()
+    const characterComparison = compareOrdinal(leftCharacter, rightCharacter)
+    if (characterComparison !== 0) {
+      return characterComparison
+    }
+
+    leftIndex++
+    rightIndex++
+  }
+
+  return (left.length - leftIndex) - (right.length - rightIndex)
+}
+
+function compareNumberRuns(left: string, leftStart: number, right: string, rightStart: number) {
+  let leftEnd = leftStart
+  let rightEnd = rightStart
+
+  while (leftEnd < left.length && isAsciiDigit(left[leftEnd])) {
+    leftEnd++
+  }
+
+  while (rightEnd < right.length && isAsciiDigit(right[rightEnd])) {
+    rightEnd++
+  }
+
+  const leftSignificantStart = skipLeadingZeroes(left, leftStart, leftEnd)
+  const rightSignificantStart = skipLeadingZeroes(right, rightStart, rightEnd)
+  const leftSignificantLength = leftEnd - leftSignificantStart
+  const rightSignificantLength = rightEnd - rightSignificantStart
+
+  if (leftSignificantLength !== rightSignificantLength) {
+    return {
+      result: leftSignificantLength - rightSignificantLength,
+      leftEnd,
+      rightEnd,
+    }
+  }
+
+  for (let offset = 0; offset < leftSignificantLength; offset++) {
+    const digitComparison = compareOrdinal(
+      left[leftSignificantStart + offset],
+      right[rightSignificantStart + offset],
+    )
+    if (digitComparison !== 0) {
+      return { result: digitComparison, leftEnd, rightEnd }
+    }
+  }
+
+  return {
+    result: (leftEnd - leftStart) - (rightEnd - rightStart),
+    leftEnd,
+    rightEnd,
+  }
+}
+
+function skipLeadingZeroes(value: string, start: number, end: number) {
+  let index = start
+  while (index < end && value[index] === '0') {
+    index++
+  }
+
+  return index
+}
+
+function isAsciiDigit(value: string) {
+  return value >= '0' && value <= '9'
+}
+
+function compareOrdinal(left: string, right: string) {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+function getEntryTitle(entry: CatalogEntry) {
+  return entry.path.split('.').at(-1) ?? entry.path
+}
+
 function createEntryTreeNode(
   child: FolderBuilder | CatalogEntry,
   selectionByKey: Map<string, CatalogSelectionItem>,
@@ -148,7 +315,8 @@ function createEntryTreeNode(
       searchText: child.path,
       count: child.entryCount,
       path: child.path,
-      isDirty: hasDirtyEntry(child, dirtyEntryIds),
+      isDirty: child.isTemporary || hasDirtyEntry(child, dirtyEntryIds),
+      isTemporary: child.isTemporary,
       children: child.children.map((nestedChild) =>
         createEntryTreeNode(nestedChild, selectionByKey, dirtyEntryIds)),
     }
@@ -156,7 +324,7 @@ function createEntryTreeNode(
 
   return {
     key: entryKey(child.id),
-    title: child.path.split('.').at(-1) ?? child.path,
+    title: getEntryTitle(child),
     kind: 'entry',
     path: child.path,
     isDirty: dirtyEntryIds.has(child.id),

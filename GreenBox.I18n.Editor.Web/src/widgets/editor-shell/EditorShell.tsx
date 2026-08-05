@@ -79,7 +79,11 @@ function CatalogWorkspace({
   const { token } = theme.useToken()
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
   const [expandedKeys, setExpandedKeys] = useState<Key[]>(['root:locales', 'root:entries'])
-  const tree = useMemo(() => buildCatalogTree(catalog), [catalog])
+  const [temporaryFolderPaths, setTemporaryFolderPaths] = useState<string[]>([])
+  const tree = useMemo(
+    () => buildCatalogTree(catalog, temporaryFolderPaths),
+    [catalog, temporaryFolderPaths],
+  )
   const selection = selectedKeys.flatMap((key) => {
     const item = tree.selectionByKey.get(String(key))
     return item ? [item] : []
@@ -93,7 +97,21 @@ function CatalogWorkspace({
     }
 
     const key = `entry:${entry.id}`
-    setSelectedKeys([key])
+    const parentPath = path.includes('.') ? path.slice(0, path.lastIndexOf('.')) : ''
+    setTemporaryFolderPaths((paths) => paths.filter((temporaryPath) =>
+      parentPath !== temporaryPath && !parentPath.startsWith(`${temporaryPath}.`)))
+    return key
+  }
+
+  const handleAddFolder = (path: string) => {
+    const duplicate = [...tree.selectionByKey.values()].some((item) =>
+      item.kind === 'folder' && item.path.toLocaleLowerCase() === path.toLocaleLowerCase())
+    if (duplicate) {
+      throw new Error(`Folder '${path}' already exists.`)
+    }
+
+    const key = `folder:${path}`
+    setTemporaryFolderPaths((paths) => [...paths, path])
     return key
   }
 
@@ -111,6 +129,7 @@ function CatalogWorkspace({
               onSelectionChange={setSelectedKeys}
               onExpandedKeysChange={setExpandedKeys}
               onAddEntry={handleAddEntry}
+              onAddFolder={handleAddFolder}
             />
           </div>
         </Splitter.Panel>
