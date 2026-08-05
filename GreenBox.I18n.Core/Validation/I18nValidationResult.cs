@@ -129,6 +129,40 @@ namespace GreenBox.I18n
     }
 
     /// <summary>
+    /// Identifies the catalog object affected by a validation diagnostic.
+    /// </summary>
+    public sealed class I18nValidationTarget
+    {
+        /// <summary>
+        /// Initializes a validation target.
+        /// </summary>
+        /// <param name="entryId">The stable entry ID, when the diagnostic belongs to an entry.</param>
+        /// <param name="entryPath">The entry path, when the diagnostic belongs to an entry.</param>
+        /// <param name="localeId">The locale ID, when the diagnostic belongs to a locale.</param>
+        public I18nValidationTarget(string? entryId, string? entryPath, string? localeId)
+        {
+            EntryId = entryId;
+            EntryPath = entryPath;
+            LocaleId = localeId;
+        }
+
+        /// <summary>
+        /// Gets the stable entry ID, or <see langword="null"/> for a catalog or locale diagnostic.
+        /// </summary>
+        public string? EntryId { get; }
+
+        /// <summary>
+        /// Gets the entry path, or <see langword="null"/> for a catalog or locale diagnostic.
+        /// </summary>
+        public string? EntryPath { get; }
+
+        /// <summary>
+        /// Gets the locale ID, or <see langword="null"/> when the diagnostic does not target a locale.
+        /// </summary>
+        public string? LocaleId { get; }
+    }
+
+    /// <summary>
     /// Describes a single problem found while validating i18n source data.
     /// </summary>
     public readonly struct I18nValidationDiagnostic
@@ -140,16 +174,19 @@ namespace GreenBox.I18n
         /// <param name="severity">The severity of the problem.</param>
         /// <param name="jsonPath">The JSON path of the invalid value.</param>
         /// <param name="message">A human-readable description of the problem.</param>
+        /// <param name="target">The catalog object affected by the problem.</param>
         public I18nValidationDiagnostic(
             string code,
             I18nValidationSeverity severity,
             string jsonPath,
-            string message)
+            string message,
+            I18nValidationTarget? target = null)
         {
             Code = code ?? string.Empty;
             Severity = severity;
             JsonPath = jsonPath ?? string.Empty;
             Message = message ?? string.Empty;
+            Target = target ?? new I18nValidationTarget(null, null, null);
         }
 
         /// <summary>
@@ -171,6 +208,12 @@ namespace GreenBox.I18n
         /// Gets the human-readable description of the problem.
         /// </summary>
         public string Message { get; }
+
+        /// <summary>
+        /// Gets the catalog object affected by the problem. All properties are
+        /// <see langword="null"/> for a catalog-level diagnostic.
+        /// </summary>
+        public I18nValidationTarget Target { get; }
 
         /// <inheritdoc />
         public override string ToString()
@@ -224,14 +267,9 @@ namespace GreenBox.I18n
         public bool HasErrors => ErrorCount > 0;
 
         /// <summary>
-        /// Gets a value indicating whether validation produced at least one warning.
+        /// Gets a value indicating whether validation produced at least one non-blocking warning.
         /// </summary>
         public bool HasWarnings => WarningCount > 0;
-
-        /// <summary>
-        /// Gets a value indicating whether validation completed without errors.
-        /// </summary>
-        public bool IsValid => !HasErrors;
 
         /// <summary>
         /// Determines whether the result contains a diagnostic with the specified code.

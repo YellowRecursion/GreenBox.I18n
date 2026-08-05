@@ -37,11 +37,13 @@ public sealed class EditorSession
                 return null;
             }
 
+            I18nValidationResult validation = I18nCatalogValidator.Validate(_catalog);
             return new CatalogResponse(
                 _revision,
                 _catalog.DefaultLocale,
                 _catalog.Locales.Select(CreateLocaleResponse).ToArray(),
-                _catalog.Entries.Select(CreateEntryResponse).ToArray());
+                _catalog.Entries.Select(CreateEntryResponse).ToArray(),
+                validation.Diagnostics.Select(CreateDiagnosticResponse).ToArray());
         }
     }
 
@@ -103,5 +105,21 @@ public sealed class EditorSession
         return asset == null
             ? null
             : new CatalogAssetReferenceResponse(asset.AssetGuid, asset.LocalFileId);
+    }
+
+    private static CatalogDiagnosticResponse CreateDiagnosticResponse(I18nValidationDiagnostic diagnostic)
+    {
+        I18nValidationTarget target = diagnostic.Target;
+        CatalogDiagnosticTargetResponse? targetResponse =
+            target.EntryId == null && target.EntryPath == null && target.LocaleId == null
+                ? null
+                : new CatalogDiagnosticTargetResponse(target.EntryId, target.EntryPath, target.LocaleId);
+
+        return new CatalogDiagnosticResponse(
+            diagnostic.Code,
+            diagnostic.Severity.ToString().ToLowerInvariant(),
+            diagnostic.JsonPath,
+            diagnostic.Message,
+            targetResponse);
     }
 }

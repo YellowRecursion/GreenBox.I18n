@@ -111,7 +111,7 @@ namespace GreenBox.I18n.Unity.Editor
         public bool IsSuccess =>
             _errors.Count == 0 &&
             ValidationResult != null &&
-            ValidationResult.IsValid;
+            !ValidationResult.HasErrors;
 
         /// <summary>
         /// Gets a value indicating whether the catalog asset was modified.

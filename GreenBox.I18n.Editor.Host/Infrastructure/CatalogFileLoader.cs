@@ -61,7 +61,7 @@ public sealed class CatalogFileLoader
         }
 
         I18nValidationResult validation = I18nCatalogValidator.Validate(catalog);
-        if (!validation.IsValid)
+        if (validation.HasErrors)
         {
             return CatalogLoadResult.Failure(
                 EditorErrorCodes.InvalidCatalog,

@@ -41,7 +41,6 @@ public sealed class I18nCatalogValidatorTests
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
-        Assert.True(result.IsValid);
         Assert.False(result.HasErrors);
         Assert.False(result.HasWarnings);
         Assert.Empty(result.Diagnostics);
@@ -53,10 +52,13 @@ public sealed class I18nCatalogValidatorTests
         I18nValidationResult result = I18nCatalogValidator.Validate(null);
 
         I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
-        Assert.False(result.IsValid);
+        Assert.True(result.HasErrors);
         Assert.Equal(I18nValidationCodes.NullCatalog, diagnostic.Code);
         Assert.Equal(I18nValidationSeverity.Error, diagnostic.Severity);
         Assert.Equal("$", diagnostic.JsonPath);
+        Assert.Null(diagnostic.Target.EntryId);
+        Assert.Null(diagnostic.Target.EntryPath);
+        Assert.Null(diagnostic.Target.LocaleId);
     }
 
     [Fact]
@@ -67,7 +69,7 @@ public sealed class I18nCatalogValidatorTests
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
-        Assert.False(result.IsValid);
+        Assert.True(result.HasErrors);
         Assert.True(result.Contains(I18nValidationCodes.UnsupportedSchemaVersion));
     }
 
@@ -201,6 +203,9 @@ public sealed class I18nCatalogValidatorTests
         I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal(I18nValidationCodes.MissingLocaleDisplayName, diagnostic.Code);
         Assert.Equal("$.locales[0].displayName", diagnostic.JsonPath);
+        Assert.Null(diagnostic.Target.EntryId);
+        Assert.Null(diagnostic.Target.EntryPath);
+        Assert.Equal("en", diagnostic.Target.LocaleId);
     }
 
     [Theory]
@@ -315,10 +320,13 @@ public sealed class I18nCatalogValidatorTests
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
         I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
-        Assert.True(result.IsValid);
+        Assert.False(result.HasErrors);
         Assert.Equal(I18nValidationCodes.MissingLocaleValue, diagnostic.Code);
         Assert.Equal(I18nValidationSeverity.Warning, diagnostic.Severity);
         Assert.Equal("$.entries[0].locales['ru']", diagnostic.JsonPath);
+        Assert.Equal("1", diagnostic.Target.EntryId);
+        Assert.Equal("Reports.ContextMenu.ReportNicknameButton", diagnostic.Target.EntryPath);
+        Assert.Equal("ru", diagnostic.Target.LocaleId);
     }
 
     [Fact]
@@ -337,7 +345,7 @@ public sealed class I18nCatalogValidatorTests
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
-        Assert.True(result.IsValid);
+        Assert.False(result.HasErrors);
         Assert.Empty(result.Diagnostics);
     }
 
@@ -431,7 +439,7 @@ public sealed class I18nCatalogValidatorTests
         I18nValidationResult result = I18nCatalogValidator.Validate(CreateCatalog(entry));
 
         I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
-        Assert.True(result.IsValid);
+        Assert.False(result.HasErrors);
         Assert.True(result.HasWarnings);
         Assert.Equal(I18nValidationCodes.MissingLocales, diagnostic.Code);
         Assert.Equal(I18nValidationSeverity.Warning, diagnostic.Severity);
@@ -446,7 +454,7 @@ public sealed class I18nCatalogValidatorTests
         I18nValidationResult result = I18nCatalogValidator.Validate(CreateCatalog(entry));
 
         I18nValidationDiagnostic diagnostic = Assert.Single(result.Diagnostics);
-        Assert.True(result.IsValid);
+        Assert.False(result.HasErrors);
         Assert.Equal(I18nValidationCodes.EmptyLocaleValue, diagnostic.Code);
         Assert.Equal("$.entries[0].locales['en']", diagnostic.JsonPath);
     }
@@ -526,7 +534,7 @@ public sealed class I18nCatalogValidatorTests
 
         I18nValidationResult result = I18nCatalogValidator.Validate(CreateCatalog(entry));
 
-        Assert.True(result.IsValid);
+        Assert.False(result.HasErrors);
         Assert.Empty(result.Diagnostics);
     }
 
@@ -613,6 +621,9 @@ public sealed class I18nCatalogValidatorTests
         Assert.Equal(I18nValidationCodes.EntriesNotSorted, diagnostic.Code);
         Assert.Equal(I18nValidationSeverity.Error, diagnostic.Severity);
         Assert.Equal("$.entries[1]", diagnostic.JsonPath);
+        Assert.Equal("2", diagnostic.Target.EntryId);
+        Assert.Equal("Units.Tank2.Title", diagnostic.Target.EntryPath);
+        Assert.Null(diagnostic.Target.LocaleId);
         Assert.Contains("'Units.Tank2.Title' must appear before 'Units.Tank10.Title'", diagnostic.Message);
     }
 
@@ -626,7 +637,7 @@ public sealed class I18nCatalogValidatorTests
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
-        Assert.True(result.IsValid);
+        Assert.False(result.HasErrors);
         Assert.Empty(result.Diagnostics);
     }
 

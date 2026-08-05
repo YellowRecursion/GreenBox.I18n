@@ -7,11 +7,39 @@ namespace GreenBox.I18n.Editor.Host.Contracts;
 /// <param name="DefaultLocale">The catalog default locale identifier.</param>
 /// <param name="Locales">The supported locales in editor display order.</param>
 /// <param name="Entries">The catalog entries in canonical order.</param>
+/// <param name="Diagnostics">The current validation diagnostics.</param>
 public sealed record CatalogResponse(
     long Revision,
     string DefaultLocale,
     IReadOnlyList<CatalogLocaleResponse> Locales,
-    IReadOnlyList<CatalogEntryResponse> Entries);
+    IReadOnlyList<CatalogEntryResponse> Entries,
+    IReadOnlyList<CatalogDiagnosticResponse> Diagnostics);
+
+/// <summary>
+/// Describes a validation diagnostic in a catalog snapshot.
+/// </summary>
+/// <param name="Code">The stable machine-readable diagnostic code.</param>
+/// <param name="Severity">The lowercase diagnostic severity.</param>
+/// <param name="JsonPath">The exact JSON field address.</param>
+/// <param name="Message">The human-readable diagnostic message.</param>
+/// <param name="Target">The affected editor object, or <see langword="null"/> for the catalog itself.</param>
+public sealed record CatalogDiagnosticResponse(
+    string Code,
+    string Severity,
+    string JsonPath,
+    string Message,
+    CatalogDiagnosticTargetResponse? Target);
+
+/// <summary>
+/// Identifies an editor object affected by a validation diagnostic.
+/// </summary>
+/// <param name="EntryId">The stable entry ID.</param>
+/// <param name="EntryPath">The entry path used for folder aggregation.</param>
+/// <param name="LocaleId">The affected locale ID.</param>
+public sealed record CatalogDiagnosticTargetResponse(
+    string? EntryId,
+    string? EntryPath,
+    string? LocaleId);
 
 /// <summary>
 /// Describes a locale in a catalog snapshot.

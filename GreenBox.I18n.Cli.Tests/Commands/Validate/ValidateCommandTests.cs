@@ -54,7 +54,7 @@ public sealed class ValidateCommandTests : IDisposable
 
         using JsonDocument report = JsonDocument.Parse(standardOutput.ToString());
         Assert.Equal(CliExitCodes.Success, exitCode);
-        Assert.True(report.RootElement.GetProperty("isValid").GetBoolean());
+        Assert.False(report.RootElement.GetProperty("hasErrors").GetBoolean());
         Assert.Equal(0, report.RootElement.GetProperty("errorCount").GetInt32());
         Assert.Empty(standardError.ToString());
     }
@@ -95,9 +95,13 @@ public sealed class ValidateCommandTests : IDisposable
         using JsonDocument report = JsonDocument.Parse(standardOutput.ToString());
         JsonElement diagnostics = report.RootElement.GetProperty("diagnostics");
         Assert.Equal(CliExitCodes.InvalidData, exitCode);
-        Assert.False(report.RootElement.GetProperty("isValid").GetBoolean());
+        Assert.True(report.RootElement.GetProperty("hasErrors").GetBoolean());
         Assert.Equal("invalid_id", diagnostics[0].GetProperty("code").GetString());
         Assert.Equal("invalid_path", diagnostics[1].GetProperty("code").GetString());
+        JsonElement target = diagnostics[0].GetProperty("target");
+        Assert.Equal("0", target.GetProperty("entryId").GetString());
+        Assert.Equal("Reports..Title", target.GetProperty("entryPath").GetString());
+        Assert.False(target.TryGetProperty("localeId", out _));
         Assert.Empty(standardError.ToString());
     }
 

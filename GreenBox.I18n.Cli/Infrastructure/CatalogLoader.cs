@@ -51,7 +51,7 @@ internal static class CatalogLoader
         }
 
         I18nValidationResult validation = I18nCatalogValidator.Validate(catalog);
-        if (!validation.IsValid)
+        if (validation.HasErrors)
         {
             return CatalogLoadResult.Failure(
                 CliExitCodes.InvalidData,

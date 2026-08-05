@@ -38,7 +38,7 @@ namespace GreenBox.I18n
                     I18nValidationCodes.NullCatalog,
                     "$",
                     "The catalog cannot be null.");
-                return new I18nValidationResult(diagnostics);
+                return CreateResult(catalog, diagnostics);
             }
 
             if (catalog.SchemaVersion != CurrentSchemaVersion)
@@ -66,7 +66,7 @@ namespace GreenBox.I18n
                     I18nValidationCodes.NullEntries,
                     "$.entries",
                     "The entries collection cannot be null.");
-                return new I18nValidationResult(diagnostics);
+                return CreateResult(catalog, diagnostics);
             }
 
             var entryIndexesById = new Dictionary<long, int>();
@@ -91,7 +91,100 @@ namespace GreenBox.I18n
                 ValidateEntryOrder(catalog.Entries, diagnostics);
             }
 
+            return CreateResult(catalog, diagnostics);
+        }
+
+        private static I18nValidationResult CreateResult(
+            I18nCatalog? catalog,
+            List<I18nValidationDiagnostic> diagnostics)
+        {
+            for (int diagnosticIndex = 0; diagnosticIndex < diagnostics.Count; diagnosticIndex++)
+            {
+                I18nValidationDiagnostic diagnostic = diagnostics[diagnosticIndex];
+                diagnostics[diagnosticIndex] = new I18nValidationDiagnostic(
+                    diagnostic.Code,
+                    diagnostic.Severity,
+                    diagnostic.JsonPath,
+                    diagnostic.Message,
+                    CreateTarget(catalog, diagnostic.JsonPath));
+            }
+
             return new I18nValidationResult(diagnostics);
+        }
+
+        private static I18nValidationTarget CreateTarget(I18nCatalog? catalog, string jsonPath)
+        {
+            if (catalog == null)
+            {
+                return new I18nValidationTarget(null, null, null);
+            }
+
+            const string entriesPrefix = "$.entries[";
+            if (jsonPath.StartsWith(entriesPrefix, System.StringComparison.Ordinal) &&
+                TryReadIndex(jsonPath, entriesPrefix.Length, out int entryIndex, out int entrySuffixIndex) &&
+                catalog.Entries != null &&
+                entryIndex < catalog.Entries.Count)
+            {
+                I18nEntry? entry = catalog.Entries[entryIndex];
+                string? localeId = TryReadEntryLocaleId(jsonPath, entrySuffixIndex);
+                return new I18nValidationTarget(
+                    NormalizeTargetValue(entry?.Id),
+                    NormalizeTargetValue(entry?.Path),
+                    localeId);
+            }
+
+            const string localesPrefix = "$.locales[";
+            if (jsonPath.StartsWith(localesPrefix, System.StringComparison.Ordinal) &&
+                TryReadIndex(jsonPath, localesPrefix.Length, out int localeIndex, out _) &&
+                catalog.Locales != null &&
+                localeIndex < catalog.Locales.Count)
+            {
+                return new I18nValidationTarget(
+                    null,
+                    null,
+                    NormalizeTargetValue(catalog.Locales[localeIndex]?.Id));
+            }
+
+            return new I18nValidationTarget(null, null, null);
+        }
+
+        private static bool TryReadIndex(
+            string jsonPath,
+            int indexStart,
+            out int index,
+            out int suffixIndex)
+        {
+            index = -1;
+            int closingBracketIndex = jsonPath.IndexOf(']', indexStart);
+            suffixIndex = closingBracketIndex + 1;
+            return closingBracketIndex >= indexStart &&
+                   int.TryParse(
+                       jsonPath.Substring(indexStart, closingBracketIndex - indexStart),
+                       NumberStyles.None,
+                       CultureInfo.InvariantCulture,
+                       out index) &&
+                   index >= 0;
+        }
+
+        private static string? TryReadEntryLocaleId(string jsonPath, int suffixIndex)
+        {
+            const string localeMarker = ".locales['";
+            int localeStart = jsonPath.IndexOf(localeMarker, suffixIndex, System.StringComparison.Ordinal);
+            if (localeStart < 0)
+            {
+                return null;
+            }
+
+            localeStart += localeMarker.Length;
+            int localeEnd = jsonPath.IndexOf("']", localeStart, System.StringComparison.Ordinal);
+            return localeEnd < localeStart
+                ? null
+                : NormalizeTargetValue(jsonPath.Substring(localeStart, localeEnd - localeStart));
+        }
+
+        private static string? NormalizeTargetValue(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : value;
         }
 
         private static void ValidateNextId(

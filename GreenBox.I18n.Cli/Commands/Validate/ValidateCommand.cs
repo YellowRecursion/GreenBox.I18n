@@ -94,7 +94,7 @@ internal static class ValidateCommand
         ValidationReport validationReport = CreateValidationReport(catalogFile.FullName, validation);
         WriteValidationReport(validationReport, writeJson, standardOutput);
 
-        return validation.IsValid
+        return !validation.HasErrors
             ? CliExitCodes.Success
             : CliExitCodes.InvalidData;
     }
@@ -106,7 +106,6 @@ internal static class ValidateCommand
         return new ValidationReport
         {
             File = file,
-            IsValid = validation.IsValid,
             ErrorCount = validation.ErrorCount,
             WarningCount = validation.WarningCount,
             Diagnostics = validation.Diagnostics
@@ -116,8 +115,24 @@ internal static class ValidateCommand
                     Severity = diagnostic.Severity.ToString().ToLowerInvariant(),
                     JsonPath = diagnostic.JsonPath,
                     Message = diagnostic.Message,
+                    Target = CreateTargetReport(diagnostic.Target),
                 })
                 .ToArray(),
+        };
+    }
+
+    private static ValidationTargetReport? CreateTargetReport(I18nValidationTarget target)
+    {
+        if (target.EntryId == null && target.EntryPath == null && target.LocaleId == null)
+        {
+            return null;
+        }
+
+        return new ValidationTargetReport
+        {
+            EntryId = target.EntryId,
+            EntryPath = target.EntryPath,
+            LocaleId = target.LocaleId,
         };
     }
 
@@ -130,7 +145,6 @@ internal static class ValidateCommand
         return new ValidationReport
         {
             File = file,
-            IsValid = false,
             ErrorCount = 1,
             WarningCount = 0,
             Diagnostics = new[]
@@ -156,7 +170,6 @@ internal static class ValidateCommand
         return new ValidationReport
         {
             File = file,
-            IsValid = false,
             ErrorCount = 1,
             WarningCount = 0,
             Diagnostics = new[]
@@ -187,9 +200,9 @@ internal static class ValidateCommand
             $"{FormatCount(report.ErrorCount, "error")}, " +
             $"{FormatCount(report.WarningCount, "warning")}.";
 
-        standardOutput.WriteLine(report.IsValid
-            ? $"Valid: {summary}"
-            : $"Invalid: {summary}");
+        standardOutput.WriteLine(report.HasErrors
+            ? $"Invalid: {summary}"
+            : $"Valid: {summary}");
 
         WriteHumanDiagnostics(report, standardOutput);
     }
