@@ -241,6 +241,47 @@ function CatalogWorkspace({
     ))
   }
 
+  const handleRenameNode = async (key: Key, name: string) => {
+    const item = tree.selectionByKey.get(String(key))
+    if (!item || item.kind === 'locale') {
+      throw new Error('Only entries and folders can be renamed.')
+    }
+
+    if (item.kind === 'entry') {
+      const path = joinPath(getParentPath(item.entry.path), name)
+      await onMoveEntries([{ id: item.entry.id, path }])
+      return `entry:${item.entry.id}`
+    }
+
+    const destinationPath = joinPath(getParentPath(item.path), name)
+    const duplicateFolder = [...tree.selectionByKey.values()].some((candidate) =>
+      candidate.kind === 'folder' &&
+      candidate.path !== item.path &&
+      candidate.path.toLocaleLowerCase() === destinationPath.toLocaleLowerCase())
+    if (duplicateFolder) {
+      throw new Error(`Folder '${destinationPath}' already exists.`)
+    }
+
+    const moves = catalog.entries
+      .filter((entry) => entry.path.startsWith(`${item.path}.`))
+      .map((entry) => ({
+        id: entry.id,
+        path: `${destinationPath}${entry.path.slice(item.path.length)}`,
+      }))
+    if (moves.length > 0) {
+      await onMoveEntries(moves)
+    }
+
+    const destinations = new Map([[item.path, destinationPath]])
+    setTemporaryFolderPaths((paths) => paths.map((path) =>
+      replaceMovedFolderPrefix(path, destinations)))
+    setSelectedKeys((selected) => selected.map((selectedKey) =>
+      replaceMovedFolderKey(selectedKey, destinations)))
+    setExpandedKeys((expanded) => expanded.map((expandedKey) =>
+      replaceMovedFolderKey(expandedKey, destinations)))
+    return `folder:${destinationPath}`
+  }
+
   const reloadFromDisk = useCallback(async () => {
     await onRevert()
     setTemporaryFolderPaths([])
@@ -291,6 +332,7 @@ function CatalogWorkspace({
               onAddFolder={handleAddFolder}
               onRemoveNodes={handleRemoveNodes}
               onMoveNodes={handleMoveNodes}
+              onRenameNode={handleRenameNode}
             />
           </div>
         </Splitter.Panel>

@@ -46,15 +46,24 @@ interface CatalogTreePanelProps {
   onAddFolder: (path: string) => string
   onRemoveNodes: (keys: Key[]) => Promise<void>
   onMoveNodes: (keys: Key[], targetKey: Key) => Promise<void>
+  onRenameNode: (key: Key, name: string) => Promise<string>
 }
 
-interface NodeDraft {
+interface NodeNameDraft {
   kind: 'entry' | 'folder'
-  parentKey: Key
-  parentPath: string
   name: string
   isSaving: boolean
   error?: string
+}
+
+interface NodeDraft extends NodeNameDraft {
+  parentKey: Key
+  parentPath: string
+}
+
+interface NodeRenameDraft extends NodeNameDraft {
+  key: Key
+  path: string
 }
 
 const nodeDraftKey = 'draft:node'
@@ -70,6 +79,7 @@ export function CatalogTreePanel({
   onAddFolder,
   onRemoveNodes,
   onMoveNodes,
+  onRenameNode,
 }: CatalogTreePanelProps) {
   const { token } = theme.useToken()
   const [messageApi, messageContext] = message.useMessage()
@@ -77,6 +87,7 @@ export function CatalogTreePanel({
   const [query, setQuery] = useState('')
   const [selectionAnchor, setSelectionAnchor] = useState<Key>()
   const [nodeDraft, setNodeDraft] = useState<NodeDraft>()
+  const [nodeRenameDraft, setNodeRenameDraft] = useState<NodeRenameDraft>()
   const filteredNodes = useMemo(() => filterCatalogTree(tree.nodes, query), [tree.nodes, query])
   const nodes = useMemo(
     () => nodeDraft ? insertNodeDraft(filteredNodes, nodeDraft) : filteredNodes,
@@ -141,6 +152,7 @@ export function CatalogTreePanel({
     }
 
     setQuery('')
+    setNodeRenameDraft(undefined)
     onExpandedKeysChange(mergeKeys(expandedKeys, [node.key]))
     setNodeDraft({
       kind,
@@ -149,6 +161,23 @@ export function CatalogTreePanel({
       name: kind === 'entry' ? 'NewEntry' : 'NewFolder',
       isSaving: false,
     })
+  }
+
+  const beginRename = (node: CatalogTreeNode) => {
+    if ((node.kind !== 'entry' && node.kind !== 'folder') || !node.path) {
+      return
+    }
+
+    setQuery('')
+    setNodeDraft(undefined)
+    setNodeRenameDraft({
+      key: node.key,
+      kind: node.kind,
+      path: node.path,
+      name: getLastPathSegment(node.path),
+      isSaving: false,
+    })
+    onSelectionChange([node.key])
   }
 
   const handlePanelMouseDown = (event: ReactMouseEvent<HTMLElement>) => {
@@ -170,6 +199,8 @@ export function CatalogTreePanel({
       beginCreation(node, 'entry')
     } else if (action === 'new-folder') {
       beginCreation(node, 'folder')
+    } else if (action === 'rename-entry' || action === 'rename-folder') {
+      beginRename(node)
     } else if (action === 'copy-entry-id' && node.entryId) {
       try {
         await navigator.clipboard.writeText(node.entryId)
@@ -189,16 +220,9 @@ export function CatalogTreePanel({
     }
 
     const name = nodeDraft.name.trim()
-    if (!name) {
-      setNodeDraft({ ...nodeDraft, error: `${capitalize(nodeDraft.kind)} name is required.` })
-      return
-    }
-
-    if (!pathSegmentPattern.test(name)) {
-      setNodeDraft({
-        ...nodeDraft,
-        error: 'The name must start with a Latin letter or underscore and contain only letters, digits, and underscores.',
-      })
+    const error = validateNodeName(name, nodeDraft.kind)
+    if (error) {
+      setNodeDraft({ ...nodeDraft, name, error })
       return
     }
 
@@ -217,6 +241,38 @@ export function CatalogTreePanel({
         name,
         isSaving: false,
         error: error instanceof Error ? error.message : 'Entry could not be created.',
+      })
+    }
+  }
+
+  const submitNodeRename = async () => {
+    if (!nodeRenameDraft || nodeRenameDraft.isSaving) {
+      return
+    }
+
+    const name = nodeRenameDraft.name.trim()
+    const error = validateNodeName(name, nodeRenameDraft.kind)
+    if (error) {
+      setNodeRenameDraft({ ...nodeRenameDraft, name, error })
+      return
+    }
+
+    if (name === getLastPathSegment(nodeRenameDraft.path)) {
+      setNodeRenameDraft(undefined)
+      return
+    }
+
+    setNodeRenameDraft({ ...nodeRenameDraft, name, isSaving: true, error: undefined })
+    try {
+      const renamedKey = await onRenameNode(nodeRenameDraft.key, name)
+      setNodeRenameDraft(undefined)
+      onSelectionChange([renamedKey])
+    } catch (error: unknown) {
+      setNodeRenameDraft({
+        ...nodeRenameDraft,
+        name,
+        isSaving: false,
+        error: error instanceof Error ? error.message : 'Item could not be renamed.',
       })
     }
   }
@@ -273,10 +329,15 @@ export function CatalogTreePanel({
               dirtyColor={token.colorWarning}
               rowHeight={token.controlHeightSM}
               nodeDraft={nodeDraft}
+              nodeRenameDraft={nodeRenameDraft}
               onDraftChange={(name) => setNodeDraft((draft) =>
                 draft ? { ...draft, name, error: undefined } : draft)}
               onDraftSubmit={submitNodeDraft}
               onDraftCancel={() => setNodeDraft(undefined)}
+              onRenameChange={(name) => setNodeRenameDraft((draft) =>
+                draft ? { ...draft, name, error: undefined } : draft)}
+              onRenameSubmit={submitNodeRename}
+              onRenameCancel={() => setNodeRenameDraft(undefined)}
               onAction={handleAction}
             />
           )}
@@ -403,9 +464,13 @@ function TreeNodeTitle({
   dirtyColor,
   rowHeight,
   nodeDraft,
+  nodeRenameDraft,
   onDraftChange,
   onDraftSubmit,
   onDraftCancel,
+  onRenameChange,
+  onRenameSubmit,
+  onRenameCancel,
   onAction,
 }: {
   node: CatalogTreeNode
@@ -413,9 +478,13 @@ function TreeNodeTitle({
   dirtyColor: string
   rowHeight: number
   nodeDraft?: NodeDraft
+  nodeRenameDraft?: NodeRenameDraft
   onDraftChange: (name: string) => void
   onDraftSubmit: () => void
   onDraftCancel: () => void
+  onRenameChange: (name: string) => void
+  onRenameSubmit: () => void
+  onRenameCancel: () => void
   onAction: (node: CatalogTreeNode, action: string) => void
 }) {
   const [isHovered, setIsHovered] = useState(false)
@@ -430,6 +499,19 @@ function TreeNodeTitle({
         onChange={onDraftChange}
         onSubmit={onDraftSubmit}
         onCancel={onDraftCancel}
+      />
+    )
+  }
+
+  if (nodeRenameDraft?.key === node.key) {
+    return (
+      <DraftNodeTitle
+        draft={nodeRenameDraft}
+        iconColor={iconColor}
+        rowHeight={rowHeight}
+        onChange={onRenameChange}
+        onSubmit={onRenameSubmit}
+        onCancel={onRenameCancel}
       />
     )
   }
@@ -521,7 +603,7 @@ function DraftNodeTitle({
   onSubmit,
   onCancel,
 }: {
-  draft: NodeDraft
+  draft: NodeNameDraft
   iconColor: string
   rowHeight: number
   onChange: (name: string) => void
@@ -757,4 +839,14 @@ function insertNodeDraft(nodes: CatalogTreeNode[], draft: NodeDraft): CatalogTre
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function validateNodeName(name: string, kind: 'entry' | 'folder') {
+  if (!name) {
+    return `${capitalize(kind)} name is required.`
+  }
+
+  return pathSegmentPattern.test(name)
+    ? undefined
+    : 'The name must start with a Latin letter or underscore and contain only letters, digits, and underscores.'
 }
