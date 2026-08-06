@@ -17,6 +17,7 @@ import {
   Modal,
   Space,
   Tag,
+  Table,
   Tabs,
   Tooltip,
   Typography,
@@ -35,6 +36,8 @@ interface CatalogInspectorProps {
   selection: CatalogSelectionItem[]
   defaultLocale: string
   locales: CatalogLocale[]
+  entries: CatalogEntry[]
+  onFolderPathChange: (path: string, nextPath: string) => Promise<void>
   onEntryPathChange: (id: string, path: string) => Promise<void>
   onEntryCommentChange: (id: string, comment: string | null) => Promise<void>
   onEntryTextChange: (id: string, localeId: string, text: string | null) => Promise<void>
@@ -49,6 +52,8 @@ export function CatalogInspector({
   selection,
   defaultLocale,
   locales,
+  entries,
+  onFolderPathChange,
   onEntryPathChange,
   onEntryCommentChange,
   onEntryTextChange,
@@ -67,7 +72,17 @@ export function CatalogInspector({
     case 'locale':
       return <LocaleInspector locale={item.locale} defaultLocale={defaultLocale} />
     case 'folder':
-      return <FolderInspector path={item.path} entryCount={item.entryCount} />
+      return (
+        <FolderInspector
+          path={item.path}
+          entryCount={item.entryCount}
+          folderCount={item.folderCount}
+          entries={entries}
+          locales={locales}
+          defaultLocale={defaultLocale}
+          onPathChange={onFolderPathChange}
+        />
+      )
     case 'entry':
       return (
         <EntryInspector
@@ -102,18 +117,90 @@ function LocaleInspector({ locale, defaultLocale }: { locale: CatalogLocale; def
   )
 }
 
-function FolderInspector({ path, entryCount }: { path: string; entryCount: number }) {
+function FolderInspector({
+  path,
+  entryCount,
+  folderCount,
+  entries,
+  locales,
+  defaultLocale,
+  onPathChange,
+}: {
+  path: string
+  entryCount: number
+  folderCount: number
+  entries: CatalogEntry[]
+  locales: CatalogLocale[]
+  defaultLocale: string
+  onPathChange: (path: string, nextPath: string) => Promise<void>
+}) {
+  const { token } = theme.useToken()
+  const folderEntries = entries.filter((entry) => entry.path.startsWith(`${path}.`))
+  const orderedLocales = [...locales].sort((left, right) =>
+    Number(right.id === defaultLocale) - Number(left.id === defaultLocale))
+  const coverage = orderedLocales.map((locale) => ({
+    key: locale.id,
+    locale,
+    textCount: folderEntries.filter((entry) =>
+      Boolean(entry.locales[locale.id]?.text?.trim())).length,
+    assetCount: folderEntries.filter((entry) =>
+      entry.locales[locale.id]?.asset != null).length,
+  }))
+
   return (
-    <InspectorSection title={path.split('.').at(-1) ?? path} type="Folder">
-      <Descriptions
-        bordered
-        column={1}
-        size="small"
-        items={[
-          { key: 'path', label: 'Path', children: path },
-          { key: 'entries', label: 'Entries', children: entryCount },
-        ]}
-      />
+    <InspectorSection
+      type="Folder"
+      icon={renderCatalogNodeIcon('folder', getCatalogNodeIconColor('folder', token))}
+      headerContent={(
+        <CatalogPathInput
+          path={path}
+          ariaLabel="Folder path"
+          onChange={(nextPath) => onPathChange(path, nextPath)}
+        />
+      )}
+    >
+      <Flex vertical gap={layoutTokens.spacing.large}>
+        <Flex vertical gap={layoutTokens.spacing.xSmall}>
+          <Typography.Text strong>Contents</Typography.Text>
+          <Typography.Text type="secondary">
+            {entryCount} {entryCount === 1 ? 'entry' : 'entries'} ·{' '}
+            {folderCount} {folderCount === 1 ? 'subfolder' : 'subfolders'}
+          </Typography.Text>
+        </Flex>
+        <Flex vertical gap={layoutTokens.spacing.small}>
+          <Typography.Text strong>Localization</Typography.Text>
+          <Table
+            size="small"
+            pagination={false}
+            dataSource={coverage}
+            columns={[
+              {
+                title: 'Locale',
+                dataIndex: 'locale',
+                render: (locale: CatalogLocale) => (
+                  <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+                    <LocaleFlag culture={locale.culture} />
+                    <span>{locale.displayName}</span>
+                    {locale.id === defaultLocale && <Tag color="blue">Default</Tag>}
+                  </Flex>
+                ),
+              },
+              {
+                title: 'Text',
+                dataIndex: 'textCount',
+                width: 88,
+                render: (count: number) => `${count}/${entryCount}`,
+              },
+              {
+                title: 'Asset',
+                dataIndex: 'assetCount',
+                width: 88,
+                render: (count: number) => `${count}/${entryCount}`,
+              },
+            ]}
+          />
+        </Flex>
+      </Flex>
     </InspectorSection>
   )
 }
@@ -152,7 +239,13 @@ function EntryInspector({
     <InspectorSection
       type={<EntryTypeLabel entryId={entry.id} />}
       icon={renderCatalogNodeIcon('entry', getCatalogNodeIconColor('entry', token))}
-      headerContent={<EntryPathInput entry={entry} onPathChange={onPathChange} />}
+      headerContent={(
+        <CatalogPathInput
+          path={entry.path}
+          ariaLabel="Entry path"
+          onChange={(path) => onPathChange(entry.id, path)}
+        />
+      )}
     >
       <EntryCommentInput entry={entry} onCommentChange={onCommentChange} />
       <Tabs
@@ -591,15 +684,17 @@ function EntryTypeLabel({ entryId }: { entryId: string }) {
   )
 }
 
-function EntryPathInput({
-  entry,
-  onPathChange,
+function CatalogPathInput({
+  path,
+  ariaLabel,
+  onChange,
 }: {
-  entry: CatalogEntry
-  onPathChange: (id: string, path: string) => Promise<void>
+  path: string
+  ariaLabel: string
+  onChange: (path: string) => Promise<void>
 }) {
   const { token } = theme.useToken()
-  const [draft, setDraft] = useState(entry.path)
+  const [draft, setDraft] = useState(path)
   const [error, setError] = useState<string>()
   const [isSaving, setIsSaving] = useState(false)
   const skipNextBlurRef = useRef(false)
@@ -608,9 +703,9 @@ function EntryPathInput({
   const [highlightInsets, setHighlightInsets] = useState({ left: 0, right: 0 })
 
   useEffect(() => {
-    setDraft(entry.path)
+    setDraft(path)
     setError(undefined)
-  }, [entry.path])
+  }, [path])
 
   useLayoutEffect(() => {
     const container = inputContainerRef.current
@@ -636,14 +731,14 @@ function EntryPathInput({
   }, [])
 
   const commit = async () => {
-    const path = draft.trim()
-    if (path === entry.path) {
-      setDraft(entry.path)
+    const nextPath = draft.trim()
+    if (nextPath === path) {
+      setDraft(path)
       setError(undefined)
       return
     }
 
-    if (!isValidEntryPath(path)) {
+    if (!isValidEntryPath(nextPath)) {
       setError('Path must contain dot-separated C# identifier segments.')
       return
     }
@@ -651,9 +746,9 @@ function EntryPathInput({
     setIsSaving(true)
     setError(undefined)
     try {
-      await onPathChange(entry.id, path)
+      await onChange(nextPath)
     } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : 'Entry path could not be changed.')
+      setError(reason instanceof Error ? reason.message : 'Path could not be changed.')
     } finally {
       setIsSaving(false)
     }
@@ -693,7 +788,7 @@ function EntryPathInput({
             <Space.Addon>Path</Space.Addon>
             <Input
               ref={inputRef}
-              aria-label="Entry path"
+              aria-label={ariaLabel}
               spellCheck={false}
               value={draft}
               disabled={isSaving}
@@ -725,7 +820,7 @@ function EntryPathInput({
                 } else if (event.key === 'Escape') {
                   event.preventDefault()
                   skipNextBlurRef.current = true
-                  setDraft(entry.path)
+                  setDraft(path)
                   setError(undefined)
                   event.currentTarget.blur()
                 }
@@ -738,7 +833,7 @@ function EntryPathInput({
             size="small"
             type="text"
             icon={<CopyOutlined />}
-            aria-label="Copy entry path"
+            aria-label={`Copy ${ariaLabel.toLocaleLowerCase()}`}
             onClick={() => void navigator.clipboard.writeText(draft)}
           />
         </Tooltip>

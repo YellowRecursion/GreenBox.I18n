@@ -382,6 +382,57 @@ function CatalogWorkspace({
     ))
   }
 
+  const handleFolderPathChange = async (sourcePath: string, destinationPath: string) => {
+    if (sourcePath === destinationPath) {
+      return
+    }
+
+    if (destinationPath.startsWith(`${sourcePath}.`)) {
+      throw new Error(`Folder '${sourcePath}' cannot be moved into itself.`)
+    }
+
+    const duplicateFolder = [...tree.selectionByKey.values()].some((candidate) =>
+      candidate.kind === 'folder' &&
+      candidate.path !== sourcePath &&
+      candidate.path.toLocaleLowerCase() === destinationPath.toLocaleLowerCase())
+    if (duplicateFolder) {
+      throw new Error(`Folder '${destinationPath}' already exists.`)
+    }
+
+    const moves = catalog.entries
+      .filter((entry) => entry.path.startsWith(`${sourcePath}.`))
+      .map((entry) => ({
+        id: entry.id,
+        path: `${destinationPath}${entry.path.slice(sourcePath.length)}`,
+      }))
+    const updatedCatalog = moves.length > 0
+      ? await onMoveEntries(moves)
+      : catalog
+
+    const destinations = new Map([[sourcePath, destinationPath]])
+    const sourceParentPath = getParentPath(sourcePath)
+    const sourceParentIsEmpty = sourceParentPath &&
+      !updatedCatalog.entries.some((entry) => entry.path.startsWith(`${sourceParentPath}.`))
+    const afterTemporaryFolderPaths = [...new Set([
+      ...temporaryFolderPaths.map((path) => replaceMovedFolderPrefix(path, destinations)),
+      ...(sourceParentIsEmpty ? [sourceParentPath] : []),
+    ])]
+    setTemporaryFolderPaths(afterTemporaryFolderPaths)
+    setSelectedKeys((selected) => selected.map((key) =>
+      replaceMovedFolderKey(key, destinations)))
+    setExpandedKeys((expanded) => mergeKeys(
+      expanded.map((key) => replaceMovedFolderKey(key, destinations)),
+      getFolderAncestorKeys(destinationPath),
+    ))
+    recordHistory(createEditorHistoryEntry(
+      `Move folder ${sourcePath} to ${destinationPath}`,
+      catalog,
+      updatedCatalog,
+      temporaryFolderPaths,
+      afterTemporaryFolderPaths,
+    ))
+  }
+
   const handleRenameNode = async (key: Key, name: string) => {
     const beforeTemporaryFolderPaths = temporaryFolderPaths
     const item = tree.selectionByKey.get(String(key))
@@ -403,39 +454,7 @@ function CatalogWorkspace({
     }
 
     const destinationPath = joinPath(getParentPath(item.path), name)
-    const duplicateFolder = [...tree.selectionByKey.values()].some((candidate) =>
-      candidate.kind === 'folder' &&
-      candidate.path !== item.path &&
-      candidate.path.toLocaleLowerCase() === destinationPath.toLocaleLowerCase())
-    if (duplicateFolder) {
-      throw new Error(`Folder '${destinationPath}' already exists.`)
-    }
-
-    const moves = catalog.entries
-      .filter((entry) => entry.path.startsWith(`${item.path}.`))
-      .map((entry) => ({
-        id: entry.id,
-        path: `${destinationPath}${entry.path.slice(item.path.length)}`,
-      }))
-    const updatedCatalog = moves.length > 0
-      ? await onMoveEntries(moves)
-      : catalog
-
-    const destinations = new Map([[item.path, destinationPath]])
-    const afterTemporaryFolderPaths = temporaryFolderPaths.map((path) =>
-      replaceMovedFolderPrefix(path, destinations))
-    setTemporaryFolderPaths(afterTemporaryFolderPaths)
-    setSelectedKeys((selected) => selected.map((selectedKey) =>
-      replaceMovedFolderKey(selectedKey, destinations)))
-    setExpandedKeys((expanded) => expanded.map((expandedKey) =>
-      replaceMovedFolderKey(expandedKey, destinations)))
-    recordHistory(createEditorHistoryEntry(
-      `Rename ${item.path} to ${destinationPath}`,
-      catalog,
-      updatedCatalog,
-      beforeTemporaryFolderPaths,
-      afterTemporaryFolderPaths,
-    ))
+    await handleFolderPathChange(item.path, destinationPath)
     return `folder:${destinationPath}`
   }
 
@@ -620,6 +639,8 @@ function CatalogWorkspace({
               selection={selection}
               defaultLocale={catalog.defaultLocale}
               locales={catalog.locales}
+              entries={catalog.entries}
+              onFolderPathChange={handleFolderPathChange}
               onEntryPathChange={handleEntryPathChange}
               onEntryCommentChange={handleEntryCommentChange}
               onEntryTextChange={handleEntryTextChange}
@@ -691,6 +712,11 @@ function getParentPath(path: string) {
 
 function getEntryAncestorFolderKeys(path: string): Key[] {
   const segments = path.split('.').slice(0, -1)
+  return segments.map((_, index) => `folder:${segments.slice(0, index + 1).join('.')}`)
+}
+
+function getFolderAncestorKeys(path: string): Key[] {
+  const segments = path.split('.')
   return segments.map((_, index) => `folder:${segments.slice(0, index + 1).join('.')}`)
 }
 

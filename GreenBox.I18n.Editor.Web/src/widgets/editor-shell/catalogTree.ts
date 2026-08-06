@@ -26,7 +26,7 @@ export interface CatalogTreeNode {
 
 export type CatalogSelectionItem =
   | { kind: 'locale'; locale: CatalogLocale }
-  | { kind: 'folder'; path: string; entryCount: number }
+  | { kind: 'folder'; path: string; entryCount: number; folderCount: number }
   | { kind: 'entry'; entry: CatalogEntry }
 
 export interface CatalogTreeModel {
@@ -311,7 +311,12 @@ function createEntryTreeNode(
 ): CatalogTreeNode {
   if ('children' in child) {
     const key = folderKey(child.path)
-    selectionByKey.set(key, { kind: 'folder', path: child.path, entryCount: child.entryCount })
+    selectionByKey.set(key, {
+      kind: 'folder',
+      path: child.path,
+      entryCount: child.entryCount,
+      folderCount: countDescendantFolders(child),
+    })
 
     return {
       key,
@@ -343,6 +348,11 @@ function createEntryTreeNode(
       ...Object.values(child.locales).map((value) => value.text ?? ''),
     ].join(' '),
   }
+}
+
+function countDescendantFolders(folder: FolderBuilder): number {
+  return folder.children.reduce((count, child) =>
+    count + ('children' in child ? 1 + countDescendantFolders(child) : 0), 0)
 }
 
 function hasDirtyPath(folderPath: string, dirtyPaths: ReadonlySet<string>): boolean {
