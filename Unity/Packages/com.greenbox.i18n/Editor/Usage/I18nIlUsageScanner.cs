@@ -2,15 +2,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
-using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 using UnityCompilationAssembly = UnityEditor.Compilation.Assembly;
 
 namespace GreenBox.I18n.Unity.Editor.Usage
@@ -20,32 +17,18 @@ namespace GreenBox.I18n.Unity.Editor.Usage
     /// </summary>
     internal static class I18nIlUsageScanner
     {
-        private const string MenuPath = "Tools/GreenBox I18n/Scan Entry Usage";
         private const int MaximumReportedLocationCount = 100;
         private const int MaximumReportedLocationsPerEntry = 10;
 
-        [MenuItem(MenuPath, false, 100)]
-        private static void ScanAndLog()
+        internal static string FormatReport(I18nIlUsageScanResult result)
         {
-            if (EditorApplication.isCompiling)
-            {
-                Debug.LogWarning("[GreenBox I18n] Wait for script compilation to finish before scanning entry usage.");
-                return;
-            }
-
-            I18nIlUsageScanResult result = Scan();
-            string report = FormatReport(result);
-            if (result.Warnings.Count > 0)
-            {
-                Debug.LogWarning(report);
-            }
-            else
-            {
-                Debug.Log(report);
-            }
+            return FormatReport(result, MaximumReportedLocationCount, out _);
         }
 
-        internal static string FormatReport(I18nIlUsageScanResult result)
+        internal static string FormatReport(
+            I18nIlUsageScanResult result,
+            int maximumReportedLocationCount,
+            out int reportedLocationCount)
         {
             var lines = new List<string>
             {
@@ -55,12 +38,12 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 $"{result.Usages.Select(usage => usage.EntryId).Distinct().Count()} ID(s).",
             };
 
-            int reportedLocationCount = 0;
+            reportedLocationCount = 0;
             foreach (IGrouping<long, I18nIlUsage> group in result.Usages
                          .GroupBy(usage => usage.EntryId)
                          .OrderBy(group => group.Key))
             {
-                if (reportedLocationCount >= MaximumReportedLocationCount)
+                if (reportedLocationCount >= maximumReportedLocationCount)
                 {
                     break;
                 }
@@ -71,7 +54,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     .ToArray();
                 int locationLimit = Math.Min(
                     MaximumReportedLocationsPerEntry,
-                    MaximumReportedLocationCount - reportedLocationCount);
+                    maximumReportedLocationCount - reportedLocationCount);
                 I18nIlUsage[] reportedLocations = orderedLocations
                     .Take(locationLimit)
                     .ToArray();
@@ -100,7 +83,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
         internal static I18nIlUsageScanResult Scan()
         {
-            var stopwatch = Stopwatch.StartNew();
+            var profiler = new I18nUsageScanProfiler();
             var usages = new HashSet<I18nIlUsage>();
             var warnings = new List<string>();
             string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
@@ -123,8 +106,14 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
                 try
                 {
-                    ScanAssembly(assemblyPath, assembly.allReferences, projectRoot, usages);
+                    ScanAssembly(
+                        assemblyPath,
+                        assembly.allReferences,
+                        projectRoot,
+                        usages,
+                        profiler);
                     scannedAssemblyCount++;
+                    profiler.Sample();
                 }
                 catch (Exception exception)
                 {
@@ -132,7 +121,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 }
             }
 
-            stopwatch.Stop();
+            I18nUsageScanPerformance performance = profiler.Complete();
             return new I18nIlUsageScanResult(
                 usages
                     .OrderBy(usage => usage.EntryId)
@@ -141,14 +130,15 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     .ToArray(),
                 warnings,
                 scannedAssemblyCount,
-                stopwatch.ElapsedMilliseconds);
+                performance);
         }
 
         private static void ScanAssembly(
             string assemblyPath,
             IReadOnlyList<string> referencePaths,
             string projectRoot,
-            ISet<I18nIlUsage> usages)
+            ISet<I18nIlUsage> usages,
+            I18nUsageScanProfiler profiler)
         {
             bool hasSymbols = File.Exists(Path.ChangeExtension(assemblyPath, ".pdb"));
             using DefaultAssemblyResolver resolver = CreateAssemblyResolver(
@@ -164,6 +154,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             };
 
             using AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(assemblyPath, readerParameters);
+            profiler.Sample();
             foreach (ModuleDefinition module in assembly.Modules)
             {
                 foreach (TypeDefinition type in EnumerateTypes(module.Types))
@@ -341,12 +332,12 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             IReadOnlyList<I18nIlUsage> usages,
             IReadOnlyList<string> warnings,
             int scannedAssemblyCount,
-            long elapsedMilliseconds)
+            I18nUsageScanPerformance performance)
         {
             Usages = usages;
             Warnings = warnings;
             ScannedAssemblyCount = scannedAssemblyCount;
-            ElapsedMilliseconds = elapsedMilliseconds;
+            Performance = performance;
         }
 
         public IReadOnlyList<I18nIlUsage> Usages { get; }
@@ -355,7 +346,9 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
         public int ScannedAssemblyCount { get; }
 
-        public long ElapsedMilliseconds { get; }
+        public I18nUsageScanPerformance Performance { get; }
+
+        public long ElapsedMilliseconds => Performance.ElapsedMilliseconds;
     }
 
     internal sealed class I18nIlUsage : IEquatable<I18nIlUsage>

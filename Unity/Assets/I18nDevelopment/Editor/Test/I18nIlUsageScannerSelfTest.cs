@@ -15,7 +15,7 @@ namespace GreenBox.I18n.Development.Editor
     internal static class I18nIlUsageScannerSelfTest
     {
         private const string MenuPath = "Tools/GreenBox I18n/Test Entry Usage Scanner";
-        private const string FixturePath = "Assets/I18nDevelopment/I18nUsageScanTestFixture.cs";
+        private const string FixturePath = "Assets/I18nDevelopment/Test/I18nUsageScanTestFixture.cs";
 
         private static readonly ExpectedUsage[] ExpectedUsages =
         {

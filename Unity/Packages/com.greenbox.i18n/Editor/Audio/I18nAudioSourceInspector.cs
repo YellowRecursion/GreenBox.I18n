@@ -16,7 +16,7 @@ namespace GreenBox.I18n.Unity.Editor.Audio
     internal sealed class I18nAudioSourceInspector : UnityEditor.Editor
     {
         private const string KeyPropertyName = "_key";
-        private const string IdPropertyName = "_id";
+        private const string IdPropertyName = "_greenBoxI18nEntryId";
 
         private readonly I18nEditorAssetResolver<AudioClip> _resolver = new();
         private SerializedProperty? _keyProperty;

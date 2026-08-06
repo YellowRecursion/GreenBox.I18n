@@ -14,7 +14,7 @@ namespace GreenBox.I18n.Unity.Editor.Drawers
     [CustomPropertyDrawer(typeof(I18nKey))]
     internal sealed class I18nKeyPropertyDrawer : PropertyDrawer
     {
-        private const string IdPropertyName = "_id";
+        private const string IdPropertyName = "_greenBoxI18nEntryId";
 
         /// <inheritdoc />
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)

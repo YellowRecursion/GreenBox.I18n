@@ -22,7 +22,7 @@ namespace GreenBox.I18n.Unity.Editor.Text
     {
         private const string KeyPropertyName = "_key";
         private const string TextTransformPropertyName = "_textTransform";
-        private const string IdPropertyName = "_id";
+        private const string IdPropertyName = "_greenBoxI18nEntryId";
 
         private SerializedProperty? _keyProperty;
         private SerializedProperty? _textTransformProperty;

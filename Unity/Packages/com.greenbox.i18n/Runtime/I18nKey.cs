@@ -9,7 +9,7 @@ using UnityEngine;
 public struct I18nKey : IEquatable<I18nKey>
 {
     [SerializeField]
-    private long _id;
+    private long _greenBoxI18nEntryId;
 
     /// <summary>
     /// Initializes a localization key with a valid entry ID or zero for an unassigned key.
@@ -23,7 +23,7 @@ public struct I18nKey : IEquatable<I18nKey>
             throw new ArgumentOutOfRangeException(nameof(id), id, "The localization key ID format is invalid.");
         }
 
-        _id = id;
+        _greenBoxI18nEntryId = id;
     }
 
     /// <summary>
@@ -34,25 +34,25 @@ public struct I18nKey : IEquatable<I18nKey>
     /// <summary>
     /// Gets the stable entry ID, or zero when the key is unassigned.
     /// </summary>
-    public long Id => _id;
+    public long Id => _greenBoxI18nEntryId;
 
     /// <summary>
     /// Gets a value indicating whether an entry is assigned.
     /// </summary>
-    public bool IsAssigned => _id > 0;
+    public bool IsAssigned => _greenBoxI18nEntryId > 0;
 
     /// <summary>
     /// Converts a Unity localization key to its stable numeric ID.
     /// </summary>
     public static implicit operator long(I18nKey key)
     {
-        return key._id;
+        return key._greenBoxI18nEntryId;
     }
 
     /// <inheritdoc />
     public bool Equals(I18nKey other)
     {
-        return _id == other._id;
+        return _greenBoxI18nEntryId == other._greenBoxI18nEntryId;
     }
 
     /// <inheritdoc />
@@ -64,7 +64,7 @@ public struct I18nKey : IEquatable<I18nKey>
     /// <inheritdoc />
     public override int GetHashCode()
     {
-        return _id.GetHashCode();
+        return _greenBoxI18nEntryId.GetHashCode();
     }
 
     /// <summary>

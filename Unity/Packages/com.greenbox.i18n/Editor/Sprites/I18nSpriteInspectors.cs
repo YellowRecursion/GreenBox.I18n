@@ -16,7 +16,7 @@ namespace GreenBox.I18n.Unity.Editor.Sprites
     internal abstract class I18nSpriteInspector : UnityEditor.Editor
     {
         private const string KeyPropertyName = "_key";
-        private const string IdPropertyName = "_id";
+        private const string IdPropertyName = "_greenBoxI18nEntryId";
 
         private readonly I18nEditorAssetResolver<Sprite> _resolver = new();
         private SerializedProperty? _keyProperty;
