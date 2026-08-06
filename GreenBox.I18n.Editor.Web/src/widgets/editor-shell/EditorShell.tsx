@@ -4,6 +4,7 @@ import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogLocale, CatalogSnapshot } from '../../entities/catalog/model/catalog'
 import type { CatalogEntryMove } from '../../entities/catalog/api/moveCatalogEntries'
 import type { CatalogEntryDelta } from '../../entities/catalog/api/applyCatalogEntryDelta'
+import type { CatalogLocaleRename } from '../../entities/catalog/api/applyCatalogLocales'
 import { useCatalog } from '../../entities/catalog/model/useCatalog'
 import { useCatalogSession } from '../../entities/catalog/model/useCatalogSession'
 import { useCatalogSourceMonitor } from '../../entities/catalog/model/useCatalogSourceMonitor'
@@ -113,7 +114,13 @@ function CatalogWorkspace({
   onRemoveEntries(ids: string[]): Promise<CatalogSnapshot>
   onMoveEntries(moves: CatalogEntryMove[]): Promise<CatalogSnapshot>
   onApplyEntryDelta(delta: CatalogEntryDelta, expectedRevision: number): Promise<CatalogSnapshot>
-  onApplyLocales(locales: CatalogLocale[], defaultLocale: string, expectedRevision: number): Promise<CatalogSnapshot>
+  onApplyLocales(
+    locales: CatalogLocale[],
+    defaultLocale: string,
+    expectedRevision: number,
+    renames?: CatalogLocaleRename[],
+    removedIds?: string[],
+  ): Promise<CatalogSnapshot>
   onSave(overwriteExternalChanges?: boolean): Promise<CatalogSnapshot>
   onRevert(): Promise<CatalogSnapshot>
   onMergeSource(): Promise<CatalogSnapshot>
@@ -150,14 +157,33 @@ function CatalogWorkspace({
   }, [])
 
   const applyHistorySnapshot = useCallback(async (snapshot: EditorHistoryStateSnapshot) => {
-    if (snapshot.entryDelta.entries.length > 0 || snapshot.entryDelta.removedIds.length > 0) {
-      await onApplyEntryDelta(snapshot.entryDelta, catalog.revision)
-    } else if (snapshot.localeState) {
-      await onApplyLocales(
+    let expectedRevision = catalog.revision
+    if (snapshot.localeState) {
+      const localeRenames = inferLocaleRenames(catalog.locales, snapshot.localeState.locales)
+      const targetLocaleIds = new Set(snapshot.localeState.locales.map((locale) => locale.id))
+      const removedLocaleIds = catalog.locales
+        .map((locale) => locale.id)
+        .filter((id) => !targetLocaleIds.has(id) &&
+          !localeRenames.some((rename) => rename.fromId === id))
+      const updatedCatalog = await onApplyLocales(
         snapshot.localeState.locales,
         snapshot.localeState.defaultLocale,
-        catalog.revision,
+        expectedRevision,
+        localeRenames,
+        removedLocaleIds,
       )
+      expectedRevision = updatedCatalog.revision
+      if (localeRenames.length > 0) {
+        setSelectedKeys((keys) => keys.map((key) => {
+          const rename = localeRenames.find((candidate) =>
+            String(key) === `locale:${candidate.fromId}`)
+          return rename ? `locale:${rename.toId}` : key
+        }))
+      }
+    }
+
+    if (snapshot.entryDelta.entries.length > 0 || snapshot.entryDelta.removedIds.length > 0) {
+      await onApplyEntryDelta(snapshot.entryDelta, expectedRevision)
     }
 
     setTemporaryFolderPaths(snapshot.temporaryFolderPaths)
@@ -264,6 +290,9 @@ function CatalogWorkspace({
     const folderPaths = items
       .filter((item) => item.kind === 'folder')
       .map((item) => item.path)
+    const localeIds = new Set(
+      items.filter((item) => item.kind === 'locale').map((item) => item.locale.id),
+    )
     const entryIds = new Set(
       items.filter((item) => item.kind === 'entry').map((item) => item.entry.id),
     )
@@ -274,9 +303,30 @@ function CatalogWorkspace({
       }
     }
 
-    const updatedCatalog = entryIds.size > 0
-      ? await onRemoveEntries([...entryIds])
-      : catalog
+    const remainingLocales = catalog.locales.filter((locale) => !localeIds.has(locale.id))
+    if (localeIds.size > 0 && remainingLocales.length === 0) {
+      throw new Error('The catalog must contain at least one locale.')
+    }
+
+    let updatedCatalog = catalog
+    if (localeIds.size > 0) {
+      const nextDefaultLocale = localeIds.has(catalog.defaultLocale)
+        ? remainingLocales[0].id
+        : catalog.defaultLocale
+      updatedCatalog = await onApplyLocales(
+        remainingLocales.map((locale) => locale.fallback && localeIds.has(locale.fallback)
+          ? { ...locale, fallback: null }
+          : locale),
+        nextDefaultLocale,
+        updatedCatalog.revision,
+        [],
+        [...localeIds],
+      )
+    }
+
+    if (entryIds.size > 0) {
+      updatedCatalog = await onRemoveEntries([...entryIds])
+    }
 
     const possibleEmptySourceFolders = catalog.entries
       .filter((entry) => entryIds.has(entry.id))
@@ -295,6 +345,10 @@ function CatalogWorkspace({
     setSelectedKeys((selected) => selected.filter((key) => {
       const value = String(key)
       if (value.startsWith('entry:') && entryIds.has(value.slice('entry:'.length))) {
+        return false
+      }
+
+      if (value.startsWith('locale:') && localeIds.has(value.slice('locale:'.length))) {
         return false
       }
 
@@ -574,24 +628,56 @@ function CatalogWorkspace({
     ))
   }
 
-  const handleLocaleChange = async (locale: CatalogLocale) => {
-    const current = catalog.locales.find((candidate) => candidate.id === locale.id)
+  const handleLocaleChange = async (locale: CatalogLocale, previousId = locale.id) => {
+    const current = catalog.locales.find((candidate) => candidate.id === previousId)
     if (!current) {
-      throw new Error(`Locale '${locale.id}' does not exist.`)
+      throw new Error(`Locale '${previousId}' does not exist.`)
     }
 
+    const isRename = previousId !== locale.id
+    const updatedLocales = catalog.locales.map((candidate) => {
+      if (candidate.id === previousId) {
+        return locale
+      }
+
+      return isRename && candidate.fallback === previousId
+        ? { ...candidate, fallback: locale.id }
+        : candidate
+    })
     const updatedCatalog = await onApplyLocales(
-      catalog.locales.map((candidate) => candidate.id === locale.id ? locale : candidate),
-      catalog.defaultLocale,
+      updatedLocales,
+      isRename && catalog.defaultLocale === previousId ? locale.id : catalog.defaultLocale,
       catalog.revision,
+      isRename ? [{ fromId: previousId, toId: locale.id }] : [],
     )
+    if (isRename) {
+      setSelectedKeys((keys) => keys.map((key) =>
+        String(key) === `locale:${previousId}` ? `locale:${locale.id}` : key))
+    }
     recordHistory(createEditorHistoryEntry(
-      `Edit locale ${locale.id}`,
+      isRename ? `Rename locale ${previousId} to ${locale.id}` : `Edit locale ${locale.id}`,
       catalog,
       updatedCatalog,
       temporaryFolderPaths,
       temporaryFolderPaths,
     ))
+  }
+
+  const handleAddLocale = async (locale: CatalogLocale) => {
+    const updatedCatalog = await onApplyLocales(
+      [...catalog.locales, locale],
+      catalog.defaultLocale,
+      catalog.revision,
+    )
+    recordHistory(createEditorHistoryEntry(
+      `Add locale ${locale.id}`,
+      catalog,
+      updatedCatalog,
+      temporaryFolderPaths,
+      temporaryFolderPaths,
+    ))
+    setExpandedKeys((keys) => mergeKeys(keys, ['root:locales']))
+    return `locale:${locale.id}`
   }
 
   const handleDefaultLocaleChange = async (localeId: string) => {
@@ -669,6 +755,7 @@ function CatalogWorkspace({
               onSelectionChange={setSelectedKeys}
               onExpandedKeysChange={setExpandedKeys}
               onAddEntry={handleAddEntry}
+              onAddLocale={handleAddLocale}
               onAddFolder={handleAddFolder}
               onRemoveNodes={handleRemoveNodes}
               onMoveNodes={handleMoveNodes}
@@ -706,6 +793,23 @@ function CatalogWorkspace({
   )
 }
 
+function inferLocaleRenames(
+  currentLocales: CatalogLocale[],
+  targetLocales: CatalogLocale[],
+): CatalogLocaleRename[] {
+  if (currentLocales.length !== targetLocales.length) {
+    return []
+  }
+
+  const currentIds = new Set(currentLocales.map((locale) => locale.id))
+  const targetIds = new Set(targetLocales.map((locale) => locale.id))
+  const removedIds = [...currentIds].filter((id) => !targetIds.has(id))
+  const addedIds = [...targetIds].filter((id) => !currentIds.has(id))
+  return removedIds.length === 1 && addedIds.length === 1
+    ? [{ fromId: removedIds[0], toId: addedIds[0] }]
+    : []
+}
+
 function getContainerPath(tree: ReturnType<typeof buildCatalogTree>, key: Key) {
   if (key === 'root:entries') {
     return ''
@@ -728,6 +832,10 @@ function describeRemoveOperation(items: CatalogSelectionItem[], removedEntryCoun
 
     if (item.kind === 'folder') {
       return `Delete folder ${item.path}`
+    }
+
+    if (item.kind === 'locale') {
+      return `Delete locale ${item.locale.id}`
     }
   }
 

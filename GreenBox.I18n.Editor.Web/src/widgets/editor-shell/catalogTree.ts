@@ -48,6 +48,7 @@ export function buildCatalogTree(
   temporaryFolderPaths: readonly string[] = [],
 ): CatalogTreeModel {
   const selectionByKey = new Map<string, CatalogSelectionItem>()
+  const dirtyLocaleIds = new Set(catalog.dirtyLocaleIds ?? [])
   const dirtyEntryIds = new Set(catalog.dirtyEntryIds)
   const dirtyPaths = new Set(catalog.dirtyPaths ?? [])
   const localeNodes = catalog.locales.map((locale) => {
@@ -59,6 +60,7 @@ export function buildCatalogTree(
       title: locale.displayName,
       kind: 'locale' as const,
       culture: locale.culture,
+      isDirty: dirtyLocaleIds.has(locale.id),
       searchText: `${locale.id} ${locale.displayName} ${locale.culture}`,
     }
   })
@@ -86,6 +88,7 @@ export function buildCatalogTree(
         kind: 'locales-root',
         searchText: 'locales',
         count: catalog.locales.length,
+        isDirty: dirtyLocaleIds.size > 0,
         selectable: false,
         children: localeNodes,
       },

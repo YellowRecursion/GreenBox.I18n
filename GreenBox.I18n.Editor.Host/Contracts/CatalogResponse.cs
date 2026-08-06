@@ -8,6 +8,7 @@ namespace GreenBox.I18n.Editor.Host.Contracts;
 /// <param name="Locales">The supported locales in editor display order.</param>
 /// <param name="Entries">The catalog entries in canonical order.</param>
 /// <param name="Diagnostics">The current validation diagnostics.</param>
+/// <param name="DirtyLocaleIds">The locale IDs changed since the catalog was loaded or saved.</param>
 /// <param name="DirtyEntryIds">The IDs of entries changed since the catalog was loaded or saved.</param>
 /// <param name="DirtyPaths">The current and removed entry paths changed since loading or saving.</param>
 /// <param name="HasChanges">Whether the complete working copy differs from its source baseline.</param>
@@ -17,6 +18,7 @@ public sealed record CatalogResponse(
     IReadOnlyList<CatalogLocaleResponse> Locales,
     IReadOnlyList<CatalogEntryResponse> Entries,
     IReadOnlyList<CatalogDiagnosticResponse> Diagnostics,
+    IReadOnlyList<string> DirtyLocaleIds,
     IReadOnlyList<string> DirtyEntryIds,
     IReadOnlyList<string> DirtyPaths,
     bool HasChanges);

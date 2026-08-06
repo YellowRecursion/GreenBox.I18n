@@ -111,7 +111,9 @@ public static class CatalogEndpoints
         CatalogEditResult result = session.ApplyLocales(
             request.ExpectedRevision,
             request.DefaultLocale,
-            request.Locales);
+            request.Locales,
+            request.Renames,
+            request.RemovedIds);
         if (result.Error == null)
         {
             return Results.Ok(result.Catalog);

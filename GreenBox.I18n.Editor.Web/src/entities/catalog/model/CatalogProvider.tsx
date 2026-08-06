@@ -7,7 +7,7 @@ import { saveCatalog } from '../api/saveCatalog'
 import { mergeCatalogSource } from '../api/mergeCatalogSource'
 import { getCatalog } from '../api/getCatalog'
 import { applyCatalogEntryDelta, type CatalogEntryDelta } from '../api/applyCatalogEntryDelta'
-import { applyCatalogLocales } from '../api/applyCatalogLocales'
+import { applyCatalogLocales, type CatalogLocaleRename } from '../api/applyCatalogLocales'
 import type { CatalogLocale } from './catalog'
 import { CatalogContext } from './catalogContext'
 import { catalogReducer, initialCatalogState } from './catalogReducer'
@@ -90,8 +90,10 @@ export function CatalogProvider({ children }: PropsWithChildren) {
     locales: CatalogLocale[],
     defaultLocale: string,
     expectedRevision: number,
+    renames: CatalogLocaleRename[] = [],
+    removedIds: string[] = [],
   ) => {
-    const catalog = await applyCatalogLocales(locales, defaultLocale, expectedRevision)
+    const catalog = await applyCatalogLocales(locales, defaultLocale, expectedRevision, renames, removedIds)
     if (!catalogPath) {
       throw new Error('No catalog is open.')
     }

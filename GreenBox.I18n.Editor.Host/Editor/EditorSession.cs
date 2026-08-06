@@ -16,6 +16,7 @@ public sealed class EditorSession
     private string? _catalogPath;
     private string? _baselineHash;
     private long _revision = 0;
+    private readonly HashSet<string> _dirtyLocaleIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _dirtyEntryIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _dirtyPaths = new(StringComparer.Ordinal);
 
@@ -318,13 +319,19 @@ public sealed class EditorSession
     /// <param name="expectedRevision">The working-copy revision on which the edit is based.</param>
     /// <param name="defaultLocale">The locale identifier used as the catalog default.</param>
     /// <param name="locales">The complete locale definitions in editor display order.</param>
+    /// <param name="renames">Locale ID changes to propagate through entry values.</param>
+    /// <param name="removedIds">Locale IDs to remove from definitions and entries.</param>
     /// <returns>The operation result and updated snapshot.</returns>
     public CatalogEditResult ApplyLocales(
         long expectedRevision,
         string defaultLocale,
-        IReadOnlyCollection<CatalogLocaleEditRequest> locales)
+        IReadOnlyCollection<CatalogLocaleEditRequest> locales,
+        IReadOnlyCollection<CatalogLocaleRenameRequest> renames,
+        IReadOnlyCollection<string> removedIds)
     {
         ArgumentNullException.ThrowIfNull(locales);
+        ArgumentNullException.ThrowIfNull(renames);
+        ArgumentNullException.ThrowIfNull(removedIds);
 
         lock (_lock)
         {
@@ -343,6 +350,24 @@ public sealed class EditorSession
             }
 
             I18nCatalog candidate = CloneCatalog(_catalog);
+            foreach (CatalogLocaleRenameRequest rename in renames)
+            {
+                CatalogEditResult? renameError = RenameLocaleReferences(candidate, rename);
+                if (renameError != null)
+                {
+                    return renameError;
+                }
+            }
+
+            foreach (string removedId in removedIds.Distinct(StringComparer.Ordinal))
+            {
+                CatalogEditResult? removalError = RemoveLocaleReferences(candidate, removedId);
+                if (removalError != null)
+                {
+                    return removalError;
+                }
+            }
+
             candidate.DefaultLocale = defaultLocale;
             candidate.Locales = locales.Select(CreateLocale).ToList();
 
@@ -356,13 +381,102 @@ public sealed class EditorSession
 
             if (I18nCatalogJson.Serialize(candidate) != I18nCatalogJson.Serialize(_catalog))
             {
-                _catalog.DefaultLocale = candidate.DefaultLocale;
-                _catalog.Locales = candidate.Locales;
+                _catalog = candidate;
+                RebuildDirtyState();
                 _revision++;
             }
 
             return CatalogEditResult.Success(CreateCatalogResponse());
         }
+    }
+
+    private static CatalogEditResult? RemoveLocaleReferences(I18nCatalog catalog, string localeId)
+    {
+        I18nLocaleDefinition? locale = catalog.Locales.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, localeId, StringComparison.Ordinal));
+        if (locale == null)
+        {
+            return CatalogEditResult.Failure(
+                I18nValidationCodes.InvalidLocaleId,
+                $"Locale '{localeId}' does not exist.");
+        }
+
+        catalog.Locales.Remove(locale);
+        foreach (I18nLocaleDefinition candidate in catalog.Locales)
+        {
+            if (string.Equals(candidate.Fallback, localeId, StringComparison.Ordinal))
+            {
+                candidate.Fallback = null;
+            }
+        }
+
+        foreach (I18nEntry entry in catalog.Entries)
+        {
+            entry.Locales.Remove(localeId);
+        }
+
+        return null;
+    }
+
+    private static CatalogEditResult? RenameLocaleReferences(
+        I18nCatalog catalog,
+        CatalogLocaleRenameRequest rename)
+    {
+        if (string.Equals(rename.FromId, rename.ToId, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        I18nLocaleDefinition? source = catalog.Locales.FirstOrDefault(locale =>
+            string.Equals(locale.Id, rename.FromId, StringComparison.Ordinal));
+        if (source == null)
+        {
+            return CatalogEditResult.Failure(
+                I18nValidationCodes.InvalidLocaleId,
+                $"Locale '{rename.FromId}' does not exist.");
+        }
+
+        if (catalog.Locales.Any(locale =>
+            string.Equals(locale.Id, rename.ToId, StringComparison.Ordinal)))
+        {
+            return CatalogEditResult.Failure(
+                I18nValidationCodes.DuplicateLocaleId,
+                $"Locale ID '{rename.ToId}' is already used.");
+        }
+
+        source.Id = rename.ToId;
+        if (string.Equals(catalog.DefaultLocale, rename.FromId, StringComparison.Ordinal))
+        {
+            catalog.DefaultLocale = rename.ToId;
+        }
+
+        foreach (I18nLocaleDefinition locale in catalog.Locales)
+        {
+            if (string.Equals(locale.Fallback, rename.FromId, StringComparison.Ordinal))
+            {
+                locale.Fallback = rename.ToId;
+            }
+        }
+
+        foreach (I18nEntry entry in catalog.Entries)
+        {
+            if (!entry.Locales.TryGetValue(rename.FromId, out I18nLocaleValue? value))
+            {
+                continue;
+            }
+
+            if (entry.Locales.ContainsKey(rename.ToId))
+            {
+                return CatalogEditResult.Failure(
+                    I18nValidationCodes.DuplicateLocaleId,
+                    $"Entry '{entry.Path}' already contains locale '{rename.ToId}'.");
+            }
+
+            entry.Locales.Remove(rename.FromId);
+            entry.Locales.Add(rename.ToId, value);
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -447,6 +561,7 @@ public sealed class EditorSession
 
     private void ClearDirtyState()
     {
+        _dirtyLocaleIds.Clear();
         _dirtyEntryIds.Clear();
         _dirtyPaths.Clear();
     }
@@ -498,6 +613,28 @@ public sealed class EditorSession
         Dictionary<string, I18nEntry> currentById = _catalog.Entries.ToDictionary(
             entry => entry.Id,
             StringComparer.Ordinal);
+
+        Dictionary<string, I18nLocaleDefinition> currentLocalesById = _catalog.Locales.ToDictionary(
+            locale => locale.Id,
+            StringComparer.Ordinal);
+        Dictionary<string, I18nLocaleDefinition> baselineLocalesById = _baselineCatalog.Locales.ToDictionary(
+            locale => locale.Id,
+            StringComparer.Ordinal);
+        foreach (string id in currentLocalesById.Keys.Concat(baselineLocalesById.Keys).Distinct(StringComparer.Ordinal))
+        {
+            currentLocalesById.TryGetValue(id, out I18nLocaleDefinition? current);
+            baselineLocalesById.TryGetValue(id, out I18nLocaleDefinition? baseline);
+            if (!LocaleEquals(current, baseline))
+            {
+                _dirtyLocaleIds.Add(id);
+            }
+        }
+
+        if (!string.Equals(_catalog.DefaultLocale, _baselineCatalog.DefaultLocale, StringComparison.Ordinal))
+        {
+            _dirtyLocaleIds.Add(_catalog.DefaultLocale);
+            _dirtyLocaleIds.Add(_baselineCatalog.DefaultLocale);
+        }
         Dictionary<string, I18nEntry> baselineById = _baselineCatalog.Entries.ToDictionary(
             entry => entry.Id,
             StringComparer.Ordinal);
@@ -529,6 +666,16 @@ public sealed class EditorSession
         return left.Locales.All(pair =>
             right.Locales.TryGetValue(pair.Key, out I18nLocaleValue? value) &&
             pair.Value.Text == value.Text && AssetEquals(pair.Value.Asset, value.Asset));
+    }
+
+    private static bool LocaleEquals(I18nLocaleDefinition? left, I18nLocaleDefinition? right)
+    {
+        return ReferenceEquals(left, right) || left != null && right != null &&
+            left.Id == right.Id &&
+            left.DisplayName == right.DisplayName &&
+            left.Culture == right.Culture &&
+            left.Fallback == right.Fallback &&
+            AssetEquals(left.Icon, right.Icon);
     }
 
     private static bool AssetEquals(I18nAssetReference? left, I18nAssetReference? right)
@@ -625,6 +772,7 @@ public sealed class EditorSession
             _catalog.Locales.Select(CreateLocaleResponse).ToArray(),
             _catalog.Entries.Select(CreateEntryResponse).ToArray(),
             validation.Diagnostics.Select(CreateDiagnosticResponse).ToArray(),
+            _dirtyLocaleIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
             _dirtyEntryIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
             _dirtyPaths.OrderBy(path => path, StringComparer.Ordinal).ToArray(),
             _baselineCatalog == null ||

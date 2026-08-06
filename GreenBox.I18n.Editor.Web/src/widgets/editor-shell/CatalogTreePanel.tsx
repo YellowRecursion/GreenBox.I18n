@@ -19,10 +19,12 @@ import {
 } from '@ant-design/icons'
 import {
   Button,
+  AutoComplete,
   Dropdown,
   Flex,
   Input,
   Modal,
+  Space,
   Tooltip,
   Tree,
   Typography,
@@ -33,8 +35,10 @@ import {
 } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { LocaleFlag } from '../../entities/catalog/ui/LocaleFlag'
+import type { CatalogLocale } from '../../entities/catalog/model/catalog'
 import { filterCatalogTree, type CatalogTreeModel, type CatalogTreeNode } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
+import { commonCultureOptions } from './localeCultures'
 
 interface CatalogTreePanelProps {
   tree: CatalogTreeModel
@@ -43,6 +47,7 @@ interface CatalogTreePanelProps {
   onSelectionChange: (keys: Key[]) => void
   onExpandedKeysChange: (keys: Key[]) => void
   onAddEntry: (path: string) => Promise<string>
+  onAddLocale: (locale: CatalogLocale) => Promise<string>
   onAddFolder: (path: string) => string
   onRemoveNodes: (keys: Key[]) => Promise<void>
   onMoveNodes: (keys: Key[], targetKey: Key) => Promise<void>
@@ -66,6 +71,14 @@ interface NodeRenameDraft extends NodeNameDraft {
   path: string
 }
 
+interface LocaleDraft {
+  id: string
+  displayName: string
+  culture: string
+  isSaving: boolean
+  error?: string
+}
+
 const nodeDraftKey = 'draft:node'
 const pathSegmentPattern = /^[A-Za-z_][A-Za-z0-9_]*$/
 
@@ -76,6 +89,7 @@ export function CatalogTreePanel({
   onSelectionChange,
   onExpandedKeysChange,
   onAddEntry,
+  onAddLocale,
   onAddFolder,
   onRemoveNodes,
   onMoveNodes,
@@ -88,6 +102,7 @@ export function CatalogTreePanel({
   const [selectionAnchor, setSelectionAnchor] = useState<Key>()
   const [nodeDraft, setNodeDraft] = useState<NodeDraft>()
   const [nodeRenameDraft, setNodeRenameDraft] = useState<NodeRenameDraft>()
+  const [localeDraft, setLocaleDraft] = useState<LocaleDraft>()
   const [pendingRevealKey, setPendingRevealKey] = useState<Key>()
   const [revealedKey, setRevealedKey] = useState<Key>()
   const treeContainerRef = useRef<HTMLDivElement>(null)
@@ -145,7 +160,7 @@ export function CatalogTreePanel({
   const requestDeletion = (keys: Key[]) => {
     const deletableKeys = keys.filter((key) => {
       const item = tree.selectionByKey.get(String(key))
-      return item?.kind === 'entry' || item?.kind === 'folder'
+      return item?.kind === 'entry' || item?.kind === 'folder' || item?.kind === 'locale'
     })
     if (deletableKeys.length === 0) {
       return
@@ -176,7 +191,7 @@ export function CatalogTreePanel({
 
       const hasDeletableSelection = selectedKeys.some((key) => {
         const item = tree.selectionByKey.get(String(key))
-        return item?.kind === 'entry' || item?.kind === 'folder'
+        return item?.kind === 'entry' || item?.kind === 'folder' || item?.kind === 'locale'
       })
       if (!hasDeletableSelection) {
         return
@@ -244,6 +259,13 @@ export function CatalogTreePanel({
       beginCreation(node, 'entry')
     } else if (action === 'new-folder') {
       beginCreation(node, 'folder')
+    } else if (action === 'new-locale') {
+      setLocaleDraft({
+        id: createNewLocaleId(tree),
+        displayName: 'New locale',
+        culture: 'en-US',
+        isSaving: false,
+      })
     } else if (action === 'rename-entry' || action === 'rename-folder') {
       beginRename(node)
     } else if (action === 'copy-entry-id' && node.entryId) {
@@ -253,9 +275,46 @@ export function CatalogTreePanel({
       } catch {
         messageApi.error('Entry ID could not be copied.')
       }
-    } else if (action === 'delete-entry' || action === 'delete-folder') {
+    } else if (action === 'delete-entry' || action === 'delete-folder' || action === 'delete-locale') {
       const keys = selectedKeys.includes(node.key) ? selectedKeys : [node.key]
       requestDeletion(keys)
+    }
+  }
+
+  const submitLocaleDraft = async () => {
+    if (!localeDraft || localeDraft.isSaving) {
+      return
+    }
+
+    const id = localeDraft.id.trim()
+    const displayName = localeDraft.displayName.trim()
+    const culture = localeDraft.culture.trim()
+    const error = validateLocaleDraft(id, displayName, culture, tree)
+    if (error) {
+      setLocaleDraft({ ...localeDraft, id, displayName, culture, error })
+      return
+    }
+
+    setLocaleDraft({ ...localeDraft, id, displayName, culture, isSaving: true, error: undefined })
+    try {
+      const key = await onAddLocale({
+        id,
+        displayName,
+        culture,
+        fallback: null,
+        icon: null,
+      })
+      setLocaleDraft(undefined)
+      onSelectionChange([key])
+    } catch (reason: unknown) {
+      setLocaleDraft({
+        ...localeDraft,
+        id,
+        displayName,
+        culture,
+        isSaving: false,
+        error: reason instanceof Error ? reason.message : 'Locale could not be added.',
+      })
     }
   }
 
@@ -331,6 +390,68 @@ export function CatalogTreePanel({
     >
       {messageContext}
       {modalContext}
+      <Modal
+        open={Boolean(localeDraft)}
+        title="New locale"
+        okText="Add locale"
+        confirmLoading={localeDraft?.isSaving}
+        onOk={() => void submitLocaleDraft()}
+        onCancel={() => {
+          if (!localeDraft?.isSaving) {
+            setLocaleDraft(undefined)
+          }
+        }}
+      >
+        {localeDraft && (
+          <Flex vertical gap={layoutTokens.spacing.medium}>
+            <Space.Compact block>
+              <Space.Addon style={{ flex: '0 0 112px', justifyContent: 'flex-start' }}>ID</Space.Addon>
+              <Input
+                autoFocus
+                value={localeDraft.id}
+                style={{ flex: '1 1 0', minWidth: 0 }}
+                status={localeDraft.error ? 'error' : undefined}
+                disabled={localeDraft.isSaving}
+                onChange={(event) => setLocaleDraft({
+                  ...localeDraft,
+                  id: event.target.value,
+                  error: undefined,
+                })}
+              />
+            </Space.Compact>
+            <Space.Compact block>
+              <Space.Addon style={{ flex: '0 0 112px', justifyContent: 'flex-start' }}>Display name</Space.Addon>
+              <Input
+                value={localeDraft.displayName}
+                style={{ flex: '1 1 0', minWidth: 0 }}
+                disabled={localeDraft.isSaving}
+                onChange={(event) => setLocaleDraft({
+                  ...localeDraft,
+                  displayName: event.target.value,
+                  error: undefined,
+                })}
+              />
+            </Space.Compact>
+            <Space.Compact block>
+              <Space.Addon style={{ flex: '0 0 112px', justifyContent: 'flex-start' }}>Culture</Space.Addon>
+              <AutoComplete
+                value={localeDraft.culture}
+                options={commonCultureOptions}
+                disabled={localeDraft.isSaving}
+                style={{ flex: '1 1 0', minWidth: 0 }}
+                filterOption={(inputValue, option) =>
+                  (option?.value ?? '').toLowerCase().includes(inputValue.toLowerCase())}
+                onChange={(culture) => setLocaleDraft({
+                  ...localeDraft,
+                  culture,
+                  error: undefined,
+                })}
+              />
+            </Space.Compact>
+            {localeDraft.error && <Typography.Text type="danger">{localeDraft.error}</Typography.Text>}
+          </Flex>
+        )}
+      </Modal>
       <Input.Search
         allowClear
         value={query}
@@ -470,7 +591,7 @@ function describeDeletion(tree: CatalogTreeModel, keys: Key[]) {
   if (keys.length !== 1) {
     return {
       title: `Delete ${keys.length} selected items?`,
-      content: 'Folders and all entries contained in them will be removed from the working copy.',
+      content: 'Selected locales, folders, entries, and their contained values will be removed from the working copy.',
     }
   }
 
@@ -482,8 +603,15 @@ function describeDeletion(tree: CatalogTreeModel, keys: Key[]) {
     }
   }
 
+  if (item.kind === 'locale') {
+    return {
+      title: `Delete locale '${item.locale.displayName}'?`,
+      content: 'The locale and all of its localized values will be removed from the working copy.',
+    }
+  }
+
   if (item.kind !== 'folder') {
-    throw new Error('Only entries and folders can be deleted from the catalog tree.')
+    throw new Error('The selected item cannot be deleted from the catalog tree.')
   }
 
   return {
@@ -816,9 +944,13 @@ function getContextMenuItems(node: CatalogTreeNode, canReveal: boolean): MenuPro
     case 'locale':
       return [
         ...revealItems,
-        { key: 'rename-locale', icon: <EditOutlined />, label: 'Rename' },
-        { type: 'divider' },
-        { key: 'delete-locale', icon: <DeleteOutlined />, label: 'Delete', danger: true },
+        {
+          key: 'delete-locale',
+          icon: <DeleteOutlined />,
+          label: 'Delete',
+          extra: <ShortcutHint>Del</ShortcutHint>,
+          danger: true,
+        },
       ]
     case 'entries-root':
       return createContainerMenuItems(false, false)
@@ -969,4 +1101,42 @@ function validateNodeName(name: string, kind: 'entry' | 'folder') {
   return pathSegmentPattern.test(name)
     ? undefined
     : 'The name must start with a Latin letter or underscore and contain only letters, digits, and underscores.'
+}
+
+function createNewLocaleId(tree: CatalogTreeModel) {
+  const ids = new Set([...tree.selectionByKey.values()]
+    .filter((item) => item.kind === 'locale')
+    .map((item) => item.locale.id))
+  let suffix = 1
+  while (ids.has(suffix === 1 ? 'new-locale' : `new-locale-${suffix}`)) {
+    suffix++
+  }
+
+  return suffix === 1 ? 'new-locale' : `new-locale-${suffix}`
+}
+
+function validateLocaleDraft(
+  id: string,
+  displayName: string,
+  culture: string,
+  tree: CatalogTreeModel,
+) {
+  if (!/^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*$/.test(id)) {
+    return 'ID must use hyphen-separated ASCII letter and digit segments.'
+  }
+
+  if ([...tree.selectionByKey.values()].some((item) =>
+    item.kind === 'locale' && item.locale.id === id)) {
+    return `Locale ID '${id}' is already used.`
+  }
+
+  if (!displayName) {
+    return 'Display name is required.'
+  }
+
+  if (!culture) {
+    return 'Culture is required.'
+  }
+
+  return undefined
 }

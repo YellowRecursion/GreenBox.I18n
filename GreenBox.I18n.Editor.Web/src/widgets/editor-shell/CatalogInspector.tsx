@@ -7,7 +7,13 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import { CloseOutlined, CopyOutlined, ExpandOutlined } from '@ant-design/icons'
+import {
+  AppstoreOutlined,
+  CloseOutlined,
+  CopyOutlined,
+  ExpandOutlined,
+  WarningOutlined,
+} from '@ant-design/icons'
 import {
   Button,
   AutoComplete,
@@ -34,6 +40,7 @@ import { LocaleFlag } from '../../entities/catalog/ui/LocaleFlag'
 import type { CatalogSelectionItem } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 import { EntryAssetInput } from './EntryAssetInput'
+import { commonCultureNames } from './localeCultures'
 
 interface CatalogInspectorProps {
   selection: CatalogSelectionItem[]
@@ -41,7 +48,7 @@ interface CatalogInspectorProps {
   locales: CatalogLocale[]
   entries: CatalogEntry[]
   onFolderPathChange: (path: string, nextPath: string) => Promise<void>
-  onLocaleChange: (locale: CatalogLocale) => Promise<void>
+  onLocaleChange: (locale: CatalogLocale, previousId?: string) => Promise<void>
   onDefaultLocaleChange: (localeId: string) => Promise<void>
   onEntryPathChange: (id: string, path: string) => Promise<void>
   onEntryCommentChange: (id: string, comment: string | null) => Promise<void>
@@ -71,7 +78,7 @@ export function CatalogInspector({
   }
 
   if (selection.length > 1) {
-    return <MultipleSelectionInspector selection={selection} />
+    return <MultipleSelectionInspector selection={selection} entries={entries} />
   }
 
   const item = selection[0]
@@ -114,15 +121,6 @@ export function CatalogInspector({
   }
 }
 
-const commonCultureNames = [
-  'af-ZA', 'ar-SA', 'be-BY', 'bg-BG', 'ca-ES', 'cs-CZ', 'da-DK', 'de-DE',
-  'el-GR', 'en-GB', 'en-US', 'es-ES', 'et-EE', 'fi-FI', 'fr-FR', 'he-IL',
-  'hi-IN', 'hu-HU', 'id-ID', 'is-IS', 'it-IT', 'ja-JP', 'ko-KR', 'lt-LT',
-  'lv-LV', 'nb-NO', 'nl-NL', 'nn-NO', 'pl-PL', 'pt-BR', 'pt-PT', 'ro-RO',
-  'ru-RU', 'sk-SK', 'sl-SI', 'sr-Latn-RS', 'sv-SE', 'th-TH', 'tr-TR',
-  'uk-UA', 'vi-VN', 'zh-Hans', 'zh-Hant',
-]
-
 function LocaleInspector({
   locale,
   locales,
@@ -135,7 +133,7 @@ function LocaleInspector({
   locales: CatalogLocale[]
   entries: CatalogEntry[]
   defaultLocale: string
-  onChange: (locale: CatalogLocale) => Promise<void>
+  onChange: (locale: CatalogLocale, previousId?: string) => Promise<void>
   onDefaultLocaleChange: (localeId: string) => Promise<void>
 }) {
   const [error, setError] = useState<string>()
@@ -149,11 +147,15 @@ function LocaleInspector({
     ...commonCultureNames,
   ])].map((value) => ({ value }))
 
-  const apply = async (change: CatalogLocale, fallbackError: string) => {
+  const apply = async (
+    change: CatalogLocale,
+    fallbackError: string,
+    previousId?: string,
+  ) => {
     setIsChanging(true)
     setError(undefined)
     try {
-      await onChange(change)
+      await onChange(change, previousId)
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : fallbackError)
       throw reason
@@ -176,10 +178,20 @@ function LocaleInspector({
 
   return (
     <InspectorSection
-      type={<LocaleTypeLabel localeId={locale.id} />}
+      type="Locale"
       icon={<LocaleFlag culture={locale.culture} />}
     >
       <Flex vertical gap={layoutTokens.spacing.large}>
+        <LocaleIdField
+          key={`${locale.id}:id`}
+          locale={locale}
+          disabled={isChanging}
+          onChange={(id) => apply(
+            { ...locale, id },
+            'Locale ID could not be changed.',
+            locale.id,
+          )}
+        />
         <LocaleTextField
           key={`${locale.id}:displayName`}
           label="Display name"
@@ -281,26 +293,76 @@ function LocaleInspector({
   )
 }
 
-function LocaleTypeLabel({ localeId }: { localeId: string }) {
+function LocaleIdField({
+  locale,
+  disabled,
+  onChange,
+}: {
+  locale: CatalogLocale
+  disabled: boolean
+  onChange: (id: string) => Promise<void>
+}) {
   const { token } = theme.useToken()
+  const [draft, setDraft] = useState(locale.id)
+  const [error, setError] = useState<string>()
+  const [isSaving, setIsSaving] = useState(false)
+
+  const commit = async () => {
+    const id = draft.trim()
+    if (id === locale.id) {
+      setDraft(locale.id)
+      setError(undefined)
+      return
+    }
+
+    if (!/^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*$/.test(id)) {
+      setError('Use hyphen-separated ASCII letter and digit segments.')
+      return
+    }
+
+    setIsSaving(true)
+    setError(undefined)
+    try {
+      await onChange(id)
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : 'Locale ID could not be changed.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
-    <Flex align="center" gap={layoutTokens.spacing.xSmall}>
-      <Typography.Text type="secondary">Locale</Typography.Text>
-      <Tooltip title="Copy ID">
-        <Button
-          type="text"
-          size="small"
-          aria-label={`Copy locale ID ${localeId}`}
-          style={{ color: token.colorTextSecondary, paddingInline: layoutTokens.spacing.xSmall }}
-          onClick={() => void navigator.clipboard.writeText(localeId).catch(() => undefined)}
-        >
-          <Flex align="center" gap={layoutTokens.spacing.xSmall}>
-            <span>{localeId}</span>
-            <CopyOutlined />
-          </Flex>
-        </Button>
-      </Tooltip>
+    <Flex vertical gap={layoutTokens.spacing.xSmall}>
+      <Space.Compact block>
+        <LocaleFieldAddon>ID</LocaleFieldAddon>
+        <Input
+          aria-label="Locale ID"
+          value={draft}
+          disabled={disabled || isSaving}
+          status={error ? 'error' : undefined}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setError(undefined)
+          }}
+          onBlur={() => void commit()}
+          onKeyDown={(event) => handleSingleLineCommitKey(event)}
+        />
+        <Tooltip title="Copy ID">
+          <Button
+            aria-label={`Copy locale ID ${locale.id}`}
+            icon={<CopyOutlined />}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => void navigator.clipboard.writeText(locale.id).catch(() => undefined)}
+          />
+        </Tooltip>
+      </Space.Compact>
+      {error
+        ? <Typography.Text type="danger">{error}</Typography.Text>
+        : (
+            <Typography.Text style={{ color: token.colorWarning }}>
+              <WarningOutlined /> Renaming updates this catalog, but not external references.
+            </Typography.Text>
+          )}
     </Flex>
   )
 }
@@ -393,7 +455,7 @@ function LocaleTextField({
 
 function LocaleFieldAddon({ children }: { children: ReactNode }) {
   return (
-    <Space.Addon style={{ width: 112, justifyContent: 'flex-start' }}>
+    <Space.Addon style={{ flex: '0 0 112px', justifyContent: 'flex-start' }}>
       {children}
     </Space.Addon>
   )
@@ -1132,24 +1194,105 @@ function CatalogPathInput({
   )
 }
 
-function MultipleSelectionInspector({ selection }: { selection: CatalogSelectionItem[] }) {
+function MultipleSelectionInspector({
+  selection,
+  entries,
+}: {
+  selection: CatalogSelectionItem[]
+  entries: CatalogEntry[]
+}) {
+  const { token } = theme.useToken()
   const localeCount = selection.filter((item) => item.kind === 'locale').length
   const folderCount = selection.filter((item) => item.kind === 'folder').length
   const entryCount = selection.filter((item) => item.kind === 'entry').length
+  const selectedEntryIds = new Set(selection
+    .filter((item) => item.kind === 'entry')
+    .map((item) => item.entry.id))
+  const selectedFolderPaths = selection
+    .filter((item) => item.kind === 'folder')
+    .map((item) => item.path)
+  const expandedEntries = entries.filter((entry) =>
+    selectedEntryIds.has(entry.id) ||
+    selectedFolderPaths.some((path) => entry.path.startsWith(`${path}.`)))
+  const expandedFolderPaths = new Set(selectedFolderPaths)
+  for (const entry of expandedEntries) {
+    const segments = entry.path.split('.').slice(0, -1)
+    for (let index = 0; index < segments.length; index++) {
+      const path = segments.slice(0, index + 1).join('.')
+      if (selectedFolderPaths.some((selectedPath) =>
+        path === selectedPath || path.startsWith(`${selectedPath}.`))) {
+        expandedFolderPaths.add(path)
+      }
+    }
+  }
+  const selectedKindCount = [localeCount, folderCount, entryCount].filter((count) => count > 0).length
+  const headerIcon = selectedKindCount === 1
+    ? localeCount > 0
+      ? renderCatalogNodeIcon('locale', getCatalogNodeIconColor('locale', token))
+      : folderCount > 0
+        ? renderCatalogNodeIcon('folder', getCatalogNodeIconColor('folder', token))
+        : renderCatalogNodeIcon('entry', getCatalogNodeIconColor('entry', token))
+    : <AppstoreOutlined style={{ color: token.colorTextSecondary }} />
 
   return (
-    <InspectorSection title={`${selection.length} items selected`} type="Multiple selection">
-      <Descriptions
-        bordered
-        column={1}
-        size="small"
-        items={[
-          { key: 'locales', label: 'Locales', children: localeCount },
-          { key: 'folders', label: 'Folders', children: folderCount },
-          { key: 'entries', label: 'Entries', children: entryCount },
-        ]}
-      />
+    <InspectorSection
+      type={(
+        <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+          <Typography.Text type="secondary">Multiple selection</Typography.Text>
+          <Typography.Text type="secondary">{selection.length}</Typography.Text>
+        </Flex>
+      )}
+      icon={headerIcon}
+      contentGap={layoutTokens.spacing.small}
+    >
+      <Flex vertical gap={0}>
+        {localeCount > 0 && (
+          <SelectionSummaryRow
+            icon={renderCatalogNodeIcon('locale', getCatalogNodeIconColor('locale', token))}
+            label="Locales"
+            value={localeCount}
+          />
+        )}
+        {folderCount > 0 && (
+          <SelectionSummaryRow
+            icon={renderCatalogNodeIcon('folder', getCatalogNodeIconColor('folder', token))}
+            label="Folders"
+            value={folderCount}
+            total={expandedFolderPaths.size}
+          />
+        )}
+        {expandedEntries.length > 0 && (
+          <SelectionSummaryRow
+            icon={renderCatalogNodeIcon('entry', getCatalogNodeIconColor('entry', token))}
+            label="Entries"
+            value={entryCount}
+            total={expandedEntries.length}
+          />
+        )}
+      </Flex>
     </InspectorSection>
+  )
+}
+
+function SelectionSummaryRow({
+  icon,
+  label,
+  value,
+  total,
+}: {
+  icon: ReactNode
+  label: string
+  value: number
+  total?: number
+}) {
+  return (
+    <Flex align="center" gap={layoutTokens.spacing.small} style={{ minHeight: 22 }}>
+      <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
+      <Typography.Text>{label}</Typography.Text>
+      <Typography.Text type="secondary">
+        {value}{total !== undefined && total !== value ? ` (total ${total})` : ''}
+      </Typography.Text>
+    </Flex>
   )
 }
 
@@ -1158,18 +1301,20 @@ function InspectorSection({
   type,
   icon,
   headerContent,
+  contentGap = layoutTokens.spacing.large,
   children,
 }: {
   title?: string
   type: ReactNode
   icon?: ReactNode
   headerContent?: ReactNode
+  contentGap?: number
   children: ReactNode
 }) {
   const { token } = theme.useToken()
 
   return (
-    <Flex vertical gap={layoutTokens.spacing.large} style={{ width: '100%' }}>
+    <Flex vertical gap={contentGap} style={{ width: '100%' }}>
       <div>
         <Flex
           align="center"
