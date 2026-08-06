@@ -687,7 +687,10 @@ function EntryPathInput({
   return (
     <Flex vertical gap={layoutTokens.spacing.xSmall}>
       <Flex align="center" gap={layoutTokens.spacing.xSmall}>
-        <div ref={inputContainerRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+        <div
+          ref={inputContainerRef}
+          style={{ position: 'relative', flex: 1, minWidth: 0 }}
+        >
           <div
             aria-hidden
             style={{
@@ -707,50 +710,49 @@ function EntryPathInput({
             <span style={{ color: token.colorTextSecondary }}>{prefix}</span>
             <span style={{ color: token.colorText }}>{name}</span>
           </div>
-          <Input
-            ref={inputRef}
-            addonBefore={<span style={{ color: token.colorTextSecondary }}>Path</span>}
-            aria-label="Entry path"
-            spellCheck={false}
-            value={draft}
-            disabled={isSaving}
-            status={error ? 'error' : undefined}
-            style={{
-              position: 'relative',
-              zIndex: 0,
-            }}
-            styles={{
-              input: {
-                color: 'transparent',
-                caretColor: token.colorText,
-                WebkitTextFillColor: 'transparent',
-              },
-            }}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              setError(undefined)
-            }}
-            onBlur={() => {
-              if (skipNextBlurRef.current) {
-                skipNextBlurRef.current = false
-                return
-              }
-
-              void commit()
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                event.currentTarget.blur()
-              } else if (event.key === 'Escape') {
-                event.preventDefault()
-                skipNextBlurRef.current = true
-                setDraft(entry.path)
+          <Space.Compact block>
+            <Space.Addon>Path</Space.Addon>
+            <Input
+              ref={inputRef}
+              aria-label="Entry path"
+              spellCheck={false}
+              value={draft}
+              disabled={isSaving}
+              status={error ? 'error' : undefined}
+              style={{ position: 'relative', zIndex: 0 }}
+              styles={{
+                input: {
+                  color: 'transparent',
+                  caretColor: token.colorText,
+                  WebkitTextFillColor: 'transparent',
+                },
+              }}
+              onChange={(event) => {
+                setDraft(event.target.value)
                 setError(undefined)
-                event.currentTarget.blur()
-              }
-            }}
-          />
+              }}
+              onBlur={() => {
+                if (skipNextBlurRef.current) {
+                  skipNextBlurRef.current = false
+                  return
+                }
+
+                void commit()
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  event.currentTarget.blur()
+                } else if (event.key === 'Escape') {
+                  event.preventDefault()
+                  skipNextBlurRef.current = true
+                  setDraft(entry.path)
+                  setError(undefined)
+                  event.currentTarget.blur()
+                }
+              }}
+            />
+          </Space.Compact>
         </div>
         <Tooltip title="Copy path">
           <Button
