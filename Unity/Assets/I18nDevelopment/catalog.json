@@ -33,15 +33,29 @@
       }
     },
     {
+      "id": "3857353019861119080",
+      "path": "Development.PictureTest",
+      "locales": {
+        "en": {
+          "asset": {
+            "assetGuid": "6dceac888770529419d9d08c835fe090",
+            "localFileId": "21300000"
+          }
+        },
+        "ru": {
+          "asset": {
+            "assetGuid": "e19b91b724922ef4091b53de61a32003",
+            "localFileId": "21300000"
+          }
+        }
+      }
+    },
+    {
       "id": "3857341477483323829",
       "path": "Menu.PlayButton",
       "locales": {
         "en": {
-          "text": "Play",
-          "asset": {
-            "assetGuid": "2bf8f4f45fd74f3449a79b200e148281",
-            "localFileId": "7482667652216324306"
-          }
+          "text": "Play"
         },
         "ru": {
           "text": "Играть"

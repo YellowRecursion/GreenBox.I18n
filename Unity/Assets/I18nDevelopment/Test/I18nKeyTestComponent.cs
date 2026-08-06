@@ -32,6 +32,8 @@ namespace GreenBox.I18n.Development
         private void Awake()
         {
             i18n.Initialize(Catalog, "en");
+
+            // var str = i18n.Text(3857404068572302532);
         }
 
         /// <summary>
