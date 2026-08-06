@@ -27,6 +27,7 @@ interface CatalogInspectorProps {
   locales: CatalogLocale[]
   onEntryPathChange: (id: string, path: string) => Promise<void>
   onEntryCommentChange: (id: string, comment: string | null) => Promise<void>
+  onEntryTextChange: (id: string, localeId: string, text: string | null) => Promise<void>
   onEntryAssetChange: (
     id: string,
     localeId: string,
@@ -40,6 +41,7 @@ export function CatalogInspector({
   locales,
   onEntryPathChange,
   onEntryCommentChange,
+  onEntryTextChange,
   onEntryAssetChange,
 }: CatalogInspectorProps) {
   if (selection.length === 0) {
@@ -64,6 +66,7 @@ export function CatalogInspector({
           locales={locales}
           onPathChange={onEntryPathChange}
           onCommentChange={onEntryCommentChange}
+          onTextChange={onEntryTextChange}
           onAssetChange={onEntryAssetChange}
         />
       )
@@ -111,6 +114,7 @@ function EntryInspector({
   locales,
   onPathChange,
   onCommentChange,
+  onTextChange,
   onAssetChange,
 }: {
   entry: CatalogEntry
@@ -118,6 +122,7 @@ function EntryInspector({
   locales: CatalogLocale[]
   onPathChange: (id: string, path: string) => Promise<void>
   onCommentChange: (id: string, comment: string | null) => Promise<void>
+  onTextChange: (id: string, localeId: string, text: string | null) => Promise<void>
   onAssetChange: (
     id: string,
     localeId: string,
@@ -146,17 +151,19 @@ function EntryInspector({
             key: 'text',
             label: `Text ${textCount}/${locales.length}`,
             children: (
-              <Flex vertical gap={layoutTokens.spacing.small}>
+              <Flex
+                vertical
+                gap={layoutTokens.spacing.large}
+                style={{ marginTop: layoutTokens.spacing.large }}
+              >
                 {orderedLocales.map((locale) => (
-                  <EntryLocaleCard
-                    key={locale.id}
+                  <EntryTextInput
+                    key={`${entry.id}:${locale.id}`}
+                    value={entry.locales[locale.id]?.text ?? null}
                     locale={locale}
                     defaultLocale={defaultLocale}
-                  >
-                    <Typography.Text style={{ whiteSpace: 'pre-wrap' }}>
-                      {entry.locales[locale.id]?.text ?? '[none]'}
-                    </Typography.Text>
-                  </EntryLocaleCard>
+                    onChange={(text) => onTextChange(entry.id, locale.id, text)}
+                  />
                 ))}
               </Flex>
             ),
@@ -184,6 +191,112 @@ function EntryInspector({
         ]}
       />
     </InspectorSection>
+  )
+}
+
+function EntryTextInput({
+  value,
+  locale,
+  defaultLocale,
+  onChange,
+}: {
+  value: string | null
+  locale: CatalogLocale
+  defaultLocale: string
+  onChange: (text: string | null) => Promise<void>
+}) {
+  const [draft, setDraft] = useState(value ?? '')
+  const [error, setError] = useState<string>()
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    setDraft(value ?? '')
+    setError(undefined)
+  }, [value])
+
+  const commit = async () => {
+    const persistedText = value ?? ''
+    if (draft === persistedText) {
+      setError(undefined)
+      return
+    }
+
+    setIsSaving(true)
+    setError(undefined)
+    try {
+      await onChange(draft === '' ? null : draft)
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : 'Localized text could not be changed.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <Flex vertical gap={layoutTokens.spacing.xSmall}>
+      <Flex align="center" justify="space-between" gap={layoutTokens.spacing.small}>
+        <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+          <LocaleFlag culture={locale.culture} />
+          <Typography.Text>{locale.displayName}</Typography.Text>
+          {locale.id === defaultLocale && <Tag color="blue">Default</Tag>}
+        </Flex>
+        <TrailingWhitespaceIndicator text={draft} />
+      </Flex>
+      <Input.TextArea
+        aria-label={`${locale.displayName} localized text`}
+        autoSize={{ minRows: 1, maxRows: 3 }}
+        placeholder="No translation"
+        value={draft}
+        disabled={isSaving}
+        status={error ? 'error' : undefined}
+        style={{ resize: 'none', background: 'transparent' }}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          setError(undefined)
+        }}
+        onBlur={() => void commit()}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault()
+            event.currentTarget.blur()
+          } else if (event.key === 'Escape') {
+            event.preventDefault()
+            event.currentTarget.blur()
+          }
+        }}
+      />
+      {error && <Typography.Text type="danger">{error}</Typography.Text>}
+    </Flex>
+  )
+}
+
+function TrailingWhitespaceIndicator({ text }: { text: string }) {
+  const { token } = theme.useToken()
+  const trailingWhitespace = text.match(/[ \t\r\n]+$/)?.[0] ?? ''
+  const spaceCount = trailingWhitespace.split('').filter((character) => character === ' ').length
+  const lineBreakCount = trailingWhitespace.split('').filter((character) => character === '\n').length
+  if (spaceCount === 0 && lineBreakCount === 0) {
+    return null
+  }
+
+  const details = [
+    spaceCount > 0 ? `${spaceCount} trailing ${spaceCount === 1 ? 'space' : 'spaces'}` : null,
+    lineBreakCount > 0
+      ? `${lineBreakCount} trailing line ${lineBreakCount === 1 ? 'break' : 'breaks'}`
+      : null,
+  ].filter((detail): detail is string => detail != null).join('; ')
+
+  return (
+    <Tooltip title={details}>
+      <Flex align="center" gap={layoutTokens.spacing.small} style={{ flex: '0 0 auto' }}>
+        {spaceCount > 0 && (
+          <Typography.Text style={{ color: token.colorWarning }}>· ×{spaceCount}</Typography.Text>
+        )}
+        {lineBreakCount > 0 && (
+          <Typography.Text style={{ color: token.colorWarning }}>↵ ×{lineBreakCount}</Typography.Text>
+        )}
+      </Flex>
+    </Tooltip>
   )
 }
 

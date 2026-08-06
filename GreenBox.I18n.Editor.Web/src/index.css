@@ -17,3 +17,36 @@ body {
 *::after {
   box-sizing: border-box;
 }
+
+* {
+  scrollbar-color: var(--ant-color-fill-secondary, rgb(255 255 255 / 18%)) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-width: 32px;
+  min-height: 32px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--ant-color-fill-secondary, rgb(255 255 255 / 18%));
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ant-color-fill, rgb(255 255 255 / 28%));
+}
+
+*::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+}

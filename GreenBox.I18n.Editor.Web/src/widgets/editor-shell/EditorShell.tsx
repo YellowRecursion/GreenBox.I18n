@@ -514,6 +514,37 @@ function CatalogWorkspace({
     ))
   }
 
+  const handleEntryTextChange = async (
+    id: string,
+    localeId: string,
+    text: string | null,
+  ) => {
+    const entry = catalog.entries.find((candidate) => candidate.id === id)
+    if (!entry) {
+      throw new Error(`Entry '${id}' does not exist.`)
+    }
+
+    const localeValue = entry.locales[localeId] ?? { text: null, asset: null }
+    const updatedEntry = {
+      ...entry,
+      locales: {
+        ...entry.locales,
+        [localeId]: { ...localeValue, text },
+      },
+    }
+    const updatedCatalog = await onApplyEntryDelta({
+      entries: [updatedEntry],
+      removedIds: [],
+    }, catalog.revision)
+    recordHistory(createEditorHistoryEntry(
+      `Edit text for ${entry.path} (${localeId})`,
+      catalog,
+      updatedCatalog,
+      temporaryFolderPaths,
+      temporaryFolderPaths,
+    ))
+  }
+
   const reloadFromDisk = useCallback(async () => {
     await onRevert()
     setTemporaryFolderPaths([])
@@ -591,6 +622,7 @@ function CatalogWorkspace({
               locales={catalog.locales}
               onEntryPathChange={handleEntryPathChange}
               onEntryCommentChange={handleEntryCommentChange}
+              onEntryTextChange={handleEntryTextChange}
               onEntryAssetChange={handleEntryAssetChange}
             />
           </div>
