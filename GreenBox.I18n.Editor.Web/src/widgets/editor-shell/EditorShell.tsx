@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
-import { Alert, Flex, Spin, Splitter, Typography, theme } from 'antd'
+import { EditOutlined, ProjectOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Empty, Flex, Spin, Splitter, Switch, Tabs, Tag, Tooltip, Typography, theme } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogLocale, CatalogSnapshot } from '../../entities/catalog/model/catalog'
 import type { CatalogEntryMove } from '../../entities/catalog/api/moveCatalogEntries'
@@ -8,6 +9,11 @@ import type { CatalogLocaleRename } from '../../entities/catalog/api/applyCatalo
 import { useCatalog } from '../../entities/catalog/model/useCatalog'
 import { useCatalogSession } from '../../entities/catalog/model/useCatalogSession'
 import { useCatalogSourceMonitor } from '../../entities/catalog/model/useCatalogSourceMonitor'
+import {
+  getEditorPreferences,
+  updateEditorPreferences,
+  type EditorPreferences,
+} from '../../entities/preferences/api/editorPreferences'
 import { OpenCatalogDialog } from '../../features/open-catalog/OpenCatalogDialog'
 import { CatalogInspector } from './CatalogInspector'
 import { CatalogTreePanel } from './CatalogTreePanel'
@@ -21,6 +27,7 @@ import {
 } from './editorHistory'
 
 const historyLimit = 100
+type EditorPage = 'editor' | 'settings'
 
 export function EditorShell() {
   const { token } = theme.useToken()
@@ -126,6 +133,7 @@ function CatalogWorkspace({
   onMergeSource(): Promise<CatalogSnapshot>
 }) {
   const { token } = theme.useToken()
+  const [activePage, setActivePage] = useState<EditorPage>('editor')
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
   const [expandedKeys, setExpandedKeys] = useState<Key[]>(['root:entries'])
   const [temporaryFolderPaths, setTemporaryFolderPaths] = useState<string[]>([])
@@ -814,50 +822,259 @@ function CatalogWorkspace({
         onRevert={handleRevert}
       />
 
-      <Splitter style={{ flex: 1, minHeight: 0 }}>
-        <Splitter.Panel defaultSize="34%" min="280" max="60%">
-          <div style={{ height: '100%', padding: layoutTokens.spacing.large }}>
-            <CatalogTreePanel
-              tree={tree}
-              selectedKeys={selectedKeys}
-              expandedKeys={expandedKeys}
-              onSelectionChange={setSelectedKeys}
-              onExpandedKeysChange={setExpandedKeys}
-              onAddEntry={handleAddEntry}
-              onAddLocale={handleAddLocale}
-              onAddFolder={handleAddFolder}
-              onRemoveNodes={handleRemoveNodes}
-              onMoveNodes={handleMoveNodes}
-              onRenameNode={handleRenameNode}
+      <Flex style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+        <EditorNavigationRail activePage={activePage} onPageChange={setActivePage} />
+        {activePage === 'editor' ? (
+          <Splitter style={{ flex: 1, minHeight: 0 }}>
+          <Splitter.Panel defaultSize="34%" min="280" max="60%">
+            <div style={{ height: '100%', padding: layoutTokens.spacing.large }}>
+              <CatalogTreePanel
+                tree={tree}
+                selectedKeys={selectedKeys}
+                expandedKeys={expandedKeys}
+                onSelectionChange={setSelectedKeys}
+                onExpandedKeysChange={setExpandedKeys}
+                onAddEntry={handleAddEntry}
+                onAddLocale={handleAddLocale}
+                onAddFolder={handleAddFolder}
+                onRemoveNodes={handleRemoveNodes}
+                onMoveNodes={handleMoveNodes}
+                onRenameNode={handleRenameNode}
+              />
+            </div>
+          </Splitter.Panel>
+          <Splitter.Panel min="360">
+            <div
+              style={{
+                height: '100%',
+                paddingTop: layoutTokens.spacing.large,
+                paddingInline: layoutTokens.spacing.xLarge,
+                paddingBottom: layoutTokens.spacing.xLarge,
+                overflow: 'auto',
+              }}
+            >
+              <CatalogInspector
+                selection={selection}
+                defaultLocale={catalog.defaultLocale}
+                locales={catalog.locales}
+                entries={catalog.entries}
+                onFolderPathChange={handleFolderPathChange}
+                onLocaleChange={handleLocaleChange}
+                onDefaultLocaleChange={handleDefaultLocaleChange}
+                onEntryPathChange={handleEntryPathChange}
+                onEntryCommentChange={handleEntryCommentChange}
+                onEntryTextChange={handleEntryTextChange}
+                onEntryAssetChange={handleEntryAssetChange}
+              />
+            </div>
+          </Splitter.Panel>
+          </Splitter>
+        ) : (
+          <SettingsPage />
+        )}
+      </Flex>
+    </Flex>
+  )
+}
+
+function EditorNavigationRail({
+  activePage,
+  onPageChange,
+}: {
+  activePage: EditorPage
+  onPageChange: (page: EditorPage) => void
+}) {
+  const { token } = theme.useToken()
+
+  return (
+    <aside
+      style={{
+        width: 48,
+        flex: '0 0 48px',
+        background: token.colorBgContainer,
+        borderInlineEnd: `1px solid ${token.colorBorderSecondary}`,
+        paddingTop: layoutTokens.spacing.small,
+      }}
+    >
+      <Flex vertical align="center" gap={layoutTokens.spacing.small}>
+        <Tooltip title="Editor" placement="right">
+          <Button
+            type={activePage === 'editor' ? 'primary' : 'text'}
+            icon={<EditOutlined />}
+            aria-label="Editor"
+            onClick={() => onPageChange('editor')}
+            style={{ width: token.controlHeight, paddingInline: 0 }}
+          />
+        </Tooltip>
+        <Tooltip title="Settings" placement="right">
+          <Button
+            type={activePage === 'settings' ? 'primary' : 'text'}
+            icon={<SettingOutlined />}
+            aria-label="Settings"
+            onClick={() => onPageChange('settings')}
+            style={{ width: token.controlHeight, paddingInline: 0 }}
+          />
+        </Tooltip>
+      </Flex>
+    </aside>
+  )
+}
+
+function SettingsPage() {
+  return (
+    <div style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
+      <Flex
+        vertical
+        gap={layoutTokens.spacing.large}
+        style={{
+          width: '100%',
+          maxWidth: 800,
+          marginInline: 'auto',
+          padding: layoutTokens.spacing.xLarge,
+        }}
+      >
+        <div>
+          <Typography.Title level={3} style={{ margin: 0 }}>Settings</Typography.Title>
+          <Typography.Text type="secondary">
+            Configure the Unity project and your personal editor preferences.
+          </Typography.Text>
+        </div>
+
+        <Tabs
+          defaultActiveKey="project"
+          items={[
+            {
+              key: 'project',
+              label: 'Project',
+              children: (
+                <SettingsScopeCard
+                  icon={<ProjectOutlined />}
+                  title="Project Settings"
+                  tag="Shared"
+                  description="Settings shared by everyone working with this Unity project."
+                  storage="ProjectSettings/GreenBox.I18n.json"
+                  emptyText="No project settings are available yet."
+                />
+              ),
+            },
+            {
+              key: 'preferences',
+              label: 'Preferences',
+              children: <PreferencesSettingsCard />,
+            },
+          ]}
+        />
+      </Flex>
+    </div>
+  )
+}
+
+function PreferencesSettingsCard() {
+  const [preferences, setPreferences] = useState<EditorPreferences>()
+  const [error, setError] = useState<string>()
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    const abortController = new AbortController()
+    getEditorPreferences(abortController.signal)
+      .then(setPreferences)
+      .catch((reason: unknown) => {
+        if (!abortController.signal.aborted) {
+          setError(reason instanceof Error ? reason.message : 'Preferences could not be loaded.')
+        }
+      })
+    return () => abortController.abort()
+  }, [])
+
+  const setReopenLastCatalog = async (value: boolean) => {
+    setIsSaving(true)
+    setError(undefined)
+    try {
+      setPreferences(await updateEditorPreferences(value))
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : 'Preferences could not be saved.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <Flex vertical gap={layoutTokens.spacing.xLarge}>
+      <Flex vertical gap={layoutTokens.spacing.small}>
+        <Flex align="center" gap={layoutTokens.spacing.small}>
+          <UserOutlined />
+          <Typography.Text strong>Preferences</Typography.Text>
+          <Tag bordered={false}>Personal</Tag>
+        </Flex>
+        <Typography.Text type="secondary">
+          Personal editor preferences for the current user on this device.
+        </Typography.Text>
+      </Flex>
+
+      {error && <Alert type="error" showIcon message={error} />}
+      {preferences?.restoreError && (
+        <Alert
+          type="warning"
+          showIcon
+          message="The last catalog could not be reopened"
+          description={preferences.restoreError}
+        />
+      )}
+
+      <Flex vertical gap={0}>
+        <Typography.Text strong type="secondary">Startup</Typography.Text>
+        <Card size="small" style={{ marginTop: layoutTokens.spacing.small }}>
+          <Flex align="center" justify="space-between" gap={layoutTokens.spacing.xLarge}>
+            <Flex vertical gap={layoutTokens.spacing.xSmall} style={{ minWidth: 0 }}>
+              <Typography.Text>Reopen last catalog</Typography.Text>
+              <Typography.Text type="secondary">
+                Automatically open the most recently used catalog when application starts.
+              </Typography.Text>
+            </Flex>
+            <Switch
+              checked={preferences?.reopenLastCatalog ?? false}
+              loading={!preferences || isSaving}
+              disabled={!preferences || isSaving}
+              onChange={(value) => void setReopenLastCatalog(value)}
             />
-          </div>
-        </Splitter.Panel>
-        <Splitter.Panel min="360">
-          <div
-            style={{
-              height: '100%',
-              paddingTop: layoutTokens.spacing.large,
-              paddingInline: layoutTokens.spacing.xLarge,
-              paddingBottom: layoutTokens.spacing.xLarge,
-              overflow: 'auto',
-            }}
-          >
-            <CatalogInspector
-              selection={selection}
-              defaultLocale={catalog.defaultLocale}
-              locales={catalog.locales}
-              entries={catalog.entries}
-              onFolderPathChange={handleFolderPathChange}
-              onLocaleChange={handleLocaleChange}
-              onDefaultLocaleChange={handleDefaultLocaleChange}
-              onEntryPathChange={handleEntryPathChange}
-              onEntryCommentChange={handleEntryCommentChange}
-              onEntryTextChange={handleEntryTextChange}
-              onEntryAssetChange={handleEntryAssetChange}
-            />
-          </div>
-        </Splitter.Panel>
-      </Splitter>
+          </Flex>
+        </Card>
+      </Flex>
+    </Flex>
+  )
+}
+
+function SettingsScopeCard({
+  icon,
+  title,
+  tag,
+  description,
+  storage,
+  emptyText,
+}: {
+  icon: ReactNode
+  title: string
+  tag: string
+  description: string
+  storage?: string
+  emptyText: string
+}) {
+  return (
+    <Flex vertical gap={layoutTokens.spacing.xLarge}>
+      <Flex vertical gap={layoutTokens.spacing.small}>
+        <Flex align="center" gap={layoutTokens.spacing.small}>
+          {icon}
+          <Typography.Text strong>{title}</Typography.Text>
+          <Tag bordered={false}>{tag}</Tag>
+        </Flex>
+        <Typography.Text type="secondary">{description}</Typography.Text>
+        {storage && (
+          <Typography.Text type="secondary">
+            Storage: <Typography.Text code>{storage}</Typography.Text>
+          </Typography.Text>
+        )}
+      </Flex>
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} />
     </Flex>
   )
 }

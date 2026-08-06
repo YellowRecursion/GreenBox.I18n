@@ -30,6 +30,7 @@ public static class EditorSessionEndpoints
         OpenCatalogRequest request,
         CatalogFileLoader loader,
         EditorSession session,
+        EditorPreferencesStore preferences,
         CancellationToken cancellationToken)
     {
         CatalogLoadResult loadResult = await loader.LoadAsync(request.Path, cancellationToken);
@@ -46,6 +47,15 @@ public static class EditorSessionEndpoints
             loadResult.CatalogPath!,
             loadResult.Catalog!,
             loadResult.ContentHash!);
+        try
+        {
+            preferences.RecordLastCatalog(loadResult.CatalogPath!);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Opening the catalog remains successful when personal state cannot be persisted.
+        }
+
         return Results.Ok(response);
     }
 
