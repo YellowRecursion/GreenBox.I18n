@@ -4,8 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
 using UnityEditor.Compilation;
 using UnityEngine;
 using UnityCompilationAssembly = UnityEditor.Compilation.Assembly;
@@ -34,9 +32,26 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             {
                 $"[GreenBox I18n] IL usage scan completed in {result.ElapsedMilliseconds} ms. " +
                 $"Scanned {result.ScannedAssemblyCount} player assembly(s) with Assets sources; " +
+                $"{result.CandidateAssemblyCount} required Cecil analysis; " +
                 $"found {result.Usages.Count} usage(s) across " +
                 $"{result.Usages.Select(usage => usage.EntryId).Distinct().Count()} ID(s).",
             };
+
+            if (result.CecilPerformance.Count > 0)
+            {
+                lines.Add("Cecil analysis breakdown:");
+                foreach (I18nCecilAssemblyScanPerformance performance in result.CecilPerformance
+                             .OrderByDescending(item => item.TotalMilliseconds))
+                {
+                    string readStage = performance.HasSymbols ? "read DLL + PDB" : "read DLL";
+                    lines.Add(
+                        $"  {performance.AssemblyName}: {performance.TotalMilliseconds:0.0} ms total " +
+                        $"(resolver {performance.ResolverMilliseconds:0.0} ms; " +
+                        $"{readStage} {performance.ReadMilliseconds:0.0} ms; " +
+                        $"traverse IL {performance.TraversalMilliseconds:0.0} ms; " +
+                        $"resolve locations {performance.LocationResolutionMilliseconds:0.0} ms)");
+                }
+            }
 
             reportedLocationCount = 0;
             foreach (IGrouping<long, I18nIlUsage> group in result.Usages
@@ -86,39 +101,64 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             var profiler = new I18nUsageScanProfiler();
             var usages = new HashSet<I18nIlUsage>();
             var warnings = new List<string>();
+            var cecilPerformance = new List<I18nCecilAssemblyScanPerformance>();
             string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
             int scannedAssemblyCount = 0;
+            int candidateAssemblyCount = 0;
 
             UnityCompilationAssembly[] assemblies = CompilationPipeline.GetAssemblies(AssembliesType.Player);
             foreach (UnityCompilationAssembly assembly in assemblies)
             {
-                if (!assembly.sourceFiles.Any(sourceFile => IsAssetsPath(sourceFile, projectRoot)))
+                if (!assembly.sourceFiles.Any(
+                        sourceFile => I18nUsagePath.IsAssetPath(sourceFile, projectRoot)))
                 {
                     continue;
                 }
 
-                string assemblyPath = ResolvePath(assembly.outputPath, projectRoot);
+                string assemblyPath = I18nUsagePath.Resolve(assembly.outputPath, projectRoot);
                 if (!File.Exists(assemblyPath))
                 {
                     warnings.Add($"Skipped '{assembly.name}' because its compiled DLL was not found at '{assemblyPath}'.");
                     continue;
                 }
 
+                scannedAssemblyCount++;
+                bool mayContainEntryId;
                 try
                 {
-                    ScanAssembly(
+                    mayContainEntryId = I18nIlAssemblyPrefilter.MayContainEntryId(assemblyPath);
+                }
+                catch (Exception exception)
+                {
+                    mayContainEntryId = true;
+                    warnings.Add(
+                        $"Prefilter failed for '{assembly.name}'; falling back to Cecil: " +
+                        $"{exception.GetType().Name}: {exception.Message}");
+                }
+
+                if (!mayContainEntryId)
+                {
+                    continue;
+                }
+
+                candidateAssemblyCount++;
+                try
+                {
+                    cecilPerformance.Add(I18nCecilUsageScanner.Scan(
+                        assembly.name,
                         assemblyPath,
                         assembly.allReferences,
                         projectRoot,
                         usages,
-                        profiler);
-                    scannedAssemblyCount++;
-                    profiler.Sample();
+                        profiler));
                 }
                 catch (Exception exception)
                 {
-                    warnings.Add($"Skipped '{assembly.name}': {exception.GetType().Name}: {exception.Message}");
+                    warnings.Add(
+                        $"Skipped '{assembly.name}': {exception.GetType().Name}: {exception.Message}");
                 }
+
+                profiler.Sample();
             }
 
             I18nUsageScanPerformance performance = profiler.Complete();
@@ -130,181 +170,9 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     .ToArray(),
                 warnings,
                 scannedAssemblyCount,
+                candidateAssemblyCount,
+                cecilPerformance,
                 performance);
-        }
-
-        private static void ScanAssembly(
-            string assemblyPath,
-            IReadOnlyList<string> referencePaths,
-            string projectRoot,
-            ISet<I18nIlUsage> usages,
-            I18nUsageScanProfiler profiler)
-        {
-            bool hasSymbols = File.Exists(Path.ChangeExtension(assemblyPath, ".pdb"));
-            using DefaultAssemblyResolver resolver = CreateAssemblyResolver(
-                assemblyPath,
-                referencePaths,
-                projectRoot);
-            var readerParameters = new ReaderParameters
-            {
-                AssemblyResolver = resolver,
-                InMemory = true,
-                ReadSymbols = hasSymbols,
-                ReadingMode = ReadingMode.Immediate,
-            };
-
-            using AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(assemblyPath, readerParameters);
-            profiler.Sample();
-            foreach (ModuleDefinition module in assembly.Modules)
-            {
-                foreach (TypeDefinition type in EnumerateTypes(module.Types))
-                {
-                    foreach (MethodDefinition method in type.Methods)
-                    {
-                        ScanMethod(method, projectRoot, usages);
-                    }
-                }
-            }
-        }
-
-        private static DefaultAssemblyResolver CreateAssemblyResolver(
-            string assemblyPath,
-            IReadOnlyList<string> referencePaths,
-            string projectRoot)
-        {
-            var resolver = new DefaultAssemblyResolver();
-            var searchDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            AddSearchDirectory(Path.GetDirectoryName(assemblyPath));
-
-            foreach (string referencePath in referencePaths)
-            {
-                string resolvedReferencePath = ResolvePath(referencePath, projectRoot);
-                AddSearchDirectory(Path.GetDirectoryName(resolvedReferencePath));
-            }
-
-            return resolver;
-
-            void AddSearchDirectory(string? directory)
-            {
-                if (directory == null || directory.Length == 0 || !Directory.Exists(directory))
-                {
-                    return;
-                }
-
-                string searchDirectory = directory;
-                if (searchDirectories.Add(searchDirectory))
-                {
-                    resolver.AddSearchDirectory(searchDirectory);
-                }
-            }
-        }
-
-        private static void ScanMethod(
-            MethodDefinition method,
-            string projectRoot,
-            ISet<I18nIlUsage> usages)
-        {
-            if (!method.HasBody)
-            {
-                return;
-            }
-
-            foreach (Instruction instruction in method.Body.Instructions)
-            {
-                if (instruction.OpCode.Code != Code.Ldc_I8 ||
-                    instruction.Operand is not long entryId ||
-                    !I18nEntryId.IsValid(entryId))
-                {
-                    continue;
-                }
-
-                SequencePoint? sequencePoint = FindSequencePoint(method, instruction.Offset, projectRoot);
-                if (sequencePoint == null)
-                {
-                    continue;
-                }
-
-                if (TryGetAssetPath(sequencePoint.Document.Url, projectRoot, out string assetPath))
-                {
-                    usages.Add(new I18nIlUsage(entryId, assetPath, sequencePoint.StartLine));
-                }
-            }
-        }
-
-        private static SequencePoint? FindSequencePoint(
-            MethodDefinition method,
-            int instructionOffset,
-            string projectRoot)
-        {
-            SequencePoint? nearest = null;
-            foreach (SequencePoint sequencePoint in method.DebugInformation.SequencePoints)
-            {
-                if (sequencePoint.Offset > instructionOffset)
-                {
-                    break;
-                }
-
-                if (!sequencePoint.IsHidden &&
-                    TryGetAssetPath(sequencePoint.Document.Url, projectRoot, out _))
-                {
-                    nearest = sequencePoint;
-                }
-            }
-
-            return nearest;
-        }
-
-        private static IEnumerable<TypeDefinition> EnumerateTypes(IEnumerable<TypeDefinition> roots)
-        {
-            foreach (TypeDefinition type in roots)
-            {
-                yield return type;
-                foreach (TypeDefinition nestedType in EnumerateTypes(type.NestedTypes))
-                {
-                    yield return nestedType;
-                }
-            }
-        }
-
-        private static bool IsAssetsPath(string path, string projectRoot)
-        {
-            return TryGetAssetPath(path, projectRoot, out _);
-        }
-
-        private static bool TryGetAssetPath(
-            string path,
-            string projectRoot,
-            out string assetPath)
-        {
-            assetPath = string.Empty;
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return false;
-            }
-
-            string localPath = path;
-            if (Uri.TryCreate(path, UriKind.Absolute, out Uri? uri) && uri.IsFile)
-            {
-                localPath = uri.LocalPath;
-            }
-
-            string fullPath = ResolvePath(localPath, projectRoot).Replace('\\', '/');
-            string assetsRoot = Path.Combine(projectRoot, "Assets").Replace('\\', '/').TrimEnd('/');
-            string assetsPrefix = assetsRoot + "/";
-            if (!fullPath.StartsWith(assetsPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            assetPath = "Assets/" + fullPath.Substring(assetsPrefix.Length);
-            return true;
-        }
-
-        private static string ResolvePath(string path, string projectRoot)
-        {
-            return Path.GetFullPath(Path.IsPathRooted(path)
-                ? path
-                : Path.Combine(projectRoot, path));
         }
 
         private static string FormatLocation(I18nIlUsage usage)
@@ -332,11 +200,15 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             IReadOnlyList<I18nIlUsage> usages,
             IReadOnlyList<string> warnings,
             int scannedAssemblyCount,
+            int candidateAssemblyCount,
+            IReadOnlyList<I18nCecilAssemblyScanPerformance> cecilPerformance,
             I18nUsageScanPerformance performance)
         {
             Usages = usages;
             Warnings = warnings;
             ScannedAssemblyCount = scannedAssemblyCount;
+            CandidateAssemblyCount = candidateAssemblyCount;
+            CecilPerformance = cecilPerformance;
             Performance = performance;
         }
 
@@ -345,6 +217,10 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         public IReadOnlyList<string> Warnings { get; }
 
         public int ScannedAssemblyCount { get; }
+
+        public int CandidateAssemblyCount { get; }
+
+        public IReadOnlyList<I18nCecilAssemblyScanPerformance> CecilPerformance { get; }
 
         public I18nUsageScanPerformance Performance { get; }
 
