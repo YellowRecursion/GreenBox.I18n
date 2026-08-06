@@ -313,6 +313,59 @@ public sealed class EditorSession
     }
 
     /// <summary>
+    /// Atomically replaces locale definitions and the catalog default locale.
+    /// </summary>
+    /// <param name="expectedRevision">The working-copy revision on which the edit is based.</param>
+    /// <param name="defaultLocale">The locale identifier used as the catalog default.</param>
+    /// <param name="locales">The complete locale definitions in editor display order.</param>
+    /// <returns>The operation result and updated snapshot.</returns>
+    public CatalogEditResult ApplyLocales(
+        long expectedRevision,
+        string defaultLocale,
+        IReadOnlyCollection<CatalogLocaleEditRequest> locales)
+    {
+        ArgumentNullException.ThrowIfNull(locales);
+
+        lock (_lock)
+        {
+            if (_catalog == null)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the editor session.");
+            }
+
+            if (expectedRevision != _revision)
+            {
+                return CatalogEditResult.Failure(
+                    EditorErrorCodes.CatalogRevisionMismatch,
+                    $"The locale edit expected revision {expectedRevision}, but the working copy is at revision {_revision}.");
+            }
+
+            I18nCatalog candidate = CloneCatalog(_catalog);
+            candidate.DefaultLocale = defaultLocale;
+            candidate.Locales = locales.Select(CreateLocale).ToList();
+
+            I18nValidationResult validation = I18nCatalogValidator.Validate(candidate);
+            if (validation.HasErrors)
+            {
+                I18nValidationDiagnostic diagnostic = validation.Diagnostics.First(item =>
+                    item.Severity == I18nValidationSeverity.Error);
+                return CatalogEditResult.Failure(diagnostic.Code, diagnostic.Message);
+            }
+
+            if (I18nCatalogJson.Serialize(candidate) != I18nCatalogJson.Serialize(_catalog))
+            {
+                _catalog.DefaultLocale = candidate.DefaultLocale;
+                _catalog.Locales = candidate.Locales;
+                _revision++;
+            }
+
+            return CatalogEditResult.Success(CreateCatalogResponse());
+        }
+    }
+
+    /// <summary>
     /// Replaces the current working copy with a loaded catalog.
     /// </summary>
     /// <param name="catalogPath">The absolute path of the catalog source file.</param>
@@ -505,6 +558,24 @@ public sealed class EditorSession
                         },
                 },
                 StringComparer.Ordinal),
+        };
+    }
+
+    private static I18nLocaleDefinition CreateLocale(CatalogLocaleEditRequest source)
+    {
+        return new I18nLocaleDefinition
+        {
+            Id = source.Id,
+            DisplayName = source.DisplayName,
+            Culture = source.Culture,
+            Fallback = source.Fallback,
+            Icon = source.Icon == null
+                ? null
+                : new I18nAssetReference
+                {
+                    AssetGuid = source.Icon.AssetGuid,
+                    LocalFileId = source.Icon.LocalFileId,
+                },
         };
     }
 

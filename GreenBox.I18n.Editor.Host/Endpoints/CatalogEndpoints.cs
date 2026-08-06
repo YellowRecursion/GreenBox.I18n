@@ -23,6 +23,7 @@ public static class CatalogEndpoints
         catalogEndpoints.MapPost("/entries/remove", RemoveEntries);
         catalogEndpoints.MapPost("/entries/move", MoveEntries);
         catalogEndpoints.MapPost("/entries/apply-delta", ApplyEntryDelta);
+        catalogEndpoints.MapPost("/locales/apply", ApplyLocales);
         catalogEndpoints.MapDelete("/entries/{id:long}", RemoveEntry);
         catalogEndpoints.MapPost("/save", Save);
         catalogEndpoints.MapPost("/revert", RevertAsync);
@@ -92,6 +93,25 @@ public static class CatalogEndpoints
             request.ExpectedRevision,
             request.Entries,
             request.RemovedIds);
+        if (result.Error == null)
+        {
+            return Results.Ok(result.Catalog);
+        }
+
+        int statusCode = result.Error.Code == EditorErrorCodes.CatalogRevisionMismatch
+            ? StatusCodes.Status409Conflict
+            : StatusCodes.Status422UnprocessableEntity;
+        return Results.Json(result.Error, statusCode: statusCode);
+    }
+
+    private static IResult ApplyLocales(
+        ApplyCatalogLocalesRequest request,
+        EditorSession session)
+    {
+        CatalogEditResult result = session.ApplyLocales(
+            request.ExpectedRevision,
+            request.DefaultLocale,
+            request.Locales);
         if (result.Error == null)
         {
             return Results.Ok(result.Catalog);

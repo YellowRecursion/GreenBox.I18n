@@ -4,17 +4,20 @@ import {
   useRef,
   useState,
   type ComponentRef,
+  type KeyboardEvent,
   type ReactNode,
 } from 'react'
 import { CloseOutlined, CopyOutlined, ExpandOutlined } from '@ant-design/icons'
 import {
   Button,
+  AutoComplete,
   Breadcrumb,
   Descriptions,
   Empty,
   Flex,
   Input,
   Modal,
+  Select,
   Space,
   Tag,
   Table,
@@ -38,6 +41,8 @@ interface CatalogInspectorProps {
   locales: CatalogLocale[]
   entries: CatalogEntry[]
   onFolderPathChange: (path: string, nextPath: string) => Promise<void>
+  onLocaleChange: (locale: CatalogLocale) => Promise<void>
+  onDefaultLocaleChange: (localeId: string) => Promise<void>
   onEntryPathChange: (id: string, path: string) => Promise<void>
   onEntryCommentChange: (id: string, comment: string | null) => Promise<void>
   onEntryTextChange: (id: string, localeId: string, text: string | null) => Promise<void>
@@ -54,6 +59,8 @@ export function CatalogInspector({
   locales,
   entries,
   onFolderPathChange,
+  onLocaleChange,
+  onDefaultLocaleChange,
   onEntryPathChange,
   onEntryCommentChange,
   onEntryTextChange,
@@ -70,7 +77,16 @@ export function CatalogInspector({
   const item = selection[0]
   switch (item.kind) {
     case 'locale':
-      return <LocaleInspector locale={item.locale} defaultLocale={defaultLocale} />
+      return (
+        <LocaleInspector
+          locale={item.locale}
+          locales={locales}
+          entries={entries}
+          defaultLocale={defaultLocale}
+          onChange={onLocaleChange}
+          onDefaultLocaleChange={onDefaultLocaleChange}
+        />
+      )
     case 'folder':
       return (
         <FolderInspector
@@ -98,23 +114,296 @@ export function CatalogInspector({
   }
 }
 
-function LocaleInspector({ locale, defaultLocale }: { locale: CatalogLocale; defaultLocale: string }) {
+const commonCultureNames = [
+  'af-ZA', 'ar-SA', 'be-BY', 'bg-BG', 'ca-ES', 'cs-CZ', 'da-DK', 'de-DE',
+  'el-GR', 'en-GB', 'en-US', 'es-ES', 'et-EE', 'fi-FI', 'fr-FR', 'he-IL',
+  'hi-IN', 'hu-HU', 'id-ID', 'is-IS', 'it-IT', 'ja-JP', 'ko-KR', 'lt-LT',
+  'lv-LV', 'nb-NO', 'nl-NL', 'nn-NO', 'pl-PL', 'pt-BR', 'pt-PT', 'ro-RO',
+  'ru-RU', 'sk-SK', 'sl-SI', 'sr-Latn-RS', 'sv-SE', 'th-TH', 'tr-TR',
+  'uk-UA', 'vi-VN', 'zh-Hans', 'zh-Hant',
+]
+
+function LocaleInspector({
+  locale,
+  locales,
+  entries,
+  defaultLocale,
+  onChange,
+  onDefaultLocaleChange,
+}: {
+  locale: CatalogLocale
+  locales: CatalogLocale[]
+  entries: CatalogEntry[]
+  defaultLocale: string
+  onChange: (locale: CatalogLocale) => Promise<void>
+  onDefaultLocaleChange: (localeId: string) => Promise<void>
+}) {
+  const [error, setError] = useState<string>()
+  const [isChanging, setIsChanging] = useState(false)
+  const isDefault = locale.id === defaultLocale
+  const textCount = entries.filter((entry) => Boolean(entry.locales[locale.id]?.text?.trim())).length
+  const assetCount = entries.filter((entry) => entry.locales[locale.id]?.asset != null).length
+  const fallbackUsers = locales.filter((candidate) => candidate.fallback === locale.id)
+  const cultureOptions = [...new Set([
+    ...locales.map((candidate) => candidate.culture),
+    ...commonCultureNames,
+  ])].map((value) => ({ value }))
+
+  const apply = async (change: CatalogLocale, fallbackError: string) => {
+    setIsChanging(true)
+    setError(undefined)
+    try {
+      await onChange(change)
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : fallbackError)
+      throw reason
+    } finally {
+      setIsChanging(false)
+    }
+  }
+
+  const setDefault = async () => {
+    setIsChanging(true)
+    setError(undefined)
+    try {
+      await onDefaultLocaleChange(locale.id)
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : 'Default locale could not be changed.')
+    } finally {
+      setIsChanging(false)
+    }
+  }
+
   return (
-    <InspectorSection title={locale.displayName} type="Locale">
-      <Descriptions
-        bordered
-        column={1}
-        size="small"
-        items={[
-          { key: 'id', label: 'ID', children: locale.id },
-          { key: 'culture', label: 'Culture', children: locale.culture },
-          { key: 'fallback', label: 'Fallback', children: locale.fallback ?? '[none]' },
-          { key: 'default', label: 'Default', children: locale.id === defaultLocale ? 'Yes' : 'No' },
-          { key: 'icon', label: 'Icon', children: <AssetReference asset={locale.icon} /> },
-        ]}
-      />
+    <InspectorSection
+      type={<LocaleTypeLabel localeId={locale.id} />}
+      icon={<LocaleFlag culture={locale.culture} />}
+    >
+      <Flex vertical gap={layoutTokens.spacing.large}>
+        <LocaleTextField
+          key={`${locale.id}:displayName`}
+          label="Display name"
+          value={locale.displayName}
+          disabled={isChanging}
+          onChange={(displayName) => apply(
+            { ...locale, displayName },
+            'Locale display name could not be changed.',
+          )}
+        />
+        <LocaleTextField
+          key={`${locale.id}:culture`}
+          label="Culture"
+          value={locale.culture}
+          suggestions={cultureOptions}
+          disabled={isChanging}
+          onChange={(culture) => apply(
+            { ...locale, culture },
+            'Locale culture could not be changed.',
+          )}
+        />
+        <Flex vertical gap={layoutTokens.spacing.xSmall}>
+          <Space.Compact block>
+            <LocaleFieldAddon>Fallback</LocaleFieldAddon>
+            <Select
+              aria-label="Locale fallback"
+              value={locale.fallback ?? ''}
+              disabled={isDefault || isChanging}
+              style={{ flex: 1 }}
+              options={[
+                { value: '', label: 'None' },
+                ...locales
+                  .filter((candidate) => candidate.id !== locale.id)
+                  .map((candidate) => ({
+                    value: candidate.id,
+                    label: (
+                      <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+                        <LocaleFlag culture={candidate.culture} />
+                        <span>{candidate.displayName}</span>
+                      </Flex>
+                    ),
+                  })),
+              ]}
+              onChange={(fallback) => {
+                void apply(
+                  { ...locale, fallback: fallback || null },
+                  'Locale fallback could not be changed.',
+                ).catch(() => undefined)
+              }}
+            />
+          </Space.Compact>
+          {isDefault && (
+            <Typography.Text type="secondary">The default locale cannot have a fallback.</Typography.Text>
+          )}
+        </Flex>
+        <Flex align="center" justify="space-between" gap={layoutTokens.spacing.large}>
+          <div>
+            <Typography.Text strong>Default locale</Typography.Text>
+            <br />
+            <Typography.Text type="secondary">
+              Used when no locale is selected.
+            </Typography.Text>
+          </div>
+          {isDefault
+            ? <Tag color="blue" style={{ marginInlineEnd: 0 }}>Default</Tag>
+            : <Button disabled={isChanging} onClick={() => void setDefault()}>Set as default</Button>}
+        </Flex>
+        <Flex vertical gap={layoutTokens.spacing.xSmall}>
+          <Typography.Text strong>Icon</Typography.Text>
+          <EntryAssetInput
+            asset={locale.icon}
+            onChange={(icon) => apply(
+              { ...locale, icon },
+              'Locale icon could not be changed.',
+            )}
+          />
+        </Flex>
+        <Flex vertical gap={layoutTokens.spacing.small}>
+          <Typography.Text strong>Usage</Typography.Text>
+          <Descriptions
+            size="small"
+            column={1}
+            items={[
+              { key: 'text', label: 'Text translations', children: `${textCount}/${entries.length}` },
+              { key: 'asset', label: 'Asset assignments', children: `${assetCount}/${entries.length}` },
+              {
+                key: 'fallbackUsers',
+                label: 'Used as fallback by',
+                children: fallbackUsers.length === 0
+                  ? '0 locales'
+                  : fallbackUsers.map((candidate) => candidate.displayName).join(', '),
+              },
+            ]}
+          />
+        </Flex>
+        {error && <Typography.Text type="danger">{error}</Typography.Text>}
+      </Flex>
     </InspectorSection>
   )
+}
+
+function LocaleTypeLabel({ localeId }: { localeId: string }) {
+  const { token } = theme.useToken()
+
+  return (
+    <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+      <Typography.Text type="secondary">Locale</Typography.Text>
+      <Tooltip title="Copy ID">
+        <Button
+          type="text"
+          size="small"
+          aria-label={`Copy locale ID ${localeId}`}
+          style={{ color: token.colorTextSecondary, paddingInline: layoutTokens.spacing.xSmall }}
+          onClick={() => void navigator.clipboard.writeText(localeId).catch(() => undefined)}
+        >
+          <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+            <span>{localeId}</span>
+            <CopyOutlined />
+          </Flex>
+        </Button>
+      </Tooltip>
+    </Flex>
+  )
+}
+
+function LocaleTextField({
+  label,
+  value,
+  suggestions,
+  disabled,
+  onChange,
+}: {
+  label: string
+  value: string
+  suggestions?: { value: string }[]
+  disabled: boolean
+  onChange: (value: string) => Promise<void>
+}) {
+  const [draft, setDraft] = useState(value)
+  const [error, setError] = useState<string>()
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    setDraft(value)
+    setError(undefined)
+  }, [value])
+
+  const commit = async () => {
+    const nextValue = draft.trim()
+    if (nextValue === value) {
+      setDraft(value)
+      return
+    }
+
+    setIsSaving(true)
+    setError(undefined)
+    try {
+      await onChange(nextValue)
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : `${label} could not be changed.`)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const input = suggestions
+    ? (
+        <AutoComplete
+          aria-label={label}
+          value={draft}
+          options={suggestions}
+          disabled={disabled || isSaving}
+          status={error ? 'error' : undefined}
+          style={{ flex: 1 }}
+          filterOption={(inputValue, option) =>
+            (option?.value ?? '').toLowerCase().includes(inputValue.toLowerCase())}
+          onChange={(nextValue) => {
+            setDraft(nextValue)
+            setError(undefined)
+          }}
+          onBlur={() => void commit()}
+          onKeyDown={(event) => handleSingleLineCommitKey(event)}
+        />
+      )
+    : (
+        <Input
+          aria-label={label}
+          value={draft}
+          disabled={disabled || isSaving}
+          status={error ? 'error' : undefined}
+          style={{ flex: 1 }}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setError(undefined)
+          }}
+          onBlur={() => void commit()}
+          onKeyDown={(event) => handleSingleLineCommitKey(event)}
+        />
+      )
+
+  return (
+    <Flex vertical gap={layoutTokens.spacing.xSmall}>
+      <Space.Compact block>
+        <LocaleFieldAddon>{label}</LocaleFieldAddon>
+        {input}
+      </Space.Compact>
+      {error && <Typography.Text type="danger">{error}</Typography.Text>}
+    </Flex>
+  )
+}
+
+function LocaleFieldAddon({ children }: { children: ReactNode }) {
+  return (
+    <Space.Addon style={{ width: 112, justifyContent: 'flex-start' }}>
+      {children}
+    </Space.Addon>
+  )
+}
+
+function handleSingleLineCommitKey(event: KeyboardEvent<HTMLElement>) {
+  if (event.key === 'Enter' || event.key === 'Escape') {
+    event.preventDefault()
+    event.currentTarget.blur()
+  }
 }
 
 function FolderInspector({
@@ -900,7 +1189,9 @@ function InspectorSection({
         </Flex>
         {headerContent
           ? <div style={{ marginTop: layoutTokens.spacing.small }}>{headerContent}</div>
-          : <Typography.Title level={4} style={{ margin: 0 }}>{title}</Typography.Title>}
+          : title
+            ? <Typography.Title level={4} style={{ margin: 0 }}>{title}</Typography.Title>
+            : null}
       </div>
       {children}
     </Flex>
@@ -909,14 +1200,4 @@ function InspectorSection({
 
 function isValidEntryPath(path: string) {
   return /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(path)
-}
-
-function AssetReference({ asset }: { asset: CatalogAssetReference | null }) {
-  if (!asset) {
-    return '[none]'
-  }
-
-  return asset.localFileId
-    ? `${asset.assetGuid} : ${asset.localFileId}`
-    : asset.assetGuid
 }

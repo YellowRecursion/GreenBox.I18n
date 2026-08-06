@@ -1,8 +1,14 @@
 import type { CatalogEntryDelta } from '../../entities/catalog/api/applyCatalogEntryDelta'
-import type { CatalogEntry, CatalogSnapshot } from '../../entities/catalog/model/catalog'
+import type { CatalogEntry, CatalogLocale, CatalogSnapshot } from '../../entities/catalog/model/catalog'
+
+export interface CatalogLocaleState {
+  defaultLocale: string
+  locales: CatalogLocale[]
+}
 
 export interface EditorHistoryStateSnapshot {
   entryDelta: CatalogEntryDelta
+  localeState?: CatalogLocaleState
   temporaryFolderPaths: string[]
 }
 
@@ -30,15 +36,20 @@ export function createEditorHistoryEntry(
   const afterById = new Map(afterCatalog.entries.map((entry) => [entry.id, entry]))
   const changedIds = [...new Set([...beforeById.keys(), ...afterById.keys()])]
     .filter((id) => !entriesEqual(beforeById.get(id), afterById.get(id)))
+  const localesChanged = beforeCatalog.defaultLocale !== afterCatalog.defaultLocale ||
+    JSON.stringify(beforeCatalog.locales) !== JSON.stringify(afterCatalog.locales)
 
-  if (changedIds.length === 0 && arraysEqual(beforeTemporaryFolderPaths, afterTemporaryFolderPaths)) {
+  if (changedIds.length === 0 && !localesChanged &&
+      arraysEqual(beforeTemporaryFolderPaths, afterTemporaryFolderPaths)) {
     return undefined
   }
 
   return {
     label,
-    before: createSnapshot(beforeById, changedIds, beforeTemporaryFolderPaths),
-    after: createSnapshot(afterById, changedIds, afterTemporaryFolderPaths),
+    before: createSnapshot(beforeById, changedIds, beforeTemporaryFolderPaths,
+      localesChanged ? beforeCatalog : undefined),
+    after: createSnapshot(afterById, changedIds, afterTemporaryFolderPaths,
+      localesChanged ? afterCatalog : undefined),
   }
 }
 
@@ -46,6 +57,7 @@ function createSnapshot(
   entriesById: ReadonlyMap<string, CatalogEntry>,
   changedIds: string[],
   temporaryFolderPaths: string[],
+  localeCatalog?: CatalogSnapshot,
 ): EditorHistoryStateSnapshot {
   return {
     entryDelta: {
@@ -55,6 +67,12 @@ function createSnapshot(
       }),
       removedIds: changedIds.filter((id) => !entriesById.has(id)),
     },
+    localeState: localeCatalog
+      ? {
+          defaultLocale: localeCatalog.defaultLocale,
+          locales: localeCatalog.locales,
+        }
+      : undefined,
     temporaryFolderPaths: [...temporaryFolderPaths],
   }
 }

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
 import { Alert, Flex, Spin, Splitter, Typography, theme } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
-import type { CatalogAssetReference, CatalogSnapshot } from '../../entities/catalog/model/catalog'
+import type { CatalogAssetReference, CatalogLocale, CatalogSnapshot } from '../../entities/catalog/model/catalog'
 import type { CatalogEntryMove } from '../../entities/catalog/api/moveCatalogEntries'
 import type { CatalogEntryDelta } from '../../entities/catalog/api/applyCatalogEntryDelta'
 import { useCatalog } from '../../entities/catalog/model/useCatalog'
@@ -30,6 +30,7 @@ export function EditorShell() {
     removeEntries,
     moveEntries,
     applyEntryDelta,
+    applyLocales,
     save,
     revert,
     mergeSource,
@@ -86,6 +87,7 @@ export function EditorShell() {
       onRemoveEntries={removeEntries}
       onMoveEntries={moveEntries}
       onApplyEntryDelta={applyEntryDelta}
+      onApplyLocales={applyLocales}
       onSave={save}
       onRevert={revert}
       onMergeSource={mergeSource}
@@ -100,6 +102,7 @@ function CatalogWorkspace({
   onRemoveEntries,
   onMoveEntries,
   onApplyEntryDelta,
+  onApplyLocales,
   onSave,
   onRevert,
   onMergeSource,
@@ -110,6 +113,7 @@ function CatalogWorkspace({
   onRemoveEntries(ids: string[]): Promise<CatalogSnapshot>
   onMoveEntries(moves: CatalogEntryMove[]): Promise<CatalogSnapshot>
   onApplyEntryDelta(delta: CatalogEntryDelta, expectedRevision: number): Promise<CatalogSnapshot>
+  onApplyLocales(locales: CatalogLocale[], defaultLocale: string, expectedRevision: number): Promise<CatalogSnapshot>
   onSave(overwriteExternalChanges?: boolean): Promise<CatalogSnapshot>
   onRevert(): Promise<CatalogSnapshot>
   onMergeSource(): Promise<CatalogSnapshot>
@@ -148,6 +152,12 @@ function CatalogWorkspace({
   const applyHistorySnapshot = useCallback(async (snapshot: EditorHistoryStateSnapshot) => {
     if (snapshot.entryDelta.entries.length > 0 || snapshot.entryDelta.removedIds.length > 0) {
       await onApplyEntryDelta(snapshot.entryDelta, catalog.revision)
+    } else if (snapshot.localeState) {
+      await onApplyLocales(
+        snapshot.localeState.locales,
+        snapshot.localeState.defaultLocale,
+        catalog.revision,
+      )
     }
 
     setTemporaryFolderPaths(snapshot.temporaryFolderPaths)
@@ -159,7 +169,7 @@ function CatalogWorkspace({
       .filter((entry) => selectedEntryIds.has(entry.id))
       .flatMap((entry) => getEntryAncestorFolderKeys(entry.path))
     setExpandedKeys((expanded) => mergeKeys(expanded, selectedEntryAncestorKeys))
-  }, [catalog.revision, onApplyEntryDelta, selectedKeys])
+  }, [catalog.revision, onApplyEntryDelta, onApplyLocales, selectedKeys])
 
   const applyHistoryEntry = useCallback(async (
     direction: 'undo' | 'redo',
@@ -564,6 +574,47 @@ function CatalogWorkspace({
     ))
   }
 
+  const handleLocaleChange = async (locale: CatalogLocale) => {
+    const current = catalog.locales.find((candidate) => candidate.id === locale.id)
+    if (!current) {
+      throw new Error(`Locale '${locale.id}' does not exist.`)
+    }
+
+    const updatedCatalog = await onApplyLocales(
+      catalog.locales.map((candidate) => candidate.id === locale.id ? locale : candidate),
+      catalog.defaultLocale,
+      catalog.revision,
+    )
+    recordHistory(createEditorHistoryEntry(
+      `Edit locale ${locale.id}`,
+      catalog,
+      updatedCatalog,
+      temporaryFolderPaths,
+      temporaryFolderPaths,
+    ))
+  }
+
+  const handleDefaultLocaleChange = async (localeId: string) => {
+    if (localeId === catalog.defaultLocale) {
+      return
+    }
+
+    const updatedLocales = catalog.locales.map((locale) =>
+      locale.id === localeId ? { ...locale, fallback: null } : locale)
+    const updatedCatalog = await onApplyLocales(
+      updatedLocales,
+      localeId,
+      catalog.revision,
+    )
+    recordHistory(createEditorHistoryEntry(
+      `Set ${localeId} as default locale`,
+      catalog,
+      updatedCatalog,
+      temporaryFolderPaths,
+      temporaryFolderPaths,
+    ))
+  }
+
   const reloadFromDisk = useCallback(async () => {
     await onRevert()
     setTemporaryFolderPaths([])
@@ -641,6 +692,8 @@ function CatalogWorkspace({
               locales={catalog.locales}
               entries={catalog.entries}
               onFolderPathChange={handleFolderPathChange}
+              onLocaleChange={handleLocaleChange}
+              onDefaultLocaleChange={handleDefaultLocaleChange}
               onEntryPathChange={handleEntryPathChange}
               onEntryCommentChange={handleEntryCommentChange}
               onEntryTextChange={handleEntryTextChange}

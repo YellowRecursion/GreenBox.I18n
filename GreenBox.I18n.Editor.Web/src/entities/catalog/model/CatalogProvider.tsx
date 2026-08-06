@@ -7,6 +7,8 @@ import { saveCatalog } from '../api/saveCatalog'
 import { mergeCatalogSource } from '../api/mergeCatalogSource'
 import { getCatalog } from '../api/getCatalog'
 import { applyCatalogEntryDelta, type CatalogEntryDelta } from '../api/applyCatalogEntryDelta'
+import { applyCatalogLocales } from '../api/applyCatalogLocales'
+import type { CatalogLocale } from './catalog'
 import { CatalogContext } from './catalogContext'
 import { catalogReducer, initialCatalogState } from './catalogReducer'
 import { useCatalogSession } from './useCatalogSession'
@@ -84,6 +86,20 @@ export function CatalogProvider({ children }: PropsWithChildren) {
     return catalog
   }, [catalogPath])
 
+  const applyLocales = useCallback(async (
+    locales: CatalogLocale[],
+    defaultLocale: string,
+    expectedRevision: number,
+  ) => {
+    const catalog = await applyCatalogLocales(locales, defaultLocale, expectedRevision)
+    if (!catalogPath) {
+      throw new Error('No catalog is open.')
+    }
+
+    dispatch({ type: 'loaded', catalog, catalogPath })
+    return catalog
+  }, [catalogPath])
+
   const save = useCallback(async (overwriteExternalChanges = false) => {
     const catalog = await saveCatalog(overwriteExternalChanges)
     if (!catalogPath) {
@@ -115,8 +131,8 @@ export function CatalogProvider({ children }: PropsWithChildren) {
   }, [catalogPath])
 
   const context = useMemo(
-    () => ({ state, addEntry, removeEntries, moveEntries, applyEntryDelta, save, revert, mergeSource }),
-    [state, addEntry, removeEntries, moveEntries, applyEntryDelta, save, revert, mergeSource],
+    () => ({ state, addEntry, removeEntries, moveEntries, applyEntryDelta, applyLocales, save, revert, mergeSource }),
+    [state, addEntry, removeEntries, moveEntries, applyEntryDelta, applyLocales, save, revert, mergeSource],
   )
 
   return <CatalogContext.Provider value={context}>{children}</CatalogContext.Provider>
