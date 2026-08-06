@@ -266,7 +266,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.ReadWrite,
-                buffer.Length,
+                1,
                 FileOptions.SequentialScan);
 
             int matchedByteCount = 0;
