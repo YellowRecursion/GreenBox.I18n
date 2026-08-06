@@ -160,58 +160,89 @@ export function EntryAssetInput({ asset, onChange }: EntryAssetInputProps) {
           transition: `background ${token.motionDurationFast}`,
         }}
       >
-        <Upload
-          fileList={fileList}
-          maxCount={1}
-          openFileDialogOnClick={false}
-          beforeUpload={(file) => {
-            void assignDroppedFile(file)
-            return Upload.LIST_IGNORE
-          }}
-          onPreview={() => void open()}
-          onRemove={() => {
-            void clear()
-            return false
-          }}
-          showUploadList={{
-            showDownloadIcon: false,
-            showPreviewIcon: true,
-            showRemoveIcon: !isChanging,
-          }}
-          itemRender={(originNode) => (
-            <Tooltip title={resolved?.assetPath ?? 'Resolving Unity asset path...'}>
-              <div
+        {asset ? (
+          <Upload
+            fileList={fileList}
+            maxCount={1}
+            openFileDialogOnClick={false}
+            onPreview={() => void open()}
+            onRemove={() => {
+              void clear()
+              return false
+            }}
+            showUploadList={{
+              showDownloadIcon: false,
+              showPreviewIcon: true,
+              showRemoveIcon: !isChanging,
+            }}
+            itemRender={(originNode) => (
+              <Tooltip
+                styles={{ container: { maxWidth: 480 } }}
+                title={(
+                  <Flex vertical gap={layoutTokens.spacing.xSmall}>
+                    <div>
+                      <strong>Path:</strong>{' '}
+                      {resolved?.assetPath ?? 'Resolving Unity asset path...'}
+                    </div>
+                    <div>
+                      <strong>GUID:</strong>{' '}
+                      <code style={{ overflowWrap: 'anywhere' }}>{asset.assetGuid}</code>
+                    </div>
+                    <div>
+                      <strong>Local File ID:</strong>{' '}
+                      <code>{asset.localFileId ?? '[none]'}</code>
+                    </div>
+                  </Flex>
+                )}
+              >
+                <div
+                  onClick={(event) => {
+                    if (!(event.target as HTMLElement).closest('a, button, [role="button"]')) {
+                      void open()
+                    }
+                  }}
+                >
+                  {originNode}
+                </div>
+              </Tooltip>
+            )}
+          />
+        ) : (
+          <Upload.Dragger
+            fileList={[]}
+            maxCount={1}
+            openFileDialogOnClick={false}
+            showUploadList={false}
+            styles={{ trigger: { padding: layoutTokens.spacing.xSmall } }}
+            beforeUpload={(file, files) => {
+              if (files.length !== 1) {
+                setError('Drop exactly one asset from the Unity Project window.')
+                return Upload.LIST_IGNORE
+              }
+
+              void assignDroppedFile(file)
+              return Upload.LIST_IGNORE
+            }}
+          >
+            <Flex align="center" justify="center" gap={layoutTokens.spacing.xSmall}>
+              <Button
+                type="text"
+                size="small"
+                loading={isChanging}
+                icon={<UploadOutlined />}
                 onClick={(event) => {
-                  if (!(event.target as HTMLElement).closest('button')) {
-                    void open()
-                  }
+                  event.preventDefault()
+                  event.stopPropagation()
+                  void pasteClipboard()
                 }}
               >
-                {originNode}
-              </div>
-            </Tooltip>
-          )}
-        >
-          {!asset && (
-            <Button
-              size="small"
-              loading={isChanging}
-              icon={<UploadOutlined />}
-              onClick={(event) => {
-                event.preventDefault()
-                void pasteClipboard()
-              }}
-            >
-              Paste asset
-            </Button>
-          )}
-        </Upload>
+                Paste reference
+              </Button>
+              <Typography.Text type="secondary">or drop from Unity</Typography.Text>
+            </Flex>
+          </Upload.Dragger>
+        )}
       </div>
-      {!asset && !error && (
-        <Typography.Text type="secondary">
-          Paste a copied reference or drop an asset from Unity.
-        </Typography.Text>
-      )}
       {error && <Typography.Text type="danger">{error}</Typography.Text>}
     </Flex>
   )

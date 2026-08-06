@@ -10,7 +10,6 @@ import { CloseOutlined, CopyOutlined, ExpandOutlined } from '@ant-design/icons'
 import {
   Button,
   Breadcrumb,
-  Card,
   Descriptions,
   Empty,
   Flex,
@@ -188,18 +187,23 @@ function EntryInspector({
             key: 'asset',
             label: `Asset ${assetCount}/${locales.length}`,
             children: (
-              <Flex vertical gap={layoutTokens.spacing.small}>
+              <Flex
+                vertical
+                gap={layoutTokens.spacing.large}
+                style={{ marginTop: layoutTokens.spacing.large }}
+              >
                 {orderedLocales.map((locale) => (
-                  <EntryLocaleCard
-                    key={locale.id}
-                    locale={locale}
-                    defaultLocale={defaultLocale}
-                  >
+                  <Flex key={locale.id} vertical gap={layoutTokens.spacing.xSmall}>
+                    <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+                      <LocaleFlag culture={locale.culture} />
+                      <Typography.Text>{locale.displayName}</Typography.Text>
+                      {locale.id === defaultLocale && <Tag color="blue">Default</Tag>}
+                    </Flex>
                     <EntryAssetInput
                       asset={entry.locales[locale.id]?.asset ?? null}
                       onChange={(asset) => onAssetChange(entry.id, locale.id, asset)}
                     />
-                  </EntryLocaleCard>
+                  </Flex>
                 ))}
               </Flex>
             ),
@@ -472,31 +476,6 @@ function TrailingWhitespaceIndicator({ text }: { text: string }) {
         )}
       </Flex>
     </Tooltip>
-  )
-}
-
-function EntryLocaleCard({
-  locale,
-  defaultLocale,
-  children,
-}: {
-  locale: CatalogLocale
-  defaultLocale: string
-  children: ReactNode
-}) {
-  return (
-    <Card
-      size="small"
-      title={(
-        <Flex align="center" gap={layoutTokens.spacing.xSmall}>
-          <LocaleFlag culture={locale.culture} />
-          <span>{locale.displayName} ({locale.id})</span>
-        </Flex>
-      )}
-      extra={locale.id === defaultLocale ? <Tag color="blue">Default</Tag> : undefined}
-    >
-      {children}
-    </Card>
   )
 }
 
