@@ -27,7 +27,7 @@ public sealed class AddCommandTests : IDisposable
         I18nEntry addedEntry = Assert.Single(savedCatalog.Entries, entry => entry.Path == "Menu.PlayButton");
         Assert.Equal(CliExitCodes.Success, exitCode);
         string id = report.RootElement.GetProperty("id").GetString()!;
-        Assert.InRange(long.Parse(id), 100_000_000_000, 999_999_999_999);
+        Assert.True(I18nEntryId.TryParse(id, out _));
         Assert.Equal("Menu.PlayButton", report.RootElement.GetProperty("path").GetString());
         Assert.Equal(id, addedEntry.Id);
         Assert.Empty(addedEntry.Locales);

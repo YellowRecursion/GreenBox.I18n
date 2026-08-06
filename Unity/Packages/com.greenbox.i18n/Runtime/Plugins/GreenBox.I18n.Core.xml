@@ -4,20 +4,71 @@
         <name>GreenBox.I18n.Core</name>
     </assembly>
     <members>
+        <member name="T:GreenBox.I18n.I18nBatchEditResult">
+            <summary>
+            Represents the result of an atomic operation affecting multiple catalog entries.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nBatchEditResult.IsSuccess">
+            <summary>Gets whether the operation completed successfully.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nBatchEditResult.HasChanges">
+            <summary>Gets whether the catalog was modified.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nBatchEditResult.Error">
+            <summary>Gets the expected operation error, if one occurred.</summary>
+        </member>
         <member name="T:GreenBox.I18n.I18nCatalogEditing">
             <summary>
             Provides operations that safely edit an i18n catalog in memory.
             </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogEditing.AddEntry(GreenBox.I18n.I18nCatalog,System.String)">
+            <summary>
+            Adds an empty entry with a random self-identifying stable ID and restores canonical order.
+            </summary>
+            <param name="catalog">The valid catalog to edit.</param>
+            <param name="path">The new entry's full logical path.</param>
+            <returns>The operation result and created entry.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogEditing.RemoveEntry(GreenBox.I18n.I18nCatalog,System.Int64)">
+            <summary>
+            Removes an entry without modifying any other entry IDs.
+            </summary>
+            <param name="catalog">The valid catalog to edit.</param>
+            <param name="id">The self-identifying ID of the entry to remove.</param>
+            <returns>The operation result and removed entry.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
         </member>
         <member name="M:GreenBox.I18n.I18nCatalogEditing.MoveEntry(GreenBox.I18n.I18nCatalog,System.Int64,System.String)">
             <summary>
             Changes an entry path while preserving its stable ID and localized values.
             </summary>
             <param name="catalog">The valid catalog to edit.</param>
-            <param name="id">The positive ID of the entry to move.</param>
+            <param name="id">The self-identifying ID of the entry to move.</param>
             <param name="newPath">The new full logical path.</param>
             <returns>The operation result and affected entry.</returns>
             <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogEditing.MoveEntries(GreenBox.I18n.I18nCatalog,System.Collections.Generic.IReadOnlyCollection{GreenBox.I18n.I18nEntryMove})">
+            <summary>
+            Changes several entry paths as one atomic operation.
+            </summary>
+            <param name="catalog">The valid catalog to edit.</param>
+            <param name="moves">The requested entry IDs and destination paths.</param>
+            <returns>The atomic operation result.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when an argument is null.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogEditing.ApplyEntryDelta(GreenBox.I18n.I18nCatalog,System.Collections.Generic.IReadOnlyCollection{GreenBox.I18n.I18nEntry},System.Collections.Generic.IReadOnlyCollection{System.Int64})">
+            <summary>
+            Atomically adds or replaces complete entries and removes entries by stable ID.
+            </summary>
+            <param name="catalog">The catalog to edit.</param>
+            <param name="entries">The complete entry values to add or replace.</param>
+            <param name="removedIds">The stable IDs that must be absent after the operation.</param>
+            <returns>The atomic operation result.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when an argument is null.</exception>
         </member>
         <member name="T:GreenBox.I18n.I18nEditCodes">
             <summary>
@@ -30,11 +81,20 @@
         <member name="F:GreenBox.I18n.I18nEditCodes.EntryNotFound">
             <summary>Indicates that no entry has the requested ID.</summary>
         </member>
+        <member name="F:GreenBox.I18n.I18nEditCodes.DuplicateEntryMove">
+            <summary>Indicates that one entry occurs more than once in a batch operation.</summary>
+        </member>
         <member name="F:GreenBox.I18n.I18nEditCodes.InvalidPath">
             <summary>Indicates that the requested path has an invalid format.</summary>
         </member>
         <member name="F:GreenBox.I18n.I18nEditCodes.DuplicatePath">
             <summary>Indicates that another entry already uses the requested path.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nEditCodes.IdSpaceExhausted">
+            <summary>Indicates that a unique random entry ID could not be allocated.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nEditCodes.InvalidEntryDelta">
+            <summary>Indicates that an entry delta would produce an invalid catalog.</summary>
         </member>
         <member name="T:GreenBox.I18n.I18nEditError">
             <summary>
@@ -74,6 +134,116 @@
         <member name="P:GreenBox.I18n.I18nEditResult.Error">
             <summary>
             Gets the expected operation error, or <see langword="null"/> after success.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nEntryIdAllocator">
+            <summary>
+            Allocates self-identifying random entry IDs that remain safe across independent catalog copies.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nEntryIdAllocator.TryAllocate(System.Collections.Generic.IReadOnlyList{GreenBox.I18n.I18nEntry},System.Int64@,GreenBox.I18n.I18nEditError@)">
+            <summary>
+            Allocates an unused self-identifying ID using a cryptographically secure random source.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nEntryMove">
+            <summary>
+            Describes the destination path of one entry in an atomic move operation.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nEntryMove.#ctor(System.Int64,System.String)">
+            <summary>
+            Creates an entry move.
+            </summary>
+            <param name="id">The stable entry ID.</param>
+            <param name="path">The destination path.</param>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEntryMove.Id">
+            <summary>Gets the stable entry ID.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nEntryMove.Path">
+            <summary>Gets the destination path.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nEntryId">
+            <summary>
+            Recognizes self-identifying GreenBox I18n entry IDs.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nEntryId.Generate">
+            <summary>
+            Generates a cryptographically random entry ID using the current format.
+            </summary>
+            <returns>A new self-identifying entry ID.</returns>
+        </member>
+        <member name="M:GreenBox.I18n.I18nEntryId.IsValid(System.Int64)">
+            <summary>
+            Determines whether a value uses the current self-identifying entry ID format.
+            </summary>
+            <param name="value">The numeric value to inspect.</param>
+            <returns><see langword="true"/> when the signature, version, and checksum are valid.</returns>
+        </member>
+        <member name="M:GreenBox.I18n.I18nEntryId.TryParse(System.String,System.Int64@)">
+            <summary>
+            Parses a decimal entry ID and verifies its embedded signature and checksum.
+            </summary>
+            <param name="value">The decimal ID text.</param>
+            <param name="id">Receives the parsed ID when valid.</param>
+            <returns><see langword="true"/> when the text contains a valid entry ID.</returns>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCatalogMerge">
+            <summary>
+            Performs a safe three-way merge of localization catalogs.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogMerge.Merge(GreenBox.I18n.I18nCatalog,GreenBox.I18n.I18nCatalog,GreenBox.I18n.I18nCatalog)">
+            <summary>
+            Merges a working copy and an incoming catalog relative to their common baseline.
+            </summary>
+            <param name="baseline">The catalog version both sides started from.</param>
+            <param name="current">The current local working copy.</param>
+            <param name="incoming">The newly loaded catalog from an external source.</param>
+            <returns>The merged catalog, or conflicts when a safe result cannot be produced.</returns>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCatalogMergeResult">
+            <summary>
+            Contains the outcome of a three-way catalog merge.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMergeResult.Catalog">
+            <summary>
+            Gets the safely merged catalog, or <see langword="null"/> when conflicts exist.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMergeResult.Conflicts">
+            <summary>
+            Gets conflicts that prevented a safe merge.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMergeResult.IsSuccess">
+            <summary>
+            Gets whether the merge completed without conflicts.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCatalogMergeConflict">
+            <summary>
+            Describes one field that could not be merged safely.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogMergeConflict.#ctor(System.String,System.String)">
+            <summary>
+            Creates a catalog merge conflict.
+            </summary>
+            <param name="jsonPath">The logical JSON path of the conflicting value.</param>
+            <param name="message">The human-readable conflict description.</param>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMergeConflict.JsonPath">
+            <summary>
+            Gets the logical JSON path of the conflicting value.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMergeConflict.Message">
+            <summary>
+            Gets the human-readable conflict description.
             </summary>
         </member>
         <member name="T:GreenBox.I18n.I18nCatalog">
@@ -213,10 +383,10 @@
             Finds an entry by its stable numeric identifier.
             </summary>
             <param name="catalog">The catalog to search.</param>
-            <param name="id">The positive entry identifier.</param>
+            <param name="id">The self-identifying entry identifier.</param>
             <returns>The matching entry, or <see langword="null"/> when no entry has the identifier.</returns>
             <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
-            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is invalid.</exception>
         </member>
         <member name="M:GreenBox.I18n.I18nCatalogQueries.Search(GreenBox.I18n.I18nCatalog,System.String)">
             <summary>
@@ -320,15 +490,15 @@
             <summary>
             Gets localized text, falling back to the entry path or numeric ID when no text exists.
             </summary>
-            <param name="id">The positive stable entry ID.</param>
+            <param name="id">The self-identifying stable entry ID.</param>
             <returns>The resolved text, entry path, or numeric ID.</returns>
-            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         </member>
         <member name="M:GreenBox.I18n.I18nRuntime.Format(System.Int64,System.Object[])">
             <summary>
             Formats localized text using the current locale culture.
             </summary>
-            <param name="id">The positive stable entry ID.</param>
+            <param name="id">The self-identifying stable entry ID.</param>
             <param name="arguments">The values inserted into the localized composite format string.</param>
             <returns>The formatted localized text.</returns>
         </member>
@@ -336,27 +506,27 @@
             <summary>
             Attempts to resolve localized text through the current locale fallback chain.
             </summary>
-            <param name="id">The positive stable entry ID.</param>
+            <param name="id">The self-identifying stable entry ID.</param>
             <param name="text">The resolved text when one exists.</param>
             <returns><see langword="true"/> when text was found; otherwise, <see langword="false"/>.</returns>
-            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         </member>
         <member name="M:GreenBox.I18n.I18nRuntime.Asset(System.Int64)">
             <summary>
             Gets an asset reference through the current locale fallback chain.
             </summary>
-            <param name="id">The positive stable entry ID.</param>
+            <param name="id">The self-identifying stable entry ID.</param>
             <returns>The resolved asset reference, or <see langword="null"/> when no asset exists.</returns>
-            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         </member>
         <member name="M:GreenBox.I18n.I18nRuntime.TryGetAsset(System.Int64,GreenBox.I18n.I18nAssetReference@)">
             <summary>
             Attempts to resolve an asset reference through the current locale fallback chain.
             </summary>
-            <param name="id">The positive stable entry ID.</param>
+            <param name="id">The self-identifying stable entry ID.</param>
             <param name="asset">The resolved asset reference when one exists.</param>
             <returns><see langword="true"/> when an asset was found; otherwise, <see langword="false"/>.</returns>
-            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         </member>
         <member name="T:GreenBox.I18n.I18nRuntimeLocale">
             <summary>
@@ -553,12 +723,40 @@
         <member name="F:GreenBox.I18n.I18nValidationCodes.InvalidAssetLocalFileId">
             <summary>Indicates that an asset local file identifier has an invalid format.</summary>
         </member>
+        <member name="T:GreenBox.I18n.I18nValidationTarget">
+            <summary>
+            Identifies the catalog object affected by a validation diagnostic.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nValidationTarget.#ctor(System.String,System.String,System.String)">
+            <summary>
+            Initializes a validation target.
+            </summary>
+            <param name="entryId">The stable entry ID, when the diagnostic belongs to an entry.</param>
+            <param name="entryPath">The entry path, when the diagnostic belongs to an entry.</param>
+            <param name="localeId">The locale ID, when the diagnostic belongs to a locale.</param>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationTarget.EntryId">
+            <summary>
+            Gets the stable entry ID, or <see langword="null"/> for a catalog or locale diagnostic.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationTarget.EntryPath">
+            <summary>
+            Gets the entry path, or <see langword="null"/> for a catalog or locale diagnostic.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationTarget.LocaleId">
+            <summary>
+            Gets the locale ID, or <see langword="null"/> when the diagnostic does not target a locale.
+            </summary>
+        </member>
         <member name="T:GreenBox.I18n.I18nValidationDiagnostic">
             <summary>
             Describes a single problem found while validating i18n source data.
             </summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nValidationDiagnostic.#ctor(System.String,GreenBox.I18n.I18nValidationSeverity,System.String,System.String)">
+        <member name="M:GreenBox.I18n.I18nValidationDiagnostic.#ctor(System.String,GreenBox.I18n.I18nValidationSeverity,System.String,System.String,GreenBox.I18n.I18nValidationTarget)">
             <summary>
             Initializes a new validation diagnostic.
             </summary>
@@ -566,6 +764,7 @@
             <param name="severity">The severity of the problem.</param>
             <param name="jsonPath">The JSON path of the invalid value.</param>
             <param name="message">A human-readable description of the problem.</param>
+            <param name="target">The catalog object affected by the problem.</param>
         </member>
         <member name="P:GreenBox.I18n.I18nValidationDiagnostic.Code">
             <summary>
@@ -585,6 +784,12 @@
         <member name="P:GreenBox.I18n.I18nValidationDiagnostic.Message">
             <summary>
             Gets the human-readable description of the problem.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nValidationDiagnostic.Target">
+            <summary>
+            Gets the catalog object affected by the problem. All properties are
+            <see langword="null"/> for a catalog-level diagnostic.
             </summary>
         </member>
         <member name="M:GreenBox.I18n.I18nValidationDiagnostic.ToString">
@@ -617,12 +822,7 @@
         </member>
         <member name="P:GreenBox.I18n.I18nValidationResult.HasWarnings">
             <summary>
-            Gets a value indicating whether validation produced at least one warning.
-            </summary>
-        </member>
-        <member name="P:GreenBox.I18n.I18nValidationResult.IsValid">
-            <summary>
-            Gets a value indicating whether validation completed without errors.
+            Gets a value indicating whether validation produced at least one non-blocking warning.
             </summary>
         </member>
         <member name="M:GreenBox.I18n.I18nValidationResult.Contains(System.String)">

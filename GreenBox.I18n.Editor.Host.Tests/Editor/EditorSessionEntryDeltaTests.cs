@@ -42,7 +42,7 @@ public sealed class EditorSessionEntryDeltaTests
             new[]
             {
                 new CatalogEntryEditRequest(
-                    "456",
+                    "3857333080842833240",
                     "Existing.Entry",
                     null,
                     new Dictionary<string, CatalogLocaleValueEditRequest>()),
@@ -71,12 +71,12 @@ public sealed class EditorSessionEntryDeltaTests
         CatalogEditResult result = session.ApplyEntryDelta(
             before.Revision,
             Array.Empty<CatalogEntryEditRequest>(),
-            new[] { "123" });
+            new[] { "3857333080842832991" });
 
         Assert.Equal(EditorErrorCodes.CatalogRevisionMismatch, result.Error?.Code);
         CatalogResponse after = session.GetCatalogSnapshot()!;
         Assert.Equal(current.Revision, after.Revision);
-        Assert.Contains(after.Entries, entry => entry.Id == "123");
+        Assert.Contains(after.Entries, entry => entry.Id == "3857333080842832991");
         Assert.Contains(after.Entries, entry => entry.Path == "Newer.Entry");
     }
 
@@ -113,7 +113,7 @@ public sealed class EditorSessionEntryDeltaTests
             {
                 new()
                 {
-                    Id = "123",
+                    Id = "3857333080842832991",
                     Path = "Existing.Entry",
                     Comment = "Existing comment",
                     Locales = new Dictionary<string, I18nLocaleValue>

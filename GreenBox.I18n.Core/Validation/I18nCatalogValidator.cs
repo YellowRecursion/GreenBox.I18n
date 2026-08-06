@@ -475,13 +475,13 @@ namespace GreenBox.I18n
                 return;
             }
 
-            if (!long.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out long parsedId) || parsedId <= 0)
+            if (!I18nEntryId.TryParse(id, out long parsedId))
             {
                 AddError(
                     diagnostics,
                     I18nValidationCodes.InvalidId,
                     jsonPath,
-                    "The entry ID must be a positive 64-bit integer written using decimal digits.");
+                    "The entry ID must use the GreenBox I18n ID format.");
                 return;
             }
 

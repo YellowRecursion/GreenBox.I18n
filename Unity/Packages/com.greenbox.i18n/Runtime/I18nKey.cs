@@ -1,4 +1,5 @@
 using System;
+using GreenBox.I18n;
 using UnityEngine;
 
 /// <summary>
@@ -11,15 +12,15 @@ public struct I18nKey : IEquatable<I18nKey>
     private long _id;
 
     /// <summary>
-    /// Initializes a localization key with a positive entry ID or zero for an unassigned key.
+    /// Initializes a localization key with a valid entry ID or zero for an unassigned key.
     /// </summary>
     /// <param name="id">The stable entry ID, or zero for an unassigned key.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is invalid.</exception>
     public I18nKey(long id)
     {
-        if (id < 0)
+        if (id != 0 && !I18nEntryId.IsValid(id))
         {
-            throw new ArgumentOutOfRangeException(nameof(id), id, "Localization key ID cannot be negative.");
+            throw new ArgumentOutOfRangeException(nameof(id), id, "The localization key ID format is invalid.");
         }
 
         _id = id;

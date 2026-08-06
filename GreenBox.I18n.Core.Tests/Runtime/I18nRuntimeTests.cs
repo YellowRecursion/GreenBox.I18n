@@ -51,13 +51,13 @@ public sealed class I18nRuntimeTests
     public void Text_CurrentLocaleContainsText_ReturnsCurrentText()
     {
         I18nEntry entry = CreateEntry(
-            "1",
+            "3857333080842830204",
             "Menu.Play",
             ("en", "Play", null),
             ("ru", "Играть", null));
         var runtime = new I18nRuntime(CreateCatalog(entry), "ru");
 
-        string result = runtime.Text(1);
+        string result = runtime.Text(3857333080842830204);
 
         Assert.Equal("Играть", result);
     }
@@ -66,7 +66,7 @@ public sealed class I18nRuntimeTests
     public void Text_ExplicitFallbackChain_ReturnsNearestText()
     {
         I18nEntry entry = CreateEntry(
-            "1",
+            "3857333080842830204",
             "Menu.Play",
             ("en", "Play", null),
             ("ru", "Играть", null));
@@ -80,7 +80,7 @@ public sealed class I18nRuntimeTests
         });
         var runtime = new I18nRuntime(catalog, "ru-RU");
 
-        string result = runtime.Text(1);
+        string result = runtime.Text(3857333080842830204);
 
         Assert.Equal("Играть", result);
     }
@@ -88,10 +88,10 @@ public sealed class I18nRuntimeTests
     [Fact]
     public void Text_NoExplicitFallback_ReturnsDefaultLocaleText()
     {
-        I18nEntry entry = CreateEntry("1", "Menu.Play", ("en", "Play", null));
+        I18nEntry entry = CreateEntry("3857333080842830204", "Menu.Play", ("en", "Play", null));
         var runtime = new I18nRuntime(CreateCatalog(entry), "ru");
 
-        string result = runtime.Text(1);
+        string result = runtime.Text(3857333080842830204);
 
         Assert.Equal("Play", result);
     }
@@ -100,13 +100,13 @@ public sealed class I18nRuntimeTests
     public void Text_EmptyCurrentText_DoesNotFallBack()
     {
         I18nEntry entry = CreateEntry(
-            "1",
+            "3857333080842830204",
             "Menu.Play",
             ("en", "Play", null),
             ("ru", string.Empty, null));
         var runtime = new I18nRuntime(CreateCatalog(entry), "ru");
 
-        bool found = runtime.TryGetText(1, out string? result);
+        bool found = runtime.TryGetText(3857333080842830204, out string? result);
 
         Assert.True(found);
         Assert.Equal(string.Empty, result);
@@ -115,10 +115,10 @@ public sealed class I18nRuntimeTests
     [Fact]
     public void Text_NoText_ReturnsPath()
     {
-        I18nEntry entry = CreateEntry("1", "Menu.Play", ("en", null, CreateAsset("a")));
+        I18nEntry entry = CreateEntry("3857333080842830204", "Menu.Play", ("en", null, CreateAsset("a")));
         var runtime = new I18nRuntime(CreateCatalog(entry));
 
-        string result = runtime.Text(1);
+        string result = runtime.Text(3857333080842830204);
 
         Assert.Equal("Menu.Play", result);
     }
@@ -128,9 +128,9 @@ public sealed class I18nRuntimeTests
     {
         var runtime = new I18nRuntime(CreateCatalog());
 
-        string result = runtime.Text(42);
+        string result = runtime.Text(3857333080842830951);
 
-        Assert.Equal("42", result);
+        Assert.Equal("3857333080842830951", result);
     }
 
     [Fact]
@@ -146,14 +146,14 @@ public sealed class I18nRuntimeTests
     {
         I18nAssetReference englishAsset = CreateAsset("a");
         I18nEntry entry = CreateEntry(
-            "1",
+            "3857333080842830204",
             "Narrative.Greeting",
             ("en", "Hello", englishAsset),
             ("ru", "Привет", null));
         var runtime = new I18nRuntime(CreateCatalog(entry), "ru");
 
-        string text = runtime.Text(1);
-        I18nAssetReference? asset = runtime.Asset(1);
+        string text = runtime.Text(3857333080842830204);
+        I18nAssetReference? asset = runtime.Asset(3857333080842830204);
 
         Assert.Equal("Привет", text);
         Assert.NotNull(asset);
@@ -163,10 +163,10 @@ public sealed class I18nRuntimeTests
     [Fact]
     public void TryGetAsset_MissingAsset_ReturnsFalse()
     {
-        I18nEntry entry = CreateEntry("1", "Menu.Play", ("en", "Play", null));
+        I18nEntry entry = CreateEntry("3857333080842830204", "Menu.Play", ("en", "Play", null));
         var runtime = new I18nRuntime(CreateCatalog(entry));
 
-        bool found = runtime.TryGetAsset(1, out I18nAssetReference? asset);
+        bool found = runtime.TryGetAsset(3857333080842830204, out I18nAssetReference? asset);
 
         Assert.False(found);
         Assert.Null(asset);
@@ -218,10 +218,10 @@ public sealed class I18nRuntimeTests
     [Fact]
     public void Format_UsesCurrentCulture()
     {
-        I18nEntry entry = CreateEntry("1", "Stats.Value", ("en", "{0:N2}", null), ("ru", "{0:N2}", null));
+        I18nEntry entry = CreateEntry("3857333080842830204", "Stats.Value", ("en", "{0:N2}", null), ("ru", "{0:N2}", null));
         var runtime = new I18nRuntime(CreateCatalog(entry), "ru");
 
-        string result = runtime.Format(1, 1234.5);
+        string result = runtime.Format(3857333080842830204, 1234.5);
 
         Assert.Equal(string.Format(CultureInfo.GetCultureInfo("ru-RU"), "{0:N2}", 1234.5), result);
     }
@@ -230,7 +230,7 @@ public sealed class I18nRuntimeTests
     public void Constructor_CatalogChangesAfterCreation_DoNotChangeRuntimeSnapshot()
     {
         I18nAssetReference sourceAsset = CreateAsset("a");
-        I18nEntry sourceEntry = CreateEntry("1", "Menu.Play", ("en", "Play", sourceAsset));
+        I18nEntry sourceEntry = CreateEntry("3857333080842830204", "Menu.Play", ("en", "Play", sourceAsset));
         I18nCatalog catalog = CreateCatalog(sourceEntry);
         var runtime = new I18nRuntime(catalog);
 
@@ -239,8 +239,8 @@ public sealed class I18nRuntimeTests
         sourceAsset.AssetGuid = new string('b', 32);
         catalog.Locales[0].DisplayName = "Changed";
 
-        Assert.Equal("Play", runtime.Text(1));
-        Assert.Equal(new string('a', 32), runtime.Asset(1)?.AssetGuid);
+        Assert.Equal("Play", runtime.Text(3857333080842830204));
+        Assert.Equal(new string('a', 32), runtime.Asset(3857333080842830204)?.AssetGuid);
         Assert.Equal("English", runtime.CurrentLocale.DisplayName);
     }
 

@@ -31,7 +31,7 @@ public sealed class I18nCatalogJsonTests
             {
                 new()
                 {
-                    Id = "1",
+                    Id = "3857333080842830204",
                     Path = "Reports.ContextMenu.ReportNicknameButton",
                     Locales = new Dictionary<string, I18nLocaleValue>
                     {
@@ -74,7 +74,7 @@ public sealed class I18nCatalogJsonTests
                                   ],
                                   "entries": [
                                     {
-                                      "id": "1",
+                                      "id": "3857333080842830204",
                                       "path": "Reports.ContextMenu.ReportNicknameButton",
                                       "locales": {
                                         "en": {
@@ -113,7 +113,7 @@ public sealed class I18nCatalogJsonTests
                               ],
                               "entries": [
                                 {
-                                  "id": "42",
+                                  "id": "3857333080842830951",
                                   "path": "Reports.Title",
                                   "comment": "Reports screen title.",
                                   "locales": {
@@ -135,7 +135,7 @@ public sealed class I18nCatalogJsonTests
         Assert.Equal("en", locale.Id);
         Assert.Equal("English", locale.DisplayName);
         Assert.Equal("en-US", locale.Culture);
-        Assert.Equal("42", entry.Id);
+        Assert.Equal("3857333080842830951", entry.Id);
         Assert.Equal("Reports.Title", entry.Path);
         Assert.Equal("Reports screen title.", entry.Comment);
         Assert.Equal("Reports", entry.Locales["en"].Text);
@@ -165,7 +165,7 @@ public sealed class I18nCatalogJsonTests
             {
                 new()
                 {
-                    Id = "7",
+                    Id = "3857333080842831726",
                     Path = "Reports.Subtitle",
                     Comment = "Subtitle context.",
                     Locales = new Dictionary<string, I18nLocaleValue>
@@ -187,7 +187,7 @@ public sealed class I18nCatalogJsonTests
         I18nCatalog result = I18nCatalogJson.Deserialize(I18nCatalogJson.Serialize(source));
 
         I18nEntry entry = Assert.Single(result.Entries);
-        Assert.Equal("7", entry.Id);
+        Assert.Equal("3857333080842831726", entry.Id);
         Assert.Equal("Reports.Subtitle", entry.Path);
         Assert.Equal("Subtitle context.", entry.Comment);
         Assert.Equal("Subtitle", entry.Locales["en"].Text);
@@ -200,9 +200,9 @@ public sealed class I18nCatalogJsonTests
     [Fact]
     public void Serialize_UnsortedEntries_WritesNaturalCanonicalOrderWithoutModifyingCatalog()
     {
-        I18nEntry tank10 = CreateEntry("10", "Units.Tank10.Title");
-        I18nEntry tank02 = CreateEntry("2", "Units.Tank02.Title");
-        I18nEntry tank2 = CreateEntry("1", "Units.Tank2.Title");
+        I18nEntry tank10 = CreateEntry("3857333080842832461", "Units.Tank10.Title");
+        I18nEntry tank02 = CreateEntry("3857333080842830453", "Units.Tank02.Title");
+        I18nEntry tank2 = CreateEntry("3857333080842830204", "Units.Tank2.Title");
         var catalog = new I18nCatalog
         {
             DefaultLocale = "en",

@@ -42,12 +42,12 @@ internal static class GetCommand
         TextWriter standardOutput,
         TextWriter standardError)
     {
-        if (id <= 0)
+        if (!I18nEntryId.IsValid(id))
         {
             return CommandOutput.WriteError(
                 catalogFile,
                 CliDiagnosticCodes.InvalidId,
-                $"Entry ID must be positive: {id}.",
+                $"Entry ID format is invalid: {id}.",
                 CliExitCodes.ExecutionError,
                 writeJson,
                 standardOutput,

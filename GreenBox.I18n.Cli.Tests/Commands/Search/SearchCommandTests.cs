@@ -20,8 +20,8 @@ public sealed class SearchCommandTests : IDisposable
         JsonElement entries = report.RootElement.GetProperty("entries");
         Assert.Equal(CliExitCodes.Success, exitCode);
         Assert.Equal(2, report.RootElement.GetProperty("count").GetInt32());
-        Assert.Equal("20", entries[0].GetProperty("id").GetString());
-        Assert.Equal("10", entries[1].GetProperty("id").GetString());
+        Assert.Equal("3857333080842834967", entries[0].GetProperty("id").GetString());
+        Assert.Equal("3857333080842832461", entries[1].GetProperty("id").GetString());
         Assert.Empty(standardError.ToString());
     }
 

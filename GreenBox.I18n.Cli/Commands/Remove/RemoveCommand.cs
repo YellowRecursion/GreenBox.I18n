@@ -43,12 +43,12 @@ internal static class RemoveCommand
         TextWriter standardOutput,
         TextWriter standardError)
     {
-        if (id <= 0)
+        if (!I18nEntryId.IsValid(id))
         {
             return CommandOutput.WriteError(
                 catalogFile,
                 I18nEditCodes.InvalidId,
-                $"Entry ID must be positive: {id}.",
+                $"Entry ID format is invalid: {id}.",
                 CliExitCodes.ExecutionError,
                 writeJson,
                 standardOutput,

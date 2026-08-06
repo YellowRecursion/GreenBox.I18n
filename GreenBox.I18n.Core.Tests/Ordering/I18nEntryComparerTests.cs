@@ -13,8 +13,8 @@ public sealed class I18nEntryComparerTests
     [InlineData("Tank2", "tank2")]
     public void Compare_FirstPathBelongsBeforeSecondPath(string firstPath, string secondPath)
     {
-        I18nEntry first = CreateEntry("1", firstPath);
-        I18nEntry second = CreateEntry("2", secondPath);
+        I18nEntry first = CreateEntry("3857333080842830204", firstPath);
+        I18nEntry second = CreateEntry("3857333080842830453", secondPath);
 
         int result = I18nEntryComparer.Canonical.Compare(first, second);
 
@@ -24,8 +24,8 @@ public sealed class I18nEntryComparerTests
     [Fact]
     public void Compare_EqualPaths_UsesNumericIdTieBreaker()
     {
-        I18nEntry first = CreateEntry("2", "Reports.Title");
-        I18nEntry second = CreateEntry("10", "Reports.Title");
+        I18nEntry first = CreateEntry("3857333080842830453", "Reports.Title");
+        I18nEntry second = CreateEntry("3857333080842832461", "Reports.Title");
 
         int result = I18nEntryComparer.Canonical.Compare(first, second);
 

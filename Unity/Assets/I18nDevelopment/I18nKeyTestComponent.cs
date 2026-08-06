@@ -17,12 +17,12 @@ namespace GreenBox.I18n.Development
         /// <summary>
         /// A localization key present in the development catalog.
         /// </summary>
-        public I18nKey Existing = new I18nKey(1001);
+        public I18nKey Existing = new I18nKey(3857341477483323829);
 
         /// <summary>
         /// A localization key intentionally absent from the development catalog.
         /// </summary>
-        public I18nKey Missing = new I18nKey(999999);
+        public I18nKey Missing = new I18nKey(3857602839270400377);
 
         /// <summary>
         /// Catalog used by the runtime smoke test.

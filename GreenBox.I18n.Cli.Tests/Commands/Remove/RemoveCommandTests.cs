@@ -17,7 +17,7 @@ public sealed class RemoveCommandTests : IDisposable
 
         int exitCode = RemoveCommand.Execute(
             catalogFile,
-            20,
+            3857333080842834967,
             true,
             standardOutput,
             standardError);
@@ -25,10 +25,10 @@ public sealed class RemoveCommandTests : IDisposable
         using JsonDocument report = JsonDocument.Parse(standardOutput.ToString());
         I18nCatalog savedCatalog = I18nCatalogJson.Deserialize(File.ReadAllText(catalogFile.FullName));
         Assert.Equal(CliExitCodes.Success, exitCode);
-        Assert.Equal("20", report.RootElement.GetProperty("id").GetString());
+        Assert.Equal("3857333080842834967", report.RootElement.GetProperty("id").GetString());
         Assert.Equal("Reports.Title", report.RootElement.GetProperty("path").GetString());
         Assert.DoesNotContain("nextId", File.ReadAllText(catalogFile.FullName));
-        Assert.DoesNotContain(savedCatalog.Entries, entry => entry.Id == "20");
+        Assert.DoesNotContain(savedCatalog.Entries, entry => entry.Id == "3857333080842834967");
         Assert.Empty(standardError.ToString());
         Assert.Empty(catalogFile.Directory!.EnumerateFiles("*.tmp"));
     }
@@ -43,7 +43,7 @@ public sealed class RemoveCommandTests : IDisposable
 
         int exitCode = RemoveCommand.Execute(
             catalogFile,
-            999,
+            3857333080842837537,
             true,
             standardOutput,
             standardError);

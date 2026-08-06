@@ -10,7 +10,7 @@ public sealed class I18nCatalogEntryDeltaTests
 
         I18nBatchEditResult removeResult = catalog.ApplyEntryDelta(
             Array.Empty<I18nEntry>(),
-            new[] { 123L });
+            new[] { 3857333080842832991L });
         I18nBatchEditResult restoreResult = catalog.ApplyEntryDelta(
             new[] { original },
             Array.Empty<long>());
@@ -18,7 +18,7 @@ public sealed class I18nCatalogEntryDeltaTests
         Assert.True(removeResult.IsSuccess);
         Assert.True(restoreResult.IsSuccess);
         I18nEntry restored = Assert.Single(catalog.Entries);
-        Assert.Equal("123", restored.Id);
+        Assert.Equal("3857333080842832991", restored.Id);
         Assert.Equal("Existing.Entry", restored.Path);
         Assert.Equal("Existing", restored.Locales["en"].Text);
         Assert.Equal("0123456789abcdef0123456789abcdef", restored.Locales["en"].Asset?.AssetGuid);
@@ -30,7 +30,7 @@ public sealed class I18nCatalogEntryDeltaTests
         I18nCatalog catalog = CreateCatalog();
         var duplicate = new I18nEntry
         {
-            Id = "456",
+            Id = "3857333080842833240",
             Path = "Existing.Entry",
             Locales = new Dictionary<string, I18nLocaleValue>(),
         };
@@ -42,7 +42,7 @@ public sealed class I18nCatalogEntryDeltaTests
         Assert.False(result.IsSuccess);
         Assert.Equal(I18nEditCodes.InvalidEntryDelta, result.Error?.Code);
         I18nEntry unchanged = Assert.Single(catalog.Entries);
-        Assert.Equal("123", unchanged.Id);
+        Assert.Equal("3857333080842832991", unchanged.Id);
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class I18nCatalogEntryDeltaTests
 
         I18nBatchEditResult result = catalog.ApplyEntryDelta(
             new[] { catalog.Entries.Single() },
-            new[] { 123L });
+            new[] { 3857333080842832991L });
 
         Assert.False(result.IsSuccess);
         Assert.Equal(I18nEditCodes.InvalidId, result.Error?.Code);
@@ -72,7 +72,7 @@ public sealed class I18nCatalogEntryDeltaTests
             {
                 new()
                 {
-                    Id = "123",
+                    Id = "3857333080842832991",
                     Path = "Existing.Entry",
                     Locales = new Dictionary<string, I18nLocaleValue>
                     {

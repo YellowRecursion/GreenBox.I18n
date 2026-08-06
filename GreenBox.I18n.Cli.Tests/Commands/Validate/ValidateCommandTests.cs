@@ -32,7 +32,7 @@ public sealed class ValidateCommandTests : IDisposable
               ],
               "entries": [
                 {
-                  "id": "1",
+                  "id": "3857333080842830204",
                   "path": "Reports.Title",
                   "locales": {
                     "en": {
@@ -170,7 +170,7 @@ public sealed class ValidateCommandTests : IDisposable
               ],
               "entries": [
                 {
-                  "id": "1",
+                  "id": "3857333080842830204",
                   "path": "Reports.Title",
                   "locales": {}
                 }

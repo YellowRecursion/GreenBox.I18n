@@ -294,7 +294,7 @@ public sealed class I18nCatalogValidatorTests
         Assert.Equal(I18nValidationCodes.MissingLocaleValue, diagnostic.Code);
         Assert.Equal(I18nValidationSeverity.Warning, diagnostic.Severity);
         Assert.Equal("$.entries[0].locales['ru']", diagnostic.JsonPath);
-        Assert.Equal("1", diagnostic.Target.EntryId);
+        Assert.Equal("3857333080842830204", diagnostic.Target.EntryId);
         Assert.Equal("Reports.ContextMenu.ReportNicknameButton", diagnostic.Target.EntryPath);
         Assert.Equal("ru", diagnostic.Target.LocaleId);
     }
@@ -356,8 +356,8 @@ public sealed class I18nCatalogValidatorTests
     public void Validate_DuplicateId_ReturnsErrorForSecondEntry()
     {
         I18nCatalog catalog = CreateCatalog(
-            CreateValidEntry("1", "Reports.First"),
-            CreateValidEntry("1", "Reports.Second"));
+            CreateValidEntry("3857333080842830204", "Reports.First"),
+            CreateValidEntry("3857333080842830204", "Reports.Second"));
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
@@ -390,8 +390,8 @@ public sealed class I18nCatalogValidatorTests
     public void Validate_PathDifferingOnlyByCase_ReturnsDuplicatePathError()
     {
         I18nCatalog catalog = CreateCatalog(
-            CreateValidEntry("1", "Reports.ContextMenu.Button"),
-            CreateValidEntry("2", "reports.contextmenu.button"));
+            CreateValidEntry("3857333080842830204", "Reports.ContextMenu.Button"),
+            CreateValidEntry("3857333080842830453", "reports.contextmenu.button"));
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
@@ -582,8 +582,8 @@ public sealed class I18nCatalogValidatorTests
     public void Validate_UnsortedEntries_ReturnsEntriesNotSortedError()
     {
         I18nCatalog catalog = CreateCatalog(
-            CreateValidEntry("10", "Units.Tank10.Title"),
-            CreateValidEntry("2", "Units.Tank2.Title"));
+            CreateValidEntry("3857333080842832461", "Units.Tank10.Title"),
+            CreateValidEntry("3857333080842830453", "Units.Tank2.Title"));
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
@@ -591,7 +591,7 @@ public sealed class I18nCatalogValidatorTests
         Assert.Equal(I18nValidationCodes.EntriesNotSorted, diagnostic.Code);
         Assert.Equal(I18nValidationSeverity.Error, diagnostic.Severity);
         Assert.Equal("$.entries[1]", diagnostic.JsonPath);
-        Assert.Equal("2", diagnostic.Target.EntryId);
+        Assert.Equal("3857333080842830453", diagnostic.Target.EntryId);
         Assert.Equal("Units.Tank2.Title", diagnostic.Target.EntryPath);
         Assert.Null(diagnostic.Target.LocaleId);
         Assert.Contains("'Units.Tank2.Title' must appear before 'Units.Tank10.Title'", diagnostic.Message);
@@ -601,9 +601,9 @@ public sealed class I18nCatalogValidatorTests
     public void Validate_NaturallySortedEntries_ReturnsValidResult()
     {
         I18nCatalog catalog = CreateCatalog(
-            CreateValidEntry("1", "Units.Tank2.Title"),
-            CreateValidEntry("2", "Units.Tank02.Title"),
-            CreateValidEntry("10", "Units.Tank10.Title"));
+            CreateValidEntry("3857333080842830204", "Units.Tank2.Title"),
+            CreateValidEntry("3857333080842830453", "Units.Tank02.Title"),
+            CreateValidEntry("3857333080842832461", "Units.Tank10.Title"));
 
         I18nValidationResult result = I18nCatalogValidator.Validate(catalog);
 
@@ -630,7 +630,7 @@ public sealed class I18nCatalogValidatorTests
     }
 
     private static I18nEntry CreateValidEntry(
-        string id = "1",
+        string id = "3857333080842830204",
         string path = "Reports.ContextMenu.ReportNicknameButton")
     {
         return new I18nEntry

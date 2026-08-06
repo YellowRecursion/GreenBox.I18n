@@ -14,12 +14,12 @@ public sealed class GetCommandTests : IDisposable
         var standardOutput = new StringWriter();
         var standardError = new StringWriter();
 
-        int exitCode = GetCommand.Execute(catalogFile, 20, true, standardOutput, standardError);
+        int exitCode = GetCommand.Execute(catalogFile, 3857333080842834967, true, standardOutput, standardError);
 
         using JsonDocument report = JsonDocument.Parse(standardOutput.ToString());
         JsonElement entry = report.RootElement.GetProperty("entry");
         Assert.Equal(CliExitCodes.Success, exitCode);
-        Assert.Equal("20", entry.GetProperty("id").GetString());
+        Assert.Equal("3857333080842834967", entry.GetProperty("id").GetString());
         Assert.Equal("Reports.Title", entry.GetProperty("path").GetString());
         Assert.Equal("Report heading", entry.GetProperty("comment").GetString());
         Assert.Equal("Reports", entry.GetProperty("locales").GetProperty("en").GetProperty("text").GetString());
@@ -33,7 +33,7 @@ public sealed class GetCommandTests : IDisposable
         var standardOutput = new StringWriter();
         var standardError = new StringWriter();
 
-        int exitCode = GetCommand.Execute(catalogFile, 999, true, standardOutput, standardError);
+        int exitCode = GetCommand.Execute(catalogFile, 3857333080842837537, true, standardOutput, standardError);
 
         using JsonDocument report = JsonDocument.Parse(standardOutput.ToString());
         Assert.Equal(CliExitCodes.InvalidData, exitCode);

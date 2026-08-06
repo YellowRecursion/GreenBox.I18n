@@ -141,16 +141,11 @@ public sealed class EditorSession
             var uniqueIds = new HashSet<long>();
             foreach (string idText in ids)
             {
-                if (!long.TryParse(
-                        idText,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out long id) ||
-                    id <= 0)
+                if (!I18nEntryId.TryParse(idText, out long id))
                 {
                     return CatalogEditResult.Failure(
                         I18nEditCodes.InvalidId,
-                        $"Entry ID must be a positive 64-bit integer: '{idText}'.");
+                        $"Entry ID does not use the GreenBox I18n ID format: '{idText}'.");
                 }
 
                 uniqueIds.Add(id);
@@ -213,16 +208,11 @@ public sealed class EditorSession
             var coreMoves = new List<I18nEntryMove>(moves.Count);
             foreach (MoveCatalogEntryRequest move in moves)
             {
-                if (!long.TryParse(
-                        move.Id,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out long id) ||
-                    id <= 0)
+                if (!I18nEntryId.TryParse(move.Id, out long id))
                 {
                     return CatalogEditResult.Failure(
                         I18nEditCodes.InvalidId,
-                        $"Entry ID must be a positive 64-bit integer: '{move.Id}'.");
+                        $"Entry ID does not use the GreenBox I18n ID format: '{move.Id}'.");
                 }
 
                 coreMoves.Add(new I18nEntryMove(id, move.Path));
@@ -278,16 +268,11 @@ public sealed class EditorSession
             var parsedRemovedIds = new List<long>(removedIds.Count);
             foreach (string id in removedIds)
             {
-                if (!long.TryParse(
-                        id,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out long numericId) ||
-                    numericId <= 0)
+                if (!I18nEntryId.TryParse(id, out long numericId))
                 {
                     return CatalogEditResult.Failure(
                         I18nEditCodes.InvalidId,
-                        $"Entry ID must be a positive 64-bit integer: '{id}'.");
+                        $"Entry ID does not use the GreenBox I18n ID format: '{id}'.");
                 }
 
                 parsedRemovedIds.Add(numericId);

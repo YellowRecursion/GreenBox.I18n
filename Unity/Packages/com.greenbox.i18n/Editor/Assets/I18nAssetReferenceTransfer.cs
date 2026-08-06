@@ -37,7 +37,7 @@ namespace GreenBox.I18n.Unity.Editor.Assets
         [MenuItem("Assets/Copy i18n Asset Reference", false, 2000)]
         private static void CopySelectedReference()
         {
-            if (!TryCreatePayload(Selection.activeObject, out I18nAssetReferencePayload? payload))
+            if (!TryCreatePayload(Selection.activeObject, out I18nAssetReferencePayload payload))
             {
                 return;
             }
@@ -66,14 +66,14 @@ namespace GreenBox.I18n.Unity.Editor.Assets
             Event currentEvent = Event.current;
             if (currentEvent.type == EventType.MouseDrag && selectionRect.Contains(currentEvent.mousePosition))
             {
-                WriteActiveSelection(EditorUtility.InstanceIDToObject(instanceId));
+                WriteActiveSelection(EditorUtility.EntityIdToObject(instanceId));
             }
         }
 
         private static void WriteActiveSelection(UnityEngine.Object selectedObject)
         {
             string destinationPath = GetActiveSelectionPath();
-            if (!TryCreatePayload(selectedObject, out I18nAssetReferencePayload? payload))
+            if (!TryCreatePayload(selectedObject, out I18nAssetReferencePayload payload))
             {
                 if (File.Exists(destinationPath))
                 {
@@ -93,7 +93,7 @@ namespace GreenBox.I18n.Unity.Editor.Assets
 
         private static bool TryCreatePayload(
             UnityEngine.Object selectedObject,
-            out I18nAssetReferencePayload? payload)
+            out I18nAssetReferencePayload payload)
         {
             if (!selectedObject ||
                 !AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
@@ -101,14 +101,14 @@ namespace GreenBox.I18n.Unity.Editor.Assets
                     out string assetGuid,
                     out long localFileId))
             {
-                payload = null;
+                payload = null!;
                 return false;
             }
 
             string assetPath = AssetDatabase.GetAssetPath(selectedObject);
             if (string.IsNullOrEmpty(assetPath))
             {
-                payload = null;
+                payload = null!;
                 return false;
             }
 

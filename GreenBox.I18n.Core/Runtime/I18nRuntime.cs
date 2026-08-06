@@ -130,12 +130,12 @@ namespace GreenBox.I18n
         /// <summary>
         /// Gets localized text, falling back to the entry path or numeric ID when no text exists.
         /// </summary>
-        /// <param name="id">The positive stable entry ID.</param>
+        /// <param name="id">The self-identifying stable entry ID.</param>
         /// <returns>The resolved text, entry path, or numeric ID.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         public string Text(long id)
         {
-            EnsurePositiveId(id);
+            EnsureValidId(id);
 
             if (TryGetText(id, out string? text))
             {
@@ -150,7 +150,7 @@ namespace GreenBox.I18n
         /// <summary>
         /// Formats localized text using the current locale culture.
         /// </summary>
-        /// <param name="id">The positive stable entry ID.</param>
+        /// <param name="id">The self-identifying stable entry ID.</param>
         /// <param name="arguments">The values inserted into the localized composite format string.</param>
         /// <returns>The formatted localized text.</returns>
         public string Format(long id, params object?[] arguments)
@@ -166,13 +166,13 @@ namespace GreenBox.I18n
         /// <summary>
         /// Attempts to resolve localized text through the current locale fallback chain.
         /// </summary>
-        /// <param name="id">The positive stable entry ID.</param>
+        /// <param name="id">The self-identifying stable entry ID.</param>
         /// <param name="text">The resolved text when one exists.</param>
         /// <returns><see langword="true"/> when text was found; otherwise, <see langword="false"/>.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         public bool TryGetText(long id, out string? text)
         {
-            EnsurePositiveId(id);
+            EnsureValidId(id);
             text = null;
 
             if (!_entriesById.TryGetValue(id, out RuntimeEntry? entry))
@@ -197,9 +197,9 @@ namespace GreenBox.I18n
         /// <summary>
         /// Gets an asset reference through the current locale fallback chain.
         /// </summary>
-        /// <param name="id">The positive stable entry ID.</param>
+        /// <param name="id">The self-identifying stable entry ID.</param>
         /// <returns>The resolved asset reference, or <see langword="null"/> when no asset exists.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         public I18nAssetReference? Asset(long id)
         {
             TryGetAsset(id, out I18nAssetReference? asset);
@@ -209,13 +209,13 @@ namespace GreenBox.I18n
         /// <summary>
         /// Attempts to resolve an asset reference through the current locale fallback chain.
         /// </summary>
-        /// <param name="id">The positive stable entry ID.</param>
+        /// <param name="id">The self-identifying stable entry ID.</param>
         /// <param name="asset">The resolved asset reference when one exists.</param>
         /// <returns><see langword="true"/> when an asset was found; otherwise, <see langword="false"/>.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         public bool TryGetAsset(long id, out I18nAssetReference? asset)
         {
-            EnsurePositiveId(id);
+            EnsureValidId(id);
             asset = null;
 
             if (!_entriesById.TryGetValue(id, out RuntimeEntry? entry))
@@ -326,11 +326,11 @@ namespace GreenBox.I18n
             };
         }
 
-        private static void EnsurePositiveId(long id)
+        private static void EnsureValidId(long id)
         {
-            if (id <= 0)
+            if (!I18nEntryId.IsValid(id))
             {
-                throw new ArgumentOutOfRangeException(nameof(id), id, "Entry ID must be positive.");
+                throw new ArgumentOutOfRangeException(nameof(id), id, "The entry ID format is invalid.");
             }
         }
 

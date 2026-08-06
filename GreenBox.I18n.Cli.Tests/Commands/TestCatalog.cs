@@ -40,7 +40,7 @@ internal sealed class TestCatalog : IDisposable
           ],
           "entries": [
             {
-              "id": "10",
+              "id": "3857333080842832461",
               "path": "Menu.History",
               "locales": {
                 "en": {
@@ -49,7 +49,7 @@ internal sealed class TestCatalog : IDisposable
               }
             },
             {
-              "id": "20",
+              "id": "3857333080842834967",
               "path": "Reports.Title",
               "comment": "Report heading",
               "locales": {

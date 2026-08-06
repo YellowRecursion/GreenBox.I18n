@@ -14,10 +14,10 @@ namespace GreenBox.I18n
         /// Finds an entry by its stable numeric identifier.
         /// </summary>
         /// <param name="catalog">The catalog to search.</param>
-        /// <param name="id">The positive entry identifier.</param>
+        /// <param name="id">The self-identifying entry identifier.</param>
         /// <returns>The matching entry, or <see langword="null"/> when no entry has the identifier.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is not positive.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is invalid.</exception>
         public static I18nEntry? FindById(this I18nCatalog catalog, long id)
         {
             if (catalog == null)
@@ -25,9 +25,9 @@ namespace GreenBox.I18n
                 throw new ArgumentNullException(nameof(catalog));
             }
 
-            if (id <= 0)
+            if (!I18nEntryId.IsValid(id))
             {
-                throw new ArgumentOutOfRangeException(nameof(id), "An entry ID must be positive.");
+                throw new ArgumentOutOfRangeException(nameof(id), id, "The entry ID format is invalid.");
             }
 
             string idText = id.ToString(CultureInfo.InvariantCulture);

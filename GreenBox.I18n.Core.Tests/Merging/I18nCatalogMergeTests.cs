@@ -41,14 +41,14 @@ public sealed class I18nCatalogMergeTests
         I18nCatalog baseline = CreateCatalog("Original", null);
         I18nCatalog current = Clone(baseline);
         I18nCatalog incoming = Clone(baseline);
-        current.Entries.Add(new I18nEntry { Id = "2", Path = "Menu.Settings" });
+        current.Entries.Add(new I18nEntry { Id = "3857333080842830453", Path = "Menu.Settings" });
         incoming.Entries[0].Comment = "External comment";
 
         I18nCatalogMergeResult result = I18nCatalogMerge.Merge(baseline, current, incoming);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, result.Catalog!.Entries.Count);
-        Assert.Equal("External comment", result.Catalog.Entries.Single(entry => entry.Id == "1").Comment);
+        Assert.Equal("External comment", result.Catalog.Entries.Single(entry => entry.Id == "3857333080842830204").Comment);
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class I18nCatalogMergeTests
         I18nCatalogMergeResult result = I18nCatalogMerge.Merge(baseline, current, incoming);
 
         Assert.False(result.IsSuccess);
-        Assert.Contains(result.Conflicts, conflict => conflict.JsonPath == "$.entries[id=1]");
+        Assert.Contains(result.Conflicts, conflict => conflict.JsonPath == "$.entries[id=3857333080842830204]");
     }
 
     private static I18nCatalog CreateCatalog(string text, string? comment)
@@ -80,7 +80,7 @@ public sealed class I18nCatalogMergeTests
             {
                 new()
                 {
-                    Id = "1",
+                    Id = "3857333080842830204",
                     Path = "Menu.Play",
                     Comment = comment,
                     Locales = new Dictionary<string, I18nLocaleValue>

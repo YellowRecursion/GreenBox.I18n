@@ -90,7 +90,7 @@ public sealed class EditorSessionLocaleTests
             {
                 new()
                 {
-                    Id = "123",
+                    Id = "3857333080842832991",
                     Path = "Example.Entry",
                     Locales = new Dictionary<string, I18nLocaleValue>
                     {

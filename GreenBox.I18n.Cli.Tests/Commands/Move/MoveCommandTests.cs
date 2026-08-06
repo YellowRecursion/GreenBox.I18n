@@ -17,7 +17,7 @@ public sealed class MoveCommandTests : IDisposable
 
         int exitCode = MoveCommand.Execute(
             catalogFile,
-            20,
+            3857333080842834967,
             "Menu.Entry2",
             true,
             standardOutput,
@@ -26,7 +26,7 @@ public sealed class MoveCommandTests : IDisposable
         using JsonDocument report = JsonDocument.Parse(standardOutput.ToString());
         I18nCatalog savedCatalog = I18nCatalogJson.Deserialize(File.ReadAllText(catalogFile.FullName));
         Assert.Equal(CliExitCodes.Success, exitCode);
-        Assert.Equal("20", report.RootElement.GetProperty("id").GetString());
+        Assert.Equal("3857333080842834967", report.RootElement.GetProperty("id").GetString());
         Assert.Equal("Reports.Title", report.RootElement.GetProperty("previousPath").GetString());
         Assert.Equal("Menu.Entry2", report.RootElement.GetProperty("path").GetString());
         Assert.True(report.RootElement.GetProperty("changed").GetBoolean());
@@ -45,7 +45,7 @@ public sealed class MoveCommandTests : IDisposable
 
         int exitCode = MoveCommand.Execute(
             catalogFile,
-            20,
+            3857333080842834967,
             "Reports.Title",
             true,
             standardOutput,
@@ -68,7 +68,7 @@ public sealed class MoveCommandTests : IDisposable
 
         int exitCode = MoveCommand.Execute(
             catalogFile,
-            20,
+            3857333080842834967,
             "menu.history",
             true,
             standardOutput,
@@ -89,7 +89,7 @@ public sealed class MoveCommandTests : IDisposable
 
         int exitCode = MoveCommand.Execute(
             _catalog.MissingFile,
-            20,
+            3857333080842834967,
             "Reports..Title",
             true,
             standardOutput,

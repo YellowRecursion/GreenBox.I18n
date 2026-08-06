@@ -46,12 +46,7 @@ namespace GreenBox.I18n.Unity.Editor.Pickers
             for (int entryIndex = 0; entryIndex < _catalog.Entries.Count; entryIndex++)
             {
                 I18nEntry entry = _catalog.Entries[entryIndex];
-                if (!long.TryParse(
-                        entry.Id,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out long id) ||
-                    id <= 0)
+                if (!I18nEntryId.TryParse(entry.Id, out long id))
                 {
                     continue;
                 }

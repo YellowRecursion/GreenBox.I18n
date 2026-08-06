@@ -9,7 +9,7 @@ public sealed class I18nCatalogSerializationTests
     {
         var entry = new I18nEntry
         {
-            Id = "1",
+            Id = "3857333080842830204",
             Path = "Reports.ContextMenu.ReportNicknameButton",
         };
 

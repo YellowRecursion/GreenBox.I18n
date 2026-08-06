@@ -11,7 +11,7 @@ namespace GreenBox.I18n
     public static class I18nCatalogEditing
     {
         /// <summary>
-        /// Adds an empty entry with a random 12-digit stable ID and restores canonical order.
+        /// Adds an empty entry with a random self-identifying stable ID and restores canonical order.
         /// </summary>
         /// <param name="catalog">The valid catalog to edit.</param>
         /// <param name="path">The new entry's full logical path.</param>
@@ -63,7 +63,7 @@ namespace GreenBox.I18n
         /// Removes an entry without modifying any other entry IDs.
         /// </summary>
         /// <param name="catalog">The valid catalog to edit.</param>
-        /// <param name="id">The positive ID of the entry to remove.</param>
+        /// <param name="id">The self-identifying ID of the entry to remove.</param>
         /// <returns>The operation result and removed entry.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
         public static I18nEditResult RemoveEntry(this I18nCatalog catalog, long id)
@@ -73,11 +73,11 @@ namespace GreenBox.I18n
                 throw new ArgumentNullException(nameof(catalog));
             }
 
-            if (id <= 0)
+            if (!I18nEntryId.IsValid(id))
             {
                 return I18nEditResult.Failure(
                     I18nEditCodes.InvalidId,
-                    $"Entry ID must be positive: {id}.");
+                    $"Entry ID format is invalid: {id}.");
             }
 
             I18nEntry? entry = catalog.FindById(id);
@@ -96,7 +96,7 @@ namespace GreenBox.I18n
         /// Changes an entry path while preserving its stable ID and localized values.
         /// </summary>
         /// <param name="catalog">The valid catalog to edit.</param>
-        /// <param name="id">The positive ID of the entry to move.</param>
+        /// <param name="id">The self-identifying ID of the entry to move.</param>
         /// <param name="newPath">The new full logical path.</param>
         /// <returns>The operation result and affected entry.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
@@ -107,11 +107,11 @@ namespace GreenBox.I18n
                 throw new ArgumentNullException(nameof(catalog));
             }
 
-            if (id <= 0)
+            if (!I18nEntryId.IsValid(id))
             {
                 return I18nEditResult.Failure(
                     I18nEditCodes.InvalidId,
-                    $"Entry ID must be positive: {id}.");
+                    $"Entry ID format is invalid: {id}.");
             }
 
             if (!I18nPathRules.IsValid(newPath))
@@ -175,11 +175,11 @@ namespace GreenBox.I18n
             var pathsById = new Dictionary<long, string>();
             foreach (I18nEntryMove move in moves)
             {
-                if (move.Id <= 0)
+                if (!I18nEntryId.IsValid(move.Id))
                 {
                     return I18nBatchEditResult.Failure(
                         I18nEditCodes.InvalidId,
-                        $"Entry ID must be positive: {move.Id}.");
+                        $"Entry ID format is invalid: {move.Id}.");
                 }
 
                 if (!I18nPathRules.IsValid(move.Path))
@@ -201,16 +201,11 @@ namespace GreenBox.I18n
             for (int entryIndex = 0; entryIndex < catalog.Entries.Count; entryIndex++)
             {
                 I18nEntry entry = catalog.Entries[entryIndex];
-                if (!long.TryParse(
-                        entry.Id,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out long entryId) ||
-                    entryId <= 0)
+                if (!I18nEntryId.TryParse(entry.Id, out long entryId))
                 {
                     return I18nBatchEditResult.Failure(
                         I18nEditCodes.InvalidId,
-                        $"Entry ID '{entry.Id}' is not a positive 64-bit integer.");
+                        $"Entry ID '{entry.Id}' does not use the GreenBox I18n ID format.");
                 }
 
                 entriesById.Add(entryId, entry);
@@ -292,11 +287,11 @@ namespace GreenBox.I18n
             var removedIdSet = new HashSet<long>();
             foreach (long id in removedIds)
             {
-                if (id <= 0)
+                if (!I18nEntryId.IsValid(id))
                 {
                     return I18nBatchEditResult.Failure(
                         I18nEditCodes.InvalidId,
-                        $"Entry ID must be positive: {id}.");
+                        $"Entry ID format is invalid: {id}.");
                 }
 
                 if (!removedIdSet.Add(id))
@@ -310,16 +305,11 @@ namespace GreenBox.I18n
             var replacementsById = new Dictionary<long, I18nEntry>();
             foreach (I18nEntry entry in entries)
             {
-                if (!long.TryParse(
-                        entry.Id,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out long id) ||
-                    id <= 0)
+                if (!I18nEntryId.TryParse(entry.Id, out long id))
                 {
                     return I18nBatchEditResult.Failure(
                         I18nEditCodes.InvalidId,
-                        $"Entry ID '{entry.Id}' is not a positive 64-bit integer.");
+                        $"Entry ID '{entry.Id}' does not use the GreenBox I18n ID format.");
                 }
 
                 if (!replacementsById.TryAdd(id, entry))
@@ -340,16 +330,11 @@ namespace GreenBox.I18n
             var finalEntriesById = new Dictionary<long, I18nEntry>();
             foreach (I18nEntry entry in catalog.Entries)
             {
-                if (!long.TryParse(
-                        entry.Id,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out long id) ||
-                    id <= 0)
+                if (!I18nEntryId.TryParse(entry.Id, out long id))
                 {
                     return I18nBatchEditResult.Failure(
                         I18nEditCodes.InvalidId,
-                        $"Entry ID '{entry.Id}' is not a positive 64-bit integer.");
+                        $"Entry ID '{entry.Id}' does not use the GreenBox I18n ID format.");
                 }
 
                 if (!finalEntriesById.TryAdd(id, entry))

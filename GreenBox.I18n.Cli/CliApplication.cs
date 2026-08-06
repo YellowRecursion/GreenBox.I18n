@@ -10,6 +10,7 @@ internal static class CliApplication
         rootCommand.Subcommands.Add(ValidateCommand.Create());
         rootCommand.Subcommands.Add(GetCommand.Create());
         rootCommand.Subcommands.Add(SearchCommand.Create());
+        rootCommand.Subcommands.Add(GenerateIdCommand.Create());
         rootCommand.Subcommands.Add(AddCommand.Create());
         rootCommand.Subcommands.Add(RemoveCommand.Create());
         rootCommand.Subcommands.Add(MoveCommand.Create());

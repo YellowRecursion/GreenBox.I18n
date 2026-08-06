@@ -391,7 +391,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GreenBox.I18n.Unity.Text::GreenBox.I18n.Unity.Text.I18nText
   _key:
-    _id: 1002
+    _id: 3857404068572302532
   _textTransform: 0
 --- !u!114 &868799172
 MonoBehaviour:
@@ -630,9 +630,9 @@ MonoBehaviour:
   None:
     _id: 0
   Existing:
-    _id: 1001
+    _id: 3857341477483323829
   Missing:
-    _id: 999999
+    _id: 3857602839270400377
   Catalog: {fileID: 11400000, guid: 2fbf4bcb9d352204798cba3f5fb9bb25, type: 2}
 --- !u!4 &1272250232
 Transform:
@@ -700,7 +700,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GreenBox.I18n.Unity.Sprites::GreenBox.I18n.Unity.Sprites.I18nImage
   _key:
-    _id: 1001
+    _id: 3857341477483323829
 --- !u!114 &1332053785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -790,7 +790,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GreenBox.I18n.Unity.Text::GreenBox.I18n.Unity.Text.I18nText
   _key:
-    _id: 3001
+    _id: 3857418571597142381
   _textTransform: 0
 --- !u!114 &1365617450
 MonoBehaviour:
@@ -981,7 +981,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GreenBox.I18n.Unity.Audio::GreenBox.I18n.Unity.Audio.I18nAudioSource
   _key:
-    _id: 3001
+    _id: 3857418571597142381
 --- !u!1 &2053726353
 GameObject:
   m_ObjectHideFlags: 0
