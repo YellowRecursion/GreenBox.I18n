@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
 import { Alert, Flex, Spin, Splitter, Typography, theme } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogLocale, CatalogSnapshot } from '../../entities/catalog/model/catalog'
@@ -132,6 +132,9 @@ function CatalogWorkspace({
   const [history, setHistory] = useState(emptyEditorHistory)
   const [historyDirection, setHistoryDirection] = useState<'undo' | 'redo'>()
   const historyBusyRef = useRef(false)
+  const selectionHistoryRef = useRef<Key[][]>([[]])
+  const selectionHistoryIndexRef = useRef(0)
+  const isNavigatingSelectionRef = useRef(false)
   const tree = useMemo(
     () => buildCatalogTree(catalog, temporaryFolderPaths),
     [catalog, temporaryFolderPaths],
@@ -140,6 +143,72 @@ function CatalogWorkspace({
     const item = tree.selectionByKey.get(String(key))
     return item ? [item] : []
   })
+
+  useEffect(() => {
+    if (isNavigatingSelectionRef.current) {
+      isNavigatingSelectionRef.current = false
+      return
+    }
+
+    const selectionHistory = selectionHistoryRef.current
+    const selectionHistoryIndex = selectionHistoryIndexRef.current
+    if (areKeySelectionsEqual(selectionHistory[selectionHistoryIndex], selectedKeys)) {
+      return
+    }
+
+    const nextHistory = [
+      ...selectionHistory.slice(0, selectionHistoryIndex + 1),
+      selectedKeys,
+    ].slice(-historyLimit)
+    selectionHistoryRef.current = nextHistory
+    selectionHistoryIndexRef.current = nextHistory.length - 1
+  }, [selectedKeys])
+
+  useEffect(() => {
+    const navigateSelection = (direction: -1 | 1) => {
+      const selectionHistory = selectionHistoryRef.current
+      let targetIndex = selectionHistoryIndexRef.current + direction
+
+      while (targetIndex >= 0 && targetIndex < selectionHistory.length) {
+        const targetSelection = selectionHistory[targetIndex]
+        const existingSelection = targetSelection.filter((key) =>
+          tree.selectionByKey.has(String(key)))
+
+        if (targetSelection.length === 0 || existingSelection.length > 0) {
+          selectionHistoryIndexRef.current = targetIndex
+          isNavigatingSelectionRef.current = true
+          setSelectedKeys(existingSelection)
+          return
+        }
+
+        targetIndex += direction
+      }
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button !== 3 && event.button !== 4) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      navigateSelection(event.button === 3 ? -1 : 1)
+    }
+
+    const preventMouseNavigation = (event: MouseEvent) => {
+      if (event.button === 3 || event.button === 4) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }
+
+    window.addEventListener('mousedown', handleMouseDown, true)
+    window.addEventListener('auxclick', preventMouseNavigation, true)
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown, true)
+      window.removeEventListener('auxclick', preventMouseNavigation, true)
+    }
+  }, [tree.selectionByKey])
 
   const clearHistory = useCallback(() => {
     setHistory(emptyEditorHistory)
@@ -898,6 +967,10 @@ function replaceMovedFolderKey(key: Key, destinations: ReadonlyMap<string, strin
   }
 
   return `folder:${replaceMovedFolderPrefix(value.slice('folder:'.length), destinations)}`
+}
+
+function areKeySelectionsEqual(left: Key[] | undefined, right: Key[]) {
+  return left?.length === right.length && left.every((key, index) => key === right[index])
 }
 
 function mergeKeys(current: Key[], added: Key[]): Key[] {
