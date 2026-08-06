@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FolderOpenOutlined } from '@ant-design/icons'
 import { Alert, Button, Input, Modal } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
@@ -7,27 +7,50 @@ import { useCatalogSession } from '../../entities/catalog/model/useCatalogSessio
 interface OpenCatalogDialogProps {
   catalogPath?: string
   initialOpen?: boolean
+  isOpen?: boolean
+  showButton?: boolean
+  onOpenChange?: (isOpen: boolean) => void
 }
 
-export function OpenCatalogDialog({ catalogPath, initialOpen = false }: OpenCatalogDialogProps) {
-  const [isOpen, setIsOpen] = useState(initialOpen)
+export function OpenCatalogDialog({
+  catalogPath,
+  initialOpen = false,
+  isOpen,
+  showButton = true,
+  onOpenChange,
+}: OpenCatalogDialogProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(initialOpen)
   const [path, setPath] = useState(catalogPath ?? '')
   const { state, openCatalog, dismissOperationError } = useCatalogSession()
+  const resolvedIsOpen = isOpen ?? internalIsOpen
+  const setOpen = (nextOpen: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(nextOpen)
+    } else {
+      setInternalIsOpen(nextOpen)
+    }
+  }
 
   if (state.status !== 'ready') {
     return null
   }
 
+  useEffect(() => {
+    if (resolvedIsOpen) {
+      setPath(catalogPath ?? '')
+    }
+  }, [resolvedIsOpen, catalogPath])
+
   const showDialog = () => {
     setPath(catalogPath ?? '')
     dismissOperationError()
-    setIsOpen(true)
+    setOpen(true)
   }
 
   const closeDialog = () => {
     if (!state.isOpening) {
       dismissOperationError()
-      setIsOpen(false)
+      setOpen(false)
     }
   }
 
@@ -37,22 +60,24 @@ export function OpenCatalogDialog({ catalogPath, initialOpen = false }: OpenCata
     }
 
     if (await openCatalog(path)) {
-      setIsOpen(false)
+      setOpen(false)
     }
   }
 
   return (
     <>
-      <Button
-        type={catalogPath ? 'text' : 'primary'}
-        icon={<FolderOpenOutlined />}
-        onClick={showDialog}
-      >
-        {catalogPath ? 'Change' : 'Open catalog'}
-      </Button>
+      {showButton ? (
+        <Button
+          type={catalogPath ? 'text' : 'primary'}
+          icon={<FolderOpenOutlined />}
+          onClick={showDialog}
+        >
+          Open
+        </Button>
+      ) : null}
       <Modal
-        title={catalogPath ? 'Change catalog' : 'Open catalog'}
-        open={isOpen}
+        title="Open catalog"
+        open={resolvedIsOpen}
         okText="Open"
         cancelText="Cancel"
         confirmLoading={state.isOpening}

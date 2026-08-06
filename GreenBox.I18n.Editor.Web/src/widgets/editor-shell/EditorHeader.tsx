@@ -1,10 +1,11 @@
-import { DownOutlined, RedoOutlined, SaveOutlined, TranslationOutlined, UndoOutlined } from '@ant-design/icons'
+import { CopyOutlined, DownOutlined, ExportOutlined, FolderOpenOutlined, RedoOutlined, SaveOutlined, TranslationOutlined, UndoOutlined } from '@ant-design/icons'
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Dropdown, Flex, Modal, Space, Tooltip, Typography, message, theme, type MenuProps } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { OpenCatalogDialog } from '../../features/open-catalog/OpenCatalogDialog'
 import { HttpError } from '../../shared/api/httpClient'
 import type { CatalogSourceStatus } from '../../entities/catalog/api/getCatalogSourceStatus'
+import { openCatalogFile } from '../../entities/catalog/api/openCatalogFile'
 
 interface EditorHeaderProps {
   catalogPath: string
@@ -35,6 +36,7 @@ export function EditorHeader({
   const [isSaving, setIsSaving] = useState(false)
   const [isReverting, setIsReverting] = useState(false)
   const [hasExternalConflict, setHasExternalConflict] = useState(false)
+  const [isOpenCatalogDialogOpen, setIsOpenCatalogDialogOpen] = useState(false)
   const [messageApi, messageContext] = message.useMessage()
   const [modalApi, modalContext] = Modal.useModal()
 
@@ -137,6 +139,52 @@ export function EditorHeader({
     },
   }
 
+  const openCatalogPath = async () => {
+    try {
+      await openCatalogFile()
+    } catch (error: unknown) {
+      messageApi.error(error instanceof Error ? error.message : 'Could not open file.')
+    }
+  }
+
+  const copyCatalogPath = async () => {
+    try {
+      await navigator.clipboard.writeText(catalogPath)
+      messageApi.success('Catalog path copied.')
+    } catch {
+      messageApi.error('Copy failed.')
+    }
+  }
+
+  const pathMenu: MenuProps = {
+    items: [
+      {
+        key: 'open-catalog',
+        icon: <FolderOpenOutlined />,
+        label: 'Change catalog',
+      },
+      {
+        key: 'open-file',
+        icon: <ExportOutlined />,
+        label: 'Open file',
+      },
+      {
+        key: 'copy-path',
+        icon: <CopyOutlined />,
+        label: 'Copy path',
+      },
+    ],
+    onClick: ({ key }) => {
+      if (key === 'open-catalog') {
+        setIsOpenCatalogDialogOpen(true)
+      } else if (key === 'open-file') {
+        void openCatalogPath()
+      } else if (key === 'copy-path') {
+        void copyCatalogPath()
+      }
+    },
+  }
+
   return (
     <Flex
       align="center"
@@ -159,12 +207,31 @@ export function EditorHeader({
 
       <div style={{ width: 1, height: 20, background: token.colorBorderSecondary }} />
 
-      <Flex align="center" gap={layoutTokens.spacing.xSmall} style={{ minWidth: 0 }} title={catalogPath}>
-        <div style={{ minWidth: 0, whiteSpace: 'nowrap' }}>
-          <Typography.Text type="secondary">{truncateMiddle(catalogPath, 64)}</Typography.Text>
-        </div>
-        <OpenCatalogDialog catalogPath={catalogPath} />
+      <Flex align="center" gap={layoutTokens.spacing.xSmall} style={{ minWidth: 0, flex: '1 1 auto' }}>
+        <Dropdown menu={pathMenu} trigger={['click']}>
+          <Typography.Text
+            type="secondary"
+            ellipsis={{ tooltip: catalogPath }}
+            style={{
+              direction: 'rtl',
+              textAlign: 'left',
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              cursor: 'pointer',
+            }}
+          >
+            {catalogPath}
+          </Typography.Text>
+        </Dropdown>
       </Flex>
+      <OpenCatalogDialog
+        catalogPath={catalogPath}
+        isOpen={isOpenCatalogDialogOpen}
+        onOpenChange={setIsOpenCatalogDialogOpen}
+        showButton={false}
+      />
 
       <div style={{ flex: 1 }} />
 
@@ -280,13 +347,3 @@ function isTextEditingTarget(target: EventTarget | null) {
     target instanceof HTMLElement && target.isContentEditable
 }
 
-function truncateMiddle(value: string, maxLength: number) {
-  if (value.length <= maxLength) {
-    return value
-  }
-
-  const availableLength = maxLength - 1
-  const startLength = Math.ceil(availableLength / 2)
-  const endLength = Math.floor(availableLength / 2)
-  return `${value.slice(0, startLength)}…${value.slice(-endLength)}`
-}

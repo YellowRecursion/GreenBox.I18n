@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using GreenBox.I18n.Editor.Host.Editor;
 using GreenBox.I18n.Editor.Host.Contracts;
 using GreenBox.I18n.Editor.Host.Infrastructure;
@@ -20,6 +21,7 @@ public static class EditorSessionEndpoints
 
         sessionEndpoints.MapGet(string.Empty, (EditorSession session) => session.GetSnapshot());
         sessionEndpoints.MapPost("/open", OpenCatalogAsync);
+        sessionEndpoints.MapPost("/open-file", OpenCatalogFile);
 
         return endpoints;
     }
@@ -45,5 +47,29 @@ public static class EditorSessionEndpoints
             loadResult.Catalog!,
             loadResult.ContentHash!);
         return Results.Ok(response);
+    }
+
+    private static IResult OpenCatalogFile(EditorSession session)
+    {
+        string? catalogPath = session.GetSnapshot().CatalogPath;
+        if (string.IsNullOrWhiteSpace(catalogPath))
+        {
+            return Results.Json(
+                new EditorErrorResponse(EditorErrorCodes.CatalogNotOpen, "No catalog is open."),
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(catalogPath) { UseShellExecute = true });
+            return Results.Ok(new { opened = true });
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            return Results.Json(
+                new EditorErrorResponse(EditorErrorCodes.CatalogOpenFailed, exception.Message),
+                statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
     }
 }

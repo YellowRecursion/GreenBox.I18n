@@ -38,6 +38,9 @@ public static class EditorErrorCodes
     /// <summary>Indicates that the catalog file could not be written.</summary>
     public const string CatalogWriteFailed = "catalog_write_failed";
 
+    /// <summary>Indicates that the operating system could not open the catalog file.</summary>
+    public const string CatalogOpenFailed = "catalog_open_failed";
+
     /// <summary>Indicates that the open catalog is not located inside a Unity project.</summary>
     public const string UnityProjectNotFound = "unity_project_not_found";
 
