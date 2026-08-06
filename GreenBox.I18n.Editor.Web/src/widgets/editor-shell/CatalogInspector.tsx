@@ -1,18 +1,29 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { CopyOutlined } from '@ant-design/icons'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactNode,
+} from 'react'
+import { CloseOutlined, CopyOutlined, ExpandOutlined } from '@ant-design/icons'
 import {
   Button,
+  Breadcrumb,
   Card,
   Descriptions,
   Empty,
   Flex,
   Input,
+  Modal,
+  Space,
   Tag,
   Tabs,
   Tooltip,
   Typography,
   theme,
   type InputRef,
+  type MenuProps,
 } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogEntry, CatalogLocale } from '../../entities/catalog/model/catalog'
@@ -130,6 +141,7 @@ function EntryInspector({
   ) => Promise<void>
 }) {
   const { token } = theme.useToken()
+  const [expandedLocaleId, setExpandedLocaleId] = useState<string>()
   const orderedLocales = [...locales].sort((left, right) =>
     Number(right.id === defaultLocale) - Number(left.id === defaultLocale))
   const textCount = locales.filter((locale) =>
@@ -159,9 +171,13 @@ function EntryInspector({
                 {orderedLocales.map((locale) => (
                   <EntryTextInput
                     key={`${entry.id}:${locale.id}`}
+                    entryPath={entry.path}
                     value={entry.locales[locale.id]?.text ?? null}
                     locale={locale}
+                    locales={orderedLocales}
                     defaultLocale={defaultLocale}
+                    isExpanded={expandedLocaleId === locale.id}
+                    onExpandedLocaleChange={setExpandedLocaleId}
                     onChange={(text) => onTextChange(entry.id, locale.id, text)}
                   />
                 ))}
@@ -195,19 +211,29 @@ function EntryInspector({
 }
 
 function EntryTextInput({
+  entryPath,
   value,
   locale,
+  locales,
   defaultLocale,
+  isExpanded,
+  onExpandedLocaleChange,
   onChange,
 }: {
+  entryPath: string
   value: string | null
   locale: CatalogLocale
+  locales: CatalogLocale[]
   defaultLocale: string
+  isExpanded: boolean
+  onExpandedLocaleChange: (localeId: string | undefined) => void
   onChange: (text: string | null) => Promise<void>
 }) {
   const [draft, setDraft] = useState(value ?? '')
   const [error, setError] = useState<string>()
   const [isSaving, setIsSaving] = useState(false)
+  const skipCompactBlurRef = useRef(false)
+  const focusEditorRef = useRef<ComponentRef<typeof Input.TextArea>>(null)
 
   useEffect(() => {
     setDraft(value ?? '')
@@ -218,18 +244,39 @@ function EntryTextInput({
     const persistedText = value ?? ''
     if (draft === persistedText) {
       setError(undefined)
-      return
+      return true
     }
 
     setIsSaving(true)
     setError(undefined)
     try {
       await onChange(draft === '' ? null : draft)
+      return true
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : 'Localized text could not be changed.')
+      return false
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const openExpanded = () => {
+    skipCompactBlurRef.current = true
+    onExpandedLocaleChange(locale.id)
+  }
+
+  const closeExpanded = async (nextLocaleId?: string) => {
+    if (isSaving) {
+      return
+    }
+
+    if (await commit()) {
+      onExpandedLocaleChange(nextLocaleId)
+    }
+  }
+
+  const handleLocaleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    void closeExpanded(String(key))
   }
 
   return (
@@ -240,7 +287,29 @@ function EntryTextInput({
           <Typography.Text>{locale.displayName}</Typography.Text>
           {locale.id === defaultLocale && <Tag color="blue">Default</Tag>}
         </Flex>
-        <TrailingWhitespaceIndicator text={draft} />
+        <Flex align="center" gap={layoutTokens.spacing.small}>
+          <TrailingWhitespaceIndicator text={draft} />
+          <Tooltip title="Copy translation">
+            <Button
+              type="text"
+              size="small"
+              aria-label={`Copy ${locale.displayName} translation`}
+              icon={<CopyOutlined />}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => void navigator.clipboard.writeText(draft).catch(() => undefined)}
+            />
+          </Tooltip>
+          <Tooltip title="Open focus editor">
+            <Button
+              type="text"
+              size="small"
+              aria-label={`Open ${locale.displayName} focus editor`}
+              icon={<ExpandOutlined />}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={openExpanded}
+            />
+          </Tooltip>
+        </Flex>
       </Flex>
       <Input.TextArea
         aria-label={`${locale.displayName} localized text`}
@@ -254,7 +323,13 @@ function EntryTextInput({
           setDraft(event.target.value)
           setError(undefined)
         }}
-        onBlur={() => void commit()}
+        onBlur={() => {
+          if (skipCompactBlurRef.current) {
+            skipCompactBlurRef.current = false
+          } else {
+            void commit()
+          }
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault()
@@ -266,6 +341,106 @@ function EntryTextInput({
         }}
       />
       {error && <Typography.Text type="danger">{error}</Typography.Text>}
+      <Modal
+        open={isExpanded}
+        centered
+        width={800}
+        footer={null}
+        keyboard
+        maskClosable={false}
+        closable={false}
+        title={(
+          <Flex align="center" justify="space-between" gap={layoutTokens.spacing.large}>
+            <div style={{ minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              <Breadcrumb
+                items={[
+                  {
+                    title: entryPath,
+                    style: { cursor: 'pointer' },
+                    onClick: () => void closeExpanded(),
+                  },
+                  {
+                    title: (
+                      <Space size={layoutTokens.spacing.xSmall}>
+                        <LocaleFlag culture={locale.culture} />
+                        <span>{locale.displayName}</span>
+                      </Space>
+                    ),
+                    menu: {
+                      items: locales.map((candidate) => ({
+                        key: candidate.id,
+                        disabled: candidate.id === locale.id,
+                        label: (
+                          <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+                            <LocaleFlag culture={candidate.culture} />
+                            <span>{candidate.displayName}</span>
+                            {candidate.id === defaultLocale && <Tag color="blue">Default</Tag>}
+                          </Flex>
+                        ),
+                      })),
+                      onClick: handleLocaleMenuClick,
+                    },
+                  },
+                ]}
+              />
+            </div>
+            <Button
+              type="text"
+              aria-label="Close focus editor"
+              icon={<CloseOutlined />}
+              disabled={isSaving}
+              onClick={() => void closeExpanded()}
+            />
+          </Flex>
+        )}
+        styles={{
+          container: {
+            height: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          },
+          body: {
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          },
+        }}
+        afterOpenChange={(open) => {
+          if (open) {
+            skipCompactBlurRef.current = false
+            focusEditorRef.current?.focus({ cursor: 'end' })
+          }
+        }}
+        onCancel={() => void closeExpanded()}
+      >
+        <Input.TextArea
+          ref={focusEditorRef}
+          aria-label={`${locale.displayName} focus editor`}
+          placeholder="No translation"
+          value={draft}
+          disabled={isSaving}
+          status={error ? 'error' : undefined}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            resize: 'none',
+            overflow: 'auto',
+            background: 'transparent',
+          }}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setError(undefined)
+          }}
+        />
+        {error && (
+          <Typography.Text type="danger" style={{ marginTop: layoutTokens.spacing.xSmall }}>
+            {error}
+          </Typography.Text>
+        )}
+      </Modal>
     </Flex>
   )
 }
@@ -419,7 +594,6 @@ function EntryTypeLabel({ entryId }: { entryId: string }) {
   return (
     <Flex align="center" gap={layoutTokens.spacing.xSmall}>
       <Typography.Text type="secondary">Entry</Typography.Text>
-      <span style={{ color: token.colorTextTertiary }}>•</span>
       <Tooltip title="Copy ID">
         <Button
           type="text"
@@ -429,7 +603,7 @@ function EntryTypeLabel({ entryId }: { entryId: string }) {
           onClick={() => void navigator.clipboard.writeText(entryId).catch(() => undefined)}
         >
           <Flex align="center" gap={layoutTokens.spacing.xSmall}>
-            <span>ID: {entryId}</span>
+            <span>{entryId}</span>
             <CopyOutlined />
           </Flex>
         </Button>
