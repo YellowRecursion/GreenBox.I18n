@@ -46,6 +46,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             profiler.Sample();
 
             long locationResolutionTicks = 0;
+            var documentAssetPaths = new Dictionary<string, string?>(StringComparer.Ordinal);
             var traversalStopwatch = Stopwatch.StartNew();
             foreach (ModuleDefinition module in assembly.Modules)
             {
@@ -53,7 +54,12 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 {
                     foreach (MethodDefinition method in type.Methods)
                     {
-                        ScanMethod(method, projectRoot, usages, ref locationResolutionTicks);
+                        ScanMethod(
+                            method,
+                            projectRoot,
+                            usages,
+                            documentAssetPaths,
+                            ref locationResolutionTicks);
                     }
                 }
             }
@@ -109,6 +115,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             MethodDefinition method,
             string projectRoot,
             ISet<I18nIlUsage> usages,
+            IDictionary<string, string?> documentAssetPaths,
             ref long locationResolutionTicks)
         {
             if (!method.HasBody)
@@ -116,6 +123,10 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 return;
             }
 
+            int sequencePointIndex = 0;
+            string? nearestAssetPath = null;
+            int nearestLine = 0;
+            var sequencePoints = method.DebugInformation.SequencePoints;
             foreach (Instruction instruction in method.Body.Instructions)
             {
                 if (instruction.OpCode.Code != Code.Ldc_I8 ||
@@ -128,18 +139,25 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 long locationResolutionStart = Stopwatch.GetTimestamp();
                 try
                 {
-                    SequencePoint? sequencePoint = FindSequencePoint(method, instruction.Offset, projectRoot);
-                    if (sequencePoint == null)
+                    while (sequencePointIndex < sequencePoints.Count &&
+                           sequencePoints[sequencePointIndex].Offset <= instruction.Offset)
                     {
-                        continue;
+                        SequencePoint sequencePoint = sequencePoints[sequencePointIndex++];
+                        if (!sequencePoint.IsHidden &&
+                            TryGetAssetPath(
+                                sequencePoint.Document.Url,
+                                projectRoot,
+                                documentAssetPaths,
+                                out string assetPath))
+                        {
+                            nearestAssetPath = assetPath;
+                            nearestLine = sequencePoint.StartLine;
+                        }
                     }
 
-                    if (I18nUsagePath.TryGetAssetPath(
-                            sequencePoint.Document.Url,
-                            projectRoot,
-                            out string assetPath))
+                    if (nearestAssetPath != null)
                     {
-                        usages.Add(new I18nIlUsage(entryId, assetPath, sequencePoint.StartLine));
+                        usages.Add(new I18nIlUsage(entryId, nearestAssetPath, nearestLine));
                     }
                 }
                 finally
@@ -149,27 +167,25 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             }
         }
 
-        private static SequencePoint? FindSequencePoint(
-            MethodDefinition method,
-            int instructionOffset,
-            string projectRoot)
+        private static bool TryGetAssetPath(
+            string documentUrl,
+            string projectRoot,
+            IDictionary<string, string?> documentAssetPaths,
+            out string assetPath)
         {
-            SequencePoint? nearest = null;
-            foreach (SequencePoint sequencePoint in method.DebugInformation.SequencePoints)
+            if (!documentAssetPaths.TryGetValue(documentUrl, out string? cachedAssetPath))
             {
-                if (sequencePoint.Offset > instructionOffset)
-                {
-                    break;
-                }
-
-                if (!sequencePoint.IsHidden &&
-                    I18nUsagePath.TryGetAssetPath(sequencePoint.Document.Url, projectRoot, out _))
-                {
-                    nearest = sequencePoint;
-                }
+                cachedAssetPath = I18nUsagePath.TryGetAssetPath(
+                    documentUrl,
+                    projectRoot,
+                    out string resolvedAssetPath)
+                    ? resolvedAssetPath
+                    : null;
+                documentAssetPaths.Add(documentUrl, cachedAssetPath);
             }
 
-            return nearest;
+            assetPath = cachedAssetPath ?? string.Empty;
+            return cachedAssetPath != null;
         }
 
         private static IEnumerable<TypeDefinition> EnumerateTypes(IEnumerable<TypeDefinition> roots)
