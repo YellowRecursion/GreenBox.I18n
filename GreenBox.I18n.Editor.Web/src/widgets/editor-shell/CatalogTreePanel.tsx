@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type Key,
-  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -238,20 +237,6 @@ export function CatalogTreePanel({
     })
   }
 
-  const handlePanelMouseDown = (event: ReactMouseEvent<HTMLElement>) => {
-    if (event.button !== 0) {
-      return
-    }
-
-    const target = event.target as HTMLElement
-    if (target.closest('.ant-tree-treenode, .ant-input-affix-wrapper, button')) {
-      return
-    }
-
-    setSelectionAnchor(undefined)
-    onSelectionChange([])
-  }
-
   const handleAction = async (node: CatalogTreeNode, action: string) => {
     if (action === 'reveal-in-tree') {
       revealInTree(node.key)
@@ -386,7 +371,6 @@ export function CatalogTreePanel({
       vertical
       gap={layoutTokens.spacing.small}
       style={{ height: '100%', minHeight: 0 }}
-      onMouseDown={handlePanelMouseDown}
     >
       {messageContext}
       {modalContext}
@@ -524,6 +508,15 @@ export function CatalogTreePanel({
           )}
           onExpand={(_, info) => {
             if (!query.trim()) {
+              if (info.nativeEvent.altKey) {
+                const branchKeys = collectExpandableKeys([info.node as CatalogTreeNode])
+                const branchKeySet = new Set(branchKeys)
+                onExpandedKeysChange(info.expanded
+                  ? mergeKeys(expandedKeys, branchKeys)
+                  : expandedKeys.filter((key) => !branchKeySet.has(key)))
+                return
+              }
+
               onExpandedKeysChange(info.expanded
                 ? mergeKeys(expandedKeys, [info.node.key])
                 : expandedKeys.filter((key) => key !== info.node.key))
