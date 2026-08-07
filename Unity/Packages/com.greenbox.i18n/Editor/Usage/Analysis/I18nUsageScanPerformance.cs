@@ -64,6 +64,17 @@ namespace GreenBox.I18n.Usage.Analysis
         {
             Sample();
             _stopwatch.Stop();
+            return CreatePerformance();
+        }
+
+        public I18nUsageScanPerformance Snapshot()
+        {
+            Sample();
+            return CreatePerformance();
+        }
+
+        private I18nUsageScanPerformance CreatePerformance()
+        {
             return new I18nUsageScanPerformance(
                 _stopwatch.ElapsedMilliseconds,
                 _initialManagedMemoryBytes,

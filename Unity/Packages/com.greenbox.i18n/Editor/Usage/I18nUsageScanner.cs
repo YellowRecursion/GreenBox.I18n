@@ -137,7 +137,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 MaximumReportedLocationCount,
                 out int reportedLocationCount,
                 includeLocations);
-            string assetReport = I18nAssetUsageScanner.FormatReport(
+            string assetReport = I18nAssetUsageReportFormatter.Format(
                 assetResult,
                 MaximumReportedLocationCount - reportedLocationCount,
                 out _,
@@ -189,7 +189,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 if (I18nLog.IsPerformanceEnabled)
                 {
                     warning += Environment.NewLine + Environment.NewLine +
-                               I18nAssetUsageScanner.FormatReport(
+                               I18nAssetUsageReportFormatter.Format(
                                    result,
                                    MaximumReportedLocationCount,
                                    out _,
@@ -202,7 +202,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
             if (I18nLog.IsPerformanceEnabled)
             {
-                I18nLog.Performance(I18nAssetUsageScanner.FormatReport(
+                I18nLog.Performance(I18nAssetUsageReportFormatter.Format(
                     result,
                     MaximumReportedLocationCount,
                     out _,

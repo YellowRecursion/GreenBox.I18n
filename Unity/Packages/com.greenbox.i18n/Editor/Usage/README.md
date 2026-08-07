@@ -24,11 +24,10 @@ GreenBox.I18n.Usage.Analysis
 
 `Analysis/GreenBox.I18n.Usage.Analysis.asmdef` has `noEngineReferences` enabled. It contains
 thread-agnostic contracts and utilities: usage/result models, path handling, profiling, source
-stamps, and the raw DLL prefilter. It must not reference UnityEngine, UnityEditor, Mono.Cecil,
-settings, logs, static events, or mutable Unity state.
-
-The serialized YAML parser will move into this module next. Any metadata it needs from Unity must
-be supplied as immutable input prepared by Unity Integration.
+stamps, the raw DLL prefilter, and serialized asset analysis. Asset analysis is split into a
+streaming marker prefilter, Unity YAML parser, serialized object model, property-path builder, and
+result models. It must not reference UnityEngine, UnityEditor, Mono.Cecil, settings, logs, static
+events, or mutable Unity state.
 
 ### Usage Cecil
 
@@ -41,7 +40,9 @@ it separate prevents the central analysis contracts from depending on Cecil.
 The files directly under `Usage/` are part of `GreenBox.I18n.Unity.Editor`. This layer owns
 Unity callbacks, `AssetDatabase`, `CompilationPipeline`, `SessionState`, preferences, logging,
 scan coordination, and result publication. Only this layer decides when a scan runs and whether a
-result is still current enough to publish.
+result is still current enough to publish. It also resolves script GUIDs through `AssetDatabase`
+after pure YAML analysis; this keeps Unity calls on the main thread while allowing the expensive
+file work to move to a worker later.
 
 ## Source changes during a scan
 
@@ -52,6 +53,8 @@ Scanning uses optimistic consistency rather than locking Unity assets or compile
 2. A partial scan captures those revisions before analysis.
 3. The scanners capture cheap file stamps before reading and compare them after analysis. An asset
    stamp includes its `.meta`; an IL stamp includes its `.pdb`.
+   Full asset scans also compare the discovered file set at the end, so a file created or deleted
+   while scanning invalidates the result.
 4. Before publishing, Unity Integration compares the captured revisions with the current ones.
 5. If either the revision or file stamp changed, the result is discarded. Automatic mode queues
    the affected source again; manual mode asks the developer to rerun the scan.
