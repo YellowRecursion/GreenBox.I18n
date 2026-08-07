@@ -18,6 +18,14 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         private const int MaximumReportedLocationCount = 100;
         private const long SlowScanThresholdMilliseconds = 3000;
 
+        internal static event Action<I18nIlUsageScanResult, I18nAssetUsageScanResult>? FullScanCompleted;
+
+        internal static event Action<IReadOnlyList<string>, I18nAssetUsageScanResult>? AssetsScanned;
+
+        internal static event Action<IReadOnlyList<string>, I18nIlUsageScanResult>? AssembliesScanned;
+
+        internal static event Action<IReadOnlyList<string>>? AssetsRemoved;
+
         [MenuItem(MenuPath, false, 100)]
         private static void ScanAndLog()
         {
@@ -41,6 +49,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             I18nAssetUsageScanResult assetResult = I18nAssetUsageScanner.Scan();
             totalProfiler.Observe(assetResult.Performance.PeakManagedMemoryBytes);
             I18nUsageScanPerformance totalPerformance = totalProfiler.Complete();
+            FullScanCompleted?.Invoke(ilResult, assetResult);
 
             bool isSlow = totalPerformance.ElapsedMilliseconds > SlowScanThresholdMilliseconds;
             bool hasWarnings = ilResult.Warnings.Count > 0 || assetResult.Warnings.Count > 0;
@@ -130,17 +139,85 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         internal static I18nAssetUsageScanResult ScanAssets(IReadOnlyList<string> assetPaths)
         {
             I18nAssetUsageScanResult result = I18nAssetUsageScanner.Scan(assetPaths);
-            if (result.ElapsedMilliseconds <= SlowScanThresholdMilliseconds)
+            AssetsScanned?.Invoke(assetPaths, result);
+            if (result.ElapsedMilliseconds > SlowScanThresholdMilliseconds)
             {
+                (string stageName, double stageMilliseconds) = FindSlowestAssetStage(result.Diagnostics);
+                string warning =
+                    FormatSlowScanWarning("Partial asset usage scan", result.ElapsedMilliseconds) +
+                    $" Scanned {result.ScannedAssetCount} asset file(s); " +
+                    $"slowest stage: {stageName} ({stageMilliseconds:0.0} ms).";
+                if (I18nLog.IsPerformanceEnabled)
+                {
+                    warning += Environment.NewLine + Environment.NewLine +
+                               I18nAssetUsageScanner.FormatReport(
+                                   result,
+                                   MaximumReportedLocationCount,
+                                   out _,
+                                   I18nLog.IsVerboseEnabled);
+                }
+
+                I18nLog.Warning(warning);
                 return result;
             }
 
-            (string stageName, double stageMilliseconds) = FindSlowestAssetStage(result.Diagnostics);
-            I18nLog.Warning(
-                FormatSlowScanWarning("Partial asset usage scan", result.ElapsedMilliseconds) +
-                $" Scanned {result.ScannedAssetCount} asset file(s); " +
-                $"slowest stage: {stageName} ({stageMilliseconds:0.0} ms).");
+            if (I18nLog.IsPerformanceEnabled)
+            {
+                I18nLog.Performance(I18nAssetUsageScanner.FormatReport(
+                    result,
+                    MaximumReportedLocationCount,
+                    out _,
+                    I18nLog.IsVerboseEnabled));
+            }
+
             return result;
+        }
+
+        /// <summary>
+        /// Scans a changed set of compiled assemblies and warns only when the operation is slow.
+        /// </summary>
+        internal static I18nIlUsageScanResult ScanAssemblies(IReadOnlyList<string> assemblyPaths)
+        {
+            I18nIlUsageScanResult result = I18nIlUsageScanner.Scan(assemblyPaths);
+            AssembliesScanned?.Invoke(assemblyPaths, result);
+            if (result.ElapsedMilliseconds > SlowScanThresholdMilliseconds)
+            {
+                string warning =
+                    FormatSlowScanWarning("Partial IL usage scan", result.ElapsedMilliseconds) +
+                    $" Scanned {result.ScannedAssemblyCount} player assembly(s); " +
+                    $"{result.CandidateAssemblyCount} required Cecil analysis.";
+                if (I18nLog.IsPerformanceEnabled)
+                {
+                    warning += Environment.NewLine + Environment.NewLine +
+                               I18nIlUsageScanner.FormatReport(
+                                   result,
+                                   MaximumReportedLocationCount,
+                                   out _,
+                                   I18nLog.IsVerboseEnabled);
+                }
+
+                I18nLog.Warning(warning);
+                return result;
+            }
+
+            if (I18nLog.IsPerformanceEnabled)
+            {
+                I18nLog.Performance(I18nIlUsageScanner.FormatReport(
+                    result,
+                    MaximumReportedLocationCount,
+                    out _,
+                    I18nLog.IsVerboseEnabled));
+            }
+
+            return result;
+        }
+
+        internal static void RemoveAssets(IReadOnlyList<string> assetPaths)
+        {
+            if (assetPaths.Count > 0)
+            {
+                AssetsRemoved?.Invoke(assetPaths);
+            }
         }
 
         private static string FormatSlowScanWarning(string operation, long elapsedMilliseconds)

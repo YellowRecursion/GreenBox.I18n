@@ -32,6 +32,12 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
         private static readonly byte[] EntryIdPropertyMarker = Encoding.UTF8.GetBytes(EntryIdPropertyName);
 
+        internal static bool IsSupportedAssetPath(string path)
+        {
+            return !string.IsNullOrWhiteSpace(path) &&
+                   SupportedExtensions.Contains(Path.GetExtension(path));
+        }
+
         internal static I18nAssetUsageScanResult Scan()
         {
             var profiler = new I18nUsageScanProfiler();
@@ -309,7 +315,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         {
             return Directory
                 .EnumerateFiles(assetsRoot, "*", SearchOption.AllDirectories)
-                .Where(path => SupportedExtensions.Contains(Path.GetExtension(path)));
+                .Where(IsSupportedAssetPath);
         }
 
         private static IEnumerable<string> ResolveSerializedAssetPaths(
@@ -324,8 +330,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
             foreach (string path in assetPaths)
             {
-                if (string.IsNullOrWhiteSpace(path) ||
-                    !SupportedExtensions.Contains(Path.GetExtension(path)))
+                if (!IsSupportedAssetPath(path))
                 {
                     continue;
                 }

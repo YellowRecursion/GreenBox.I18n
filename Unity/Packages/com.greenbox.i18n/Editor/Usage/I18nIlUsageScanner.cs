@@ -102,15 +102,55 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
         internal static I18nIlUsageScanResult Scan()
         {
-            var profiler = new I18nUsageScanProfiler();
+            string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
+            return Scan(
+                CompilationPipeline.GetAssemblies(AssembliesType.Player),
+                projectRoot,
+                new I18nUsageScanProfiler());
+        }
+
+        /// <summary>
+        /// Scans only player assemblies whose compiled output paths are specified.
+        /// </summary>
+        internal static I18nIlUsageScanResult Scan(IReadOnlyList<string> assemblyPaths)
+        {
+            if (assemblyPaths == null)
+            {
+                throw new ArgumentNullException(nameof(assemblyPaths));
+            }
+
+            string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
+            var requestedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string assemblyPath in assemblyPaths)
+            {
+                if (!string.IsNullOrWhiteSpace(assemblyPath))
+                {
+                    requestedPaths.Add(I18nUsagePath.Resolve(assemblyPath, projectRoot));
+                }
+            }
+
+            UnityCompilationAssembly[] assemblies = CompilationPipeline
+                .GetAssemblies(AssembliesType.Player)
+                .Where(assembly => requestedPaths.Contains(
+                    I18nUsagePath.Resolve(assembly.outputPath, projectRoot)))
+                .ToArray();
+            return Scan(
+                assemblies,
+                projectRoot,
+                new I18nUsageScanProfiler(false));
+        }
+
+        private static I18nIlUsageScanResult Scan(
+            IEnumerable<UnityCompilationAssembly> assemblies,
+            string projectRoot,
+            I18nUsageScanProfiler profiler)
+        {
             var usages = new HashSet<I18nIlUsage>();
             var warnings = new List<string>();
             var cecilPerformance = new List<I18nCecilAssemblyScanPerformance>();
-            string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
             int scannedAssemblyCount = 0;
             int candidateAssemblyCount = 0;
 
-            UnityCompilationAssembly[] assemblies = CompilationPipeline.GetAssemblies(AssembliesType.Player);
             foreach (UnityCompilationAssembly assembly in assemblies)
             {
                 if (!assembly.sourceFiles.Any(
