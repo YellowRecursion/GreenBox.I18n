@@ -97,16 +97,13 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 "Asset usage scanning requires Edit > Project Settings > Editor > " +
                 "Asset Serialization > Mode to be set to Force Text.");
             failure = new I18nAssetUsageScanResult(
-                Array.Empty<I18nAssetUsage>(),
+                Array.Empty<I18nAssetUsageSourceScanResult>(),
                 warnings.ToArray(),
-                0,
                 0,
                 0,
                 profiler.Complete(),
                 I18nAssetUsageScanDiagnostics.Empty,
-                false,
-                Array.Empty<string>(),
-                Array.Empty<I18nSerializedAssetObservation>());
+                false);
             return false;
         }
 
@@ -170,6 +167,14 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             IReadOnlyList<I18nSerializedAssetSource>? fullScanSources = null)
         {
             long metadataStart = Stopwatch.GetTimestamp();
+            var originalAssetGuidsByPath = result.Sources.ToDictionary(
+                source => source.SourceKey,
+                source => source.AssetGuid,
+                StringComparer.OrdinalIgnoreCase);
+            var assetGuidsByPath = result.Sources.ToDictionary(
+                source => source.SourceKey,
+                source => AssetDatabase.AssetPathToGUID(source.SourceKey),
+                StringComparer.OrdinalIgnoreCase);
             var typesByGuid = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (string scriptGuid in result.Usages
                          .Where(RequiresScriptTypeResolution)
@@ -183,31 +188,37 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     : string.Empty;
             }
 
-            I18nAssetUsage[] usages = result.Usages
-                .Select(usage => RequiresScriptTypeResolution(usage) &&
-                                 typesByGuid.TryGetValue(usage.ScriptGuid, out string typeName) &&
-                                 typeName.Length > 0
-                    ? usage.WithComponentType(typeName)
-                    : usage)
-                .ToArray();
+            var sources = result.Sources
+                .Select(source => source.With(
+                    assetGuid: assetGuidsByPath.TryGetValue(source.SourceKey, out string assetGuid) &&
+                               assetGuid.Length > 0
+                        ? assetGuid
+                        : source.AssetGuid,
+                    usages: source.Usages
+                        .Select(usage => RequiresScriptTypeResolution(usage) &&
+                                         typesByGuid.TryGetValue(usage.ScriptGuid, out string typeName) &&
+                                         typeName.Length > 0
+                            ? usage.WithComponentType(typeName)
+                            : usage)
+                        .ToArray()))
+                .ToList();
             double metadataMilliseconds = ToMilliseconds(Stopwatch.GetTimestamp() - metadataStart);
-            string[] changedSourcePaths = result.ChangedSourcePaths
-                .Concat(result.SourceObservations
-                    .Where(observation => observation.Stamp != I18nUsageSourceStamp.Capture(
+            for (int index = 0; index < sources.Count; index++)
+            {
+                I18nAssetUsageSourceScanResult source = sources[index];
+                I18nSerializedAssetObservation? observation = source.Observation;
+                if (observation == null ||
+                    observation.Stamp == I18nUsageSourceStamp.Capture(
                         observation.AbsolutePath,
                         observation.AbsolutePath + ".meta"))
-                    .Select(observation => observation.AssetPath))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(path => path, StringComparer.Ordinal)
-                .ToArray();
-            var warnings = new List<string>(result.Warnings);
-            foreach (string changedSourcePath in changedSourcePaths.Except(
-                         result.ChangedSourcePaths,
-                         StringComparer.OrdinalIgnoreCase))
-            {
-                warnings.Add(
-                    $"'{changedSourcePath}' changed during Unity metadata resolution; " +
-                    "the scan result will not be published.");
+                {
+                    continue;
+                }
+
+                sources[index] = MarkChanged(
+                    source,
+                    $"'{source.SourceKey}' changed during Unity metadata resolution; " +
+                    "its result was discarded.");
             }
 
             if (fullScanSources != null)
@@ -232,16 +243,42 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     Stopwatch.GetTimestamp() - pathValidationStart);
                 if (changedAssetSet.Length > 0)
                 {
-                    changedSourcePaths = changedSourcePaths
-                        .Concat(changedAssetSet)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .OrderBy(path => path, StringComparer.Ordinal)
-                        .ToArray();
-                    warnings.Add(
-                        $"The serialized asset set changed by {changedAssetSet.Length} file(s) " +
-                        "during the full scan; the result will not be published.");
+                    var sourcesByKey = sources.ToDictionary(
+                        source => source.SourceKey,
+                        StringComparer.OrdinalIgnoreCase);
+                    foreach (string changedPath in changedAssetSet)
+                    {
+                        if (sourcesByKey.TryGetValue(changedPath, out I18nAssetUsageSourceScanResult source))
+                        {
+                            int sourceIndex = sources.FindIndex(item => string.Equals(
+                                item.SourceKey,
+                                changedPath,
+                                StringComparison.OrdinalIgnoreCase));
+                            sources[sourceIndex] = MarkChanged(
+                                source,
+                                $"'{changedPath}' was removed during the full scan; " +
+                                "its result was discarded.");
+                            continue;
+                        }
+
+                        sources.Add(new I18nAssetUsageSourceScanResult(
+                            changedPath,
+                            Path.GetFullPath(Path.Combine(projectRoot, changedPath)),
+                            AssetDatabase.AssetPathToGUID(changedPath),
+                            I18nUsageSourceScanStatus.Changed,
+                            Array.Empty<I18nAssetUsage>(),
+                            new[]
+                            {
+                                $"'{changedPath}' was added during the full scan and was not analyzed.",
+                            },
+                            null,
+                            false,
+                            null));
+                    }
                 }
             }
+
+            MarkChangedPrefabDependents(sources, originalAssetGuidsByPath);
 
             var diagnostics = new I18nAssetUsageScanDiagnostics(
                 result.Diagnostics.PathDiscoveryMilliseconds + externalPathDiscoveryMilliseconds,
@@ -252,16 +289,77 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 result.Diagnostics.ResultBuildMilliseconds,
                 result.Diagnostics.SlowestFiles);
             return new I18nAssetUsageScanResult(
-                usages,
-                warnings,
+                sources,
+                result.GlobalWarnings,
                 result.ScannedAssetCount,
-                result.MatchedAssetCount,
                 result.ScannedByteCount,
                 profiler.Complete(),
                 diagnostics,
-                result.IsForceText,
-                changedSourcePaths,
-                result.SourceObservations);
+                result.IsForceText);
+        }
+
+        private static I18nAssetUsageSourceScanResult MarkChanged(
+            I18nAssetUsageSourceScanResult source,
+            string warning)
+        {
+            return source.With(
+                status: I18nUsageSourceScanStatus.Changed,
+                usages: Array.Empty<I18nAssetUsage>(),
+                warnings: source.Warnings.Concat(new[] { warning }).ToArray());
+        }
+
+        private static void MarkChangedPrefabDependents(
+            IList<I18nAssetUsageSourceScanResult> sources,
+            IReadOnlyDictionary<string, string> originalAssetGuidsByPath)
+        {
+            var changedAssetGuids = new HashSet<string>(StringComparer.Ordinal);
+            foreach (I18nAssetUsageSourceScanResult source in sources.Where(
+                         item => item.Status == I18nUsageSourceScanStatus.Changed))
+            {
+                AddSourceGuids(source);
+            }
+
+            if (changedAssetGuids.Count == 0)
+            {
+                return;
+            }
+
+            bool markedDependent;
+            do
+            {
+                markedDependent = false;
+                for (int index = 0; index < sources.Count; index++)
+                {
+                    I18nAssetUsageSourceScanResult source = sources[index];
+                    if (source.Status == I18nUsageSourceScanStatus.Changed ||
+                        !source.Usages.Any(usage => usage.IsPrefabOverride &&
+                                                    changedAssetGuids.Contains(usage.TargetAssetGuid)))
+                    {
+                        continue;
+                    }
+
+                    sources[index] = MarkChanged(
+                        source,
+                        $"'{source.SourceKey}' depends on a prefab that changed during scanning; " +
+                        "its result was discarded.");
+                    AddSourceGuids(source);
+                    markedDependent = true;
+                }
+            } while (markedDependent);
+
+            void AddSourceGuids(I18nAssetUsageSourceScanResult source)
+            {
+                if (source.AssetGuid.Length > 0)
+                {
+                    changedAssetGuids.Add(source.AssetGuid);
+                }
+
+                if (originalAssetGuidsByPath.TryGetValue(source.SourceKey, out string originalGuid) &&
+                    originalGuid.Length > 0)
+                {
+                    changedAssetGuids.Add(originalGuid);
+                }
+            }
         }
 
         private static bool RequiresScriptTypeResolution(I18nAssetUsage usage)

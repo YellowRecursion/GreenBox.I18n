@@ -41,6 +41,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 $"Scanned {result.ScannedAssetCount} serialized asset file(s), " +
                 $"{FormatByteCount(result.ScannedByteCount)} of source data; " +
                 $"{result.MatchedAssetCount} contained I18nKey data; " +
+                $"{result.FailedSourceCount} failed; " +
                 $"found {result.Usages.Count} usage(s) across " +
                 $"{result.Usages.Select(usage => usage.EntryId).Distinct().Count()} ID(s).",
             };

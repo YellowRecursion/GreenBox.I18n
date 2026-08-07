@@ -36,6 +36,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 $"IL usage scan completed in {result.ElapsedMilliseconds} ms. " +
                 $"Scanned {result.ScannedAssemblyCount} player assembly(s) with Assets sources; " +
                 $"{result.CandidateAssemblyCount} required Cecil analysis; " +
+                $"{result.FailedSourceCount} failed; " +
                 $"found {result.Usages.Count} usage(s) across " +
                 $"{result.Usages.Select(usage => usage.EntryId).Distinct().Count()} ID(s).",
             };
@@ -147,12 +148,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             string projectRoot,
             I18nUsageScanProfiler profiler)
         {
-            var usages = new HashSet<I18nIlUsage>();
-            var warnings = new List<string>();
-            var cecilPerformance = new List<I18nCecilAssemblyScanPerformance>();
-            var changedSourcePaths = new List<string>();
-            int scannedAssemblyCount = 0;
-            int candidateAssemblyCount = 0;
+            var sourceResults = new List<I18nIlUsageSourceScanResult>();
+            var globalWarnings = new List<string>();
 
             foreach (UnityCompilationAssembly assembly in assemblies)
             {
@@ -165,16 +162,27 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 string assemblyPath = I18nUsagePath.Resolve(assembly.outputPath, projectRoot);
                 if (!File.Exists(assemblyPath))
                 {
-                    warnings.Add($"Skipped '{assembly.name}' because its compiled DLL was not found at '{assemblyPath}'.");
-                    changedSourcePaths.Add(assemblyPath);
+                    sourceResults.Add(new I18nIlUsageSourceScanResult(
+                        assembly.name,
+                        assemblyPath,
+                        I18nUsageSourceScanStatus.Changed,
+                        Array.Empty<I18nIlUsage>(),
+                        new[]
+                        {
+                            $"The compiled DLL was not found at '{assemblyPath}'; " +
+                            "the assembly may have changed while the scan was being prepared.",
+                        },
+                        null,
+                        false,
+                        null));
                     continue;
                 }
 
-                scannedAssemblyCount++;
                 string symbolsPath = Path.ChangeExtension(assemblyPath, ".pdb");
                 I18nUsageSourceStamp initialStamp = I18nUsageSourceStamp.Capture(
                     assemblyPath,
                     symbolsPath);
+                var sourceWarnings = new List<string>();
                 bool mayContainEntryId;
                 try
                 {
@@ -183,79 +191,108 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 catch (Exception exception)
                 {
                     mayContainEntryId = true;
-                    warnings.Add(
+                    sourceWarnings.Add(
                         $"Prefilter failed for '{assembly.name}'; falling back to Cecil: " +
                         $"{exception.GetType().Name}: {exception.Message}");
                 }
 
                 if (!mayContainEntryId)
                 {
-                    ObserveSourceStability(assemblyPath, symbolsPath, initialStamp, changedSourcePaths, warnings);
+                    sourceResults.Add(CreateSourceResult(
+                        assembly.name,
+                        assemblyPath,
+                        symbolsPath,
+                        initialStamp,
+                        Array.Empty<I18nIlUsage>(),
+                        sourceWarnings,
+                        null,
+                        false,
+                        null));
                     continue;
                 }
 
-                candidateAssemblyCount++;
                 var assemblyUsages = new HashSet<I18nIlUsage>();
+                I18nCecilAssemblyScanPerformance? cecilPerformance = null;
+                string? error = null;
                 try
                 {
-                    cecilPerformance.Add(I18nCecilUsageScanner.Scan(
+                    cecilPerformance = I18nCecilUsageScanner.Scan(
                         assembly.name,
                         assemblyPath,
                         assembly.allReferences,
                         projectRoot,
                         assemblyUsages,
-                        profiler));
+                        profiler);
                 }
                 catch (Exception exception)
                 {
-                    warnings.Add(
-                        $"Skipped '{assembly.name}': {exception.GetType().Name}: {exception.Message}");
+                    error = $"{exception.GetType().Name}: {exception.Message}";
                 }
 
-                if (ObserveSourceStability(
-                        assemblyPath,
-                        symbolsPath,
-                        initialStamp,
-                        changedSourcePaths,
-                        warnings))
-                {
-                    usages.UnionWith(assemblyUsages);
-                }
+                sourceResults.Add(CreateSourceResult(
+                    assembly.name,
+                    assemblyPath,
+                    symbolsPath,
+                    initialStamp,
+                    assemblyUsages,
+                    sourceWarnings,
+                    error,
+                    true,
+                    cecilPerformance));
 
                 profiler.Sample();
             }
 
             I18nUsageScanPerformance performance = profiler.Complete();
             return new I18nIlUsageScanResult(
-                usages
-                    .OrderBy(usage => usage.EntryId)
-                    .ThenBy(usage => usage.AssetPath, StringComparer.Ordinal)
-                    .ThenBy(usage => usage.Line)
-                    .ToArray(),
-                warnings,
-                scannedAssemblyCount,
-                candidateAssemblyCount,
-                cecilPerformance,
-                performance,
-                changedSourcePaths);
+                sourceResults,
+                globalWarnings,
+                performance);
         }
 
-        private static bool ObserveSourceStability(
+        private static I18nIlUsageSourceScanResult CreateSourceResult(
+            string assemblyName,
             string assemblyPath,
             string symbolsPath,
             I18nUsageSourceStamp initialStamp,
-            ICollection<string> changedSourcePaths,
-            ICollection<string> warnings)
+            IEnumerable<I18nIlUsage> usages,
+            IReadOnlyList<string> warnings,
+            string? error,
+            bool requiredCecilAnalysis,
+            I18nCecilAssemblyScanPerformance? cecilPerformance)
         {
-            if (initialStamp == I18nUsageSourceStamp.Capture(assemblyPath, symbolsPath))
+            I18nUsageSourceScanStatus status;
+            var sourceWarnings = new List<string>(warnings);
+            if (initialStamp != I18nUsageSourceStamp.Capture(assemblyPath, symbolsPath))
             {
-                return true;
+                status = I18nUsageSourceScanStatus.Changed;
+                sourceWarnings.Add(
+                    $"'{Path.GetFileName(assemblyPath)}' changed during scanning; " +
+                    "its result was discarded.");
+            }
+            else
+            {
+                status = error == null
+                    ? I18nUsageSourceScanStatus.Success
+                    : I18nUsageSourceScanStatus.Failed;
             }
 
-            changedSourcePaths.Add(assemblyPath);
-            warnings.Add(
-                $"'{Path.GetFileName(assemblyPath)}' changed during scanning; its result was discarded.");
-            return false;
+            return new I18nIlUsageSourceScanResult(
+                assemblyName,
+                assemblyPath,
+                status,
+                status == I18nUsageSourceScanStatus.Success
+                    ? usages
+                        .Distinct()
+                        .OrderBy(usage => usage.EntryId)
+                        .ThenBy(usage => usage.AssetPath, StringComparer.Ordinal)
+                        .ThenBy(usage => usage.Line)
+                        .ToArray()
+                    : Array.Empty<I18nIlUsage>(),
+                sourceWarnings,
+                error,
+                requiredCecilAnalysis,
+                cecilPerformance);
         }
 
         private static string FormatLocation(I18nIlUsage usage)

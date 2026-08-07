@@ -56,12 +56,24 @@ Scanning uses optimistic consistency rather than locking Unity assets or compile
    Full asset scans also compare the discovered file set at the end, so a file created or deleted
    while scanning invalidates the result.
 4. Before publishing, Unity Integration compares the captured revisions with the current ones.
-5. If either the revision or file stamp changed, the result is discarded. Automatic mode queues
-   the affected source again; manual mode asks the developer to rerun the scan.
+5. If either the revision or file stamp changed, that source result is marked `Changed` and is not
+   published. Automatic mode queues the affected source again; manual mode asks the developer to
+   rerun the scan.
 
 File stamps are consistency guards, not cache keys. They deliberately avoid hashing or rereading
 content. Cancellation can later reduce wasted work, but correctness must continue to rely on the
 final revision and stamp checks.
+
+Every independently replaceable asset or assembly produces its own immutable source result:
+
+- `Success` is publishable, including the important case of zero usages;
+- `Failed` carries an error and must not erase the last known usages for that source;
+- `Changed` was invalidated while scanning and must not be published.
+
+A partial batch is still published to index consumers when some sources changed. Consumers apply
+only its `Success` and `Failed` results, while Unity Integration queues the `Changed` sources again
+in Automatic mode. A full scan remains atomic: it replaces the complete index only when every
+source is stable and the global source revision has not advanced.
 
 When scans become asynchronous, pending work must have explicit `Pending` and `InFlight` states.
 Work is removed only after a stable result is published. A full scan should build a staging

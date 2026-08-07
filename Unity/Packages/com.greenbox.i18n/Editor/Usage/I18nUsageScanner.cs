@@ -163,19 +163,15 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 .ToArray();
             I18nUsageRevisionBatch revisionBatch = I18nUsageSourceRevisionTracker.Capture(sourceKeys);
             I18nAssetUsageScanResult result = I18nAssetUsageScanner.Scan(assetPaths);
-            string[] changedSources = MergeChangedSources(
-                result.ChangedSourcePaths,
+            result = result.MarkChangedSources(
                 I18nUsageSourceRevisionTracker.FindChanged(revisionBatch));
-            if (changedSources.Length == 0)
+            AssetsScanned?.Invoke(assetPaths, result);
+            if (!result.IsStable)
             {
-                AssetsScanned?.Invoke(assetPaths, result);
-            }
-            else
-            {
-                I18nUsageAutoScanner.RequeueAssets(changedSources);
+                I18nUsageAutoScanner.RequeueAssets(result.ChangedSourcePaths);
                 I18nLog.Warning(FormatChangedSourcesWarning(
                     "Asset usage scan",
-                    changedSources,
+                    result.ChangedSourcePaths,
                     I18nUsageAutoScanner.IsEnabled));
             }
 
@@ -225,17 +221,17 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 .ToArray();
             I18nUsageRevisionBatch revisionBatch = I18nUsageSourceRevisionTracker.Capture(sourceKeys);
             I18nIlUsageScanResult result = I18nIlUsageScanner.Scan(assemblyPaths);
-            string[] changedSources = MergeChangedSources(
-                result.ChangedSourcePaths,
+            result = result.MarkChangedSources(
                 I18nUsageSourceRevisionTracker.FindChanged(revisionBatch));
-            if (changedSources.Length == 0)
+            AssembliesScanned?.Invoke(assemblyPaths, result);
+            if (!result.IsStable)
             {
-                AssembliesScanned?.Invoke(assemblyPaths, result);
-            }
-            else
-            {
-                string[] removedAssemblies = changedSources.Where(path => !File.Exists(path)).ToArray();
-                string[] existingAssemblies = changedSources.Where(File.Exists).ToArray();
+                string[] removedAssemblies = result.ChangedSourcePaths
+                    .Where(path => !File.Exists(path))
+                    .ToArray();
+                string[] existingAssemblies = result.ChangedSourcePaths
+                    .Where(File.Exists)
+                    .ToArray();
                 if (removedAssemblies.Length > 0)
                 {
                     AssembliesRemoved?.Invoke(removedAssemblies);
@@ -244,7 +240,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 I18nUsageAutoScanner.RequeueAssemblies(existingAssemblies);
                 I18nLog.Warning(FormatChangedSourcesWarning(
                     "IL usage scan",
-                    changedSources,
+                    result.ChangedSourcePaths,
                     I18nUsageAutoScanner.IsEnabled));
             }
 
@@ -292,17 +288,6 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         {
             return $"{operation} took {elapsedMilliseconds} ms, exceeding the " +
                    $"{SlowScanThresholdMilliseconds} ms warning threshold.";
-        }
-
-        private static string[] MergeChangedSources(
-            IEnumerable<string> first,
-            IEnumerable<string> second)
-        {
-            return first
-                .Concat(second)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
         }
 
         private static string FormatChangedSourcesWarning(
