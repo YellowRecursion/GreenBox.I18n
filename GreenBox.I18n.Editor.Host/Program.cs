@@ -7,7 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<EditorSession>();
 builder.Services.AddSingleton<CatalogFileLoader>();
+builder.Services.AddSingleton<UnityProjectLocator>();
 builder.Services.AddSingleton<UnityAssetReferenceService>();
+builder.Services.AddSingleton<UsageIndexReader>();
 builder.Services.AddSingleton<EditorPreferencesStore>();
 
 var app = builder.Build();
@@ -37,6 +39,7 @@ if (preferenceSnapshot.ReopenLastCatalog &&
 app.MapEditorSessionEndpoints();
 app.MapCatalogEndpoints();
 app.MapUnityAssetEndpoints();
+app.MapUsageIndexEndpoints();
 app.MapEditorPreferencesEndpoints();
 
 app.Run();

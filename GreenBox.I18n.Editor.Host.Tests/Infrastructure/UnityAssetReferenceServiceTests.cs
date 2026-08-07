@@ -11,7 +11,7 @@ public sealed class UnityAssetReferenceServiceTests
     public void Resolve_ReadsCurrentPathFromMetaFile()
     {
         using var project = new TestUnityProject(AssetGuid);
-        var service = new UnityAssetReferenceService();
+        var service = new UnityAssetReferenceService(new UnityProjectLocator());
 
         UnityAssetReferenceResult result = service.Resolve(project.CatalogPath, AssetGuid);
 
@@ -25,7 +25,7 @@ public sealed class UnityAssetReferenceServiceTests
     {
         using var project = new TestUnityProject(AssetGuid);
         project.WriteSelection("21300002", "VictorySprite");
-        var service = new UnityAssetReferenceService();
+        var service = new UnityAssetReferenceService(new UnityProjectLocator());
 
         UnityAssetReferenceResult result = service.ResolveDrop(project.CatalogPath, "Victory.mp3");
 
@@ -40,7 +40,7 @@ public sealed class UnityAssetReferenceServiceTests
     {
         using var project = new TestUnityProject(AssetGuid);
         project.WriteSelection("21300002", "VictorySprite");
-        var service = new UnityAssetReferenceService();
+        var service = new UnityAssetReferenceService(new UnityProjectLocator());
 
         UnityAssetReferenceResult result = service.ResolveDrop(project.CatalogPath, "Defeat.mp3");
 
@@ -62,6 +62,7 @@ public sealed class UnityAssetReferenceServiceTests
                 Guid.NewGuid().ToString("N"));
             string assetDirectory = Path.Combine(_projectRoot, "Assets", "Audio");
             Directory.CreateDirectory(assetDirectory);
+            Directory.CreateDirectory(Path.Combine(_projectRoot, "ProjectSettings"));
             File.WriteAllText(Path.Combine(assetDirectory, "Victory.mp3"), "test");
             File.WriteAllText(
                 Path.Combine(assetDirectory, "Victory.mp3.meta"),

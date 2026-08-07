@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GreenBox.I18n.Core\GreenBox.I18n.Core.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
   </ItemGroup>
 
   <PropertyGroup>

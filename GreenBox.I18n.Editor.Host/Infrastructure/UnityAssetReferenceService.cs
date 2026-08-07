@@ -13,8 +13,18 @@ public sealed class UnityAssetReferenceService
     private const string ClipboardFormat = "greenbox.i18n.asset-reference";
     private const int ClipboardFormatVersion = 1;
     private readonly Lock _lock = new();
+    private readonly UnityProjectLocator _projectLocator;
     private string? _cachedProjectRoot;
     private Dictionary<string, string> _pathsByGuid = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Creates a Unity asset-reference service.
+    /// </summary>
+    /// <param name="projectLocator">The shared Unity project locator.</param>
+    public UnityAssetReferenceService(UnityProjectLocator projectLocator)
+    {
+        _projectLocator = projectLocator;
+    }
 
     /// <summary>
     /// Resolves an asset GUID to its current path in the Unity project.
@@ -24,14 +34,15 @@ public sealed class UnityAssetReferenceService
     /// <returns>The resolved reference, or an error when it cannot be resolved.</returns>
     public UnityAssetReferenceResult Resolve(string? catalogPath, string? assetGuid)
     {
-        if (!TryGetProjectRoot(catalogPath, out string? projectRoot))
+        string? projectRoot = _projectLocator.FindProjectRoot(catalogPath);
+        if (projectRoot == null)
         {
             return UnityAssetReferenceResult.Failure(
                 EditorErrorCodes.UnityProjectNotFound,
                 "The open catalog is not located inside a Unity Assets directory.");
         }
 
-        string resolvedProjectRoot = projectRoot!;
+        string resolvedProjectRoot = projectRoot;
 
         if (!IsAssetGuid(assetGuid))
         {
@@ -66,14 +77,15 @@ public sealed class UnityAssetReferenceService
     /// <returns>The selected Unity object reference, or a mismatch error.</returns>
     public UnityAssetReferenceResult ResolveDrop(string? catalogPath, string? fileName)
     {
-        if (!TryGetProjectRoot(catalogPath, out string? projectRoot))
+        string? projectRoot = _projectLocator.FindProjectRoot(catalogPath);
+        if (projectRoot == null)
         {
             return UnityAssetReferenceResult.Failure(
                 EditorErrorCodes.UnityProjectNotFound,
                 "The open catalog is not located inside a Unity Assets directory.");
         }
 
-        string resolvedProjectRoot = projectRoot!;
+        string resolvedProjectRoot = projectRoot;
 
         string selectionPath = Path.Combine(
             resolvedProjectRoot,
@@ -146,8 +158,8 @@ public sealed class UnityAssetReferenceService
             return resolved.Error;
         }
 
-        TryGetProjectRoot(catalogPath, out string? projectRoot);
-        string absolutePath = Path.GetFullPath(Path.Combine(projectRoot!, resolved.Reference.AssetPath));
+        string projectRoot = _projectLocator.FindProjectRoot(catalogPath)!;
+        string absolutePath = Path.GetFullPath(Path.Combine(projectRoot, resolved.Reference.AssetPath));
         try
         {
             Process.Start(new ProcessStartInfo(absolutePath) { UseShellExecute = true });
@@ -229,20 +241,6 @@ public sealed class UnityAssetReferenceService
         }
 
         return null;
-    }
-
-    private static bool TryGetProjectRoot(string? catalogPath, out string? projectRoot)
-    {
-        DirectoryInfo? directory = string.IsNullOrWhiteSpace(catalogPath)
-            ? null
-            : new FileInfo(catalogPath).Directory;
-        while (directory != null && !string.Equals(directory.Name, "Assets", StringComparison.OrdinalIgnoreCase))
-        {
-            directory = directory.Parent;
-        }
-
-        projectRoot = directory?.Parent?.FullName;
-        return projectRoot != null;
     }
 
     private static bool IsAssetGuid(string? value)
