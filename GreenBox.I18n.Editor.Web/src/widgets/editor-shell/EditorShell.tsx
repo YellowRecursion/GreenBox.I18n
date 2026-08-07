@@ -9,6 +9,7 @@ import type { CatalogLocaleRename } from '../../entities/catalog/api/applyCatalo
 import { useCatalog } from '../../entities/catalog/model/useCatalog'
 import { useCatalogSession } from '../../entities/catalog/model/useCatalogSession'
 import { useCatalogSourceMonitor } from '../../entities/catalog/model/useCatalogSourceMonitor'
+import { useUnityProjectStatus } from '../../entities/unity-project/model/useUnityProjectStatus'
 import {
   getEditorPreferences,
   updateEditorPreferences,
@@ -795,6 +796,7 @@ function CatalogWorkspace({
   }, [clearHistory, onMergeSource])
 
   const sourceMonitor = useCatalogSourceMonitor(mergeFromDisk)
+  const unityProject = useUnityProjectStatus()
 
   const handleSave = async (overwriteExternalChanges = false) => {
     await onSave(overwriteExternalChanges)
@@ -813,6 +815,7 @@ function CatalogWorkspace({
         catalogPath={catalogPath}
         isDirty={isDirty}
         sourceStatus={sourceMonitor.status}
+        unityProject={unityProject}
         undoLabel={history.undo.at(-1)?.label}
         redoLabel={history.redo.at(-1)?.label}
         historyDirection={historyDirection}

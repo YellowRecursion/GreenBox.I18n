@@ -1,16 +1,19 @@
 import { CopyOutlined, DownOutlined, ExportOutlined, FolderOpenOutlined, RedoOutlined, SaveOutlined, TranslationOutlined, UndoOutlined } from '@ant-design/icons'
 import { useCallback, useEffect, useState } from 'react'
-import { Button, Dropdown, Flex, Modal, Space, Tooltip, Typography, message, theme, type MenuProps } from 'antd'
+import { Badge, Button, Dropdown, Flex, Modal, Space, Tooltip, Typography, message, theme, type MenuProps } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { OpenCatalogDialog } from '../../features/open-catalog/OpenCatalogDialog'
 import { HttpError } from '../../shared/api/httpClient'
 import type { CatalogSourceStatus } from '../../entities/catalog/api/getCatalogSourceStatus'
 import { openCatalogFile } from '../../entities/catalog/api/openCatalogFile'
+import type { UnityProjectStatus } from '../../entities/unity-project/api/getUnityProjectStatus'
+import unityGameEngineIcon from '../../assets/unity-game-engine-icon.webp'
 
 interface EditorHeaderProps {
   catalogPath: string
   isDirty: boolean
   sourceStatus: CatalogSourceStatus
+  unityProject?: UnityProjectStatus
   undoLabel?: string
   redoLabel?: string
   historyDirection?: 'undo' | 'redo'
@@ -24,6 +27,7 @@ export function EditorHeader({
   catalogPath,
   isDirty,
   sourceStatus,
+  unityProject,
   undoLabel,
   redoLabel,
   historyDirection,
@@ -207,24 +211,65 @@ export function EditorHeader({
 
       <div style={{ width: 1, height: 20, background: token.colorBorderSecondary }} />
 
-      <Flex align="center" gap={layoutTokens.spacing.xSmall} style={{ minWidth: 0, flex: '1 1 auto' }}>
-        <Dropdown menu={pathMenu} trigger={['click']}>
-          <Typography.Text
-            type="secondary"
-            ellipsis={{ tooltip: catalogPath }}
-            style={{
-              direction: 'rtl',
-              textAlign: 'left',
-              minWidth: 0,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              cursor: 'pointer',
-            }}
+      <Flex align="center" gap={layoutTokens.spacing.small} style={{ minWidth: 0, flex: '0 1 auto' }}>
+        <Flex align="center" gap={layoutTokens.spacing.xSmall} style={{ minWidth: 0, flex: '0 1 auto' }}>
+          <Dropdown menu={pathMenu} trigger={['click']}>
+            <Typography.Text
+              type="secondary"
+              ellipsis={{ tooltip: catalogPath }}
+              style={{
+                direction: 'rtl',
+                textAlign: 'left',
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                cursor: 'pointer',
+              }}
+            >
+              {catalogPath}
+            </Typography.Text>
+          </Dropdown>
+        </Flex>
+
+        {unityProject?.isUnityProject && (
+          <Tooltip
+            title={(
+              <Flex vertical gap={2}>
+                <Typography.Text strong>{unityProject.projectName}</Typography.Text>
+                <Typography.Text type="secondary">{unityProject.projectPath}</Typography.Text>
+                <Typography.Text>
+                  {unityProject.isEditorOnline
+                    ? 'Unity Editor is running.'
+                    : 'Unity Editor is not running.'}
+                </Typography.Text>
+              </Flex>
+            )}
           >
-            {catalogPath}
-          </Typography.Text>
-        </Dropdown>
+            <Flex
+              align="center"
+              gap={layoutTokens.spacing.xSmall}
+              style={{ cursor: 'help', flex: '0 0 auto' }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  display: 'block',
+                  width: 16,
+                  height: 16,
+                  backgroundColor: token.colorTextSecondary,
+                  mask: `url(${unityGameEngineIcon}) center / contain no-repeat`,
+                  WebkitMask: `url(${unityGameEngineIcon}) center / contain no-repeat`,
+                }}
+              />
+              <Typography.Text type="secondary">{unityProject.projectName}</Typography.Text>
+              <Badge
+                status={unityProject.isEditorOnline ? 'success' : 'default'}
+                aria-label={unityProject.isEditorOnline ? 'Online' : 'Offline'}
+              />
+            </Flex>
+          </Tooltip>
+        )}
       </Flex>
       <OpenCatalogDialog
         catalogPath={catalogPath}
