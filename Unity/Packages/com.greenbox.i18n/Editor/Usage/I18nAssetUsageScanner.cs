@@ -86,7 +86,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             long scannedByteCount = 0;
             byte[] readBuffer = new byte[ReadBufferSize];
 
-            foreach (string absolutePath in EnumerateSerializedAssetPaths(Application.dataPath))
+            foreach (string absolutePath in absolutePaths)
             {
                 scannedAssetCount++;
                 try
