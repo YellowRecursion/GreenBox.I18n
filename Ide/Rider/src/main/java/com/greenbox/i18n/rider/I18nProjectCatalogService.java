@@ -15,7 +15,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
-/** Maintains a project-local, immutable entry-name index for editor features. */
+/** Maintains a project-local, immutable entry index for editor features. */
 public final class I18nProjectCatalogService implements Disposable {
     private static final Logger LOG = Logger.getInstance(I18nProjectCatalogService.class);
 
@@ -40,8 +40,8 @@ public final class I18nProjectCatalogService implements Disposable {
         return project.getService(I18nProjectCatalogService.class);
     }
 
-    Map<String, String> entryNames() {
-        return snapshot.entryNames();
+    Map<String, I18nCatalogEntry> entries() {
+        return snapshot.entries();
     }
 
     synchronized void reload() {
@@ -58,9 +58,9 @@ public final class I18nProjectCatalogService implements Disposable {
                 return;
             }
 
-            Map<String, String> entryNames = I18nCatalogReader.readEntryNames(catalogPath);
-            updateSnapshot(new Snapshot(location.settingsPath(), catalogPath, entryNames));
-            LOG.info("Loaded " + entryNames.size() + " GreenBox I18n entries from " + catalogPath + '.');
+            Map<String, I18nCatalogEntry> entries = I18nCatalogReader.readEntries(catalogPath);
+            updateSnapshot(new Snapshot(location.settingsPath(), catalogPath, entries));
+            LOG.info("Loaded " + entries.size() + " GreenBox I18n entries from " + catalogPath + '.');
         } catch (IOException | RuntimeException exception) {
             LOG.warn("Could not load the active GreenBox I18n catalog. Keeping the previous index.", exception);
         }
@@ -88,7 +88,7 @@ public final class I18nProjectCatalogService implements Disposable {
     public void dispose() {
     }
 
-    private record Snapshot(Path settingsPath, Path catalogPath, Map<String, String> entryNames) {
+    private record Snapshot(Path settingsPath, Path catalogPath, Map<String, I18nCatalogEntry> entries) {
         private static Snapshot empty() {
             return new Snapshot(null, null, Map.of());
         }

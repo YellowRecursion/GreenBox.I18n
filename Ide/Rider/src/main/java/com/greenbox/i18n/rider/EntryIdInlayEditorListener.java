@@ -1,12 +1,14 @@
 package com.greenbox.i18n.rider;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.codeInsight.hints.presentation.InlayPresentation;
+import com.intellij.codeInsight.hints.presentation.PresentationFactory;
+import com.intellij.codeInsight.hints.presentation.PresentationRenderer;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorCustomElementRenderer;
 import com.intellij.openapi.editor.Inlay;
-import com.intellij.openapi.editor.colors.EditorFontType;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.editor.event.EditorFactoryEvent;
@@ -15,11 +17,8 @@ import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.ui.JBColor;
 import org.jetbrains.annotations.NotNull;
 
-import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.util.ArrayList;
@@ -71,8 +70,8 @@ public final class EntryIdInlayEditorListener implements EditorFactoryListener {
             return false;
         }
 
-        Map<String, String> entryNames = I18nProjectCatalogService.getInstance(project).entryNames();
-        return findKnownEntryId(editor.getDocument().getText(), entryNames) != null;
+        Map<String, I18nCatalogEntry> entries = I18nProjectCatalogService.getInstance(project).entries();
+        return findKnownEntryId(editor.getDocument().getText(), entries) != null;
     }
 
     static void refreshProjectEditors(Project project) {
@@ -126,12 +125,12 @@ public final class EntryIdInlayEditorListener implements EditorFactoryListener {
             return;
         }
 
-        Map<String, String> entryNames = I18nProjectCatalogService.getInstance(project).entryNames();
+        Map<String, I18nCatalogEntry> entries = I18nProjectCatalogService.getInstance(project).entries();
         CSharpNumericTokenScanner.scan(text, (offset, id) -> {
-            String entryName = entryNames.get(id);
+            I18nCatalogEntry entry = entries.get(id);
             EditorCustomElementRenderer renderer = null;
-            if (entryName != null) {
-                renderer = new EntryNameRenderer(editor, entryName);
+            if (entry != null) {
+                renderer = createEntryPresentation(editor, entry);
             } else if (I18nEntryIdFormat.isValid(id)) {
                 renderer = new MissingEntryRenderer(editor);
             }
@@ -147,10 +146,10 @@ public final class EntryIdInlayEditorListener implements EditorFactoryListener {
         editor.putUserData(INLAYS_KEY, inlays);
     }
 
-    private static String findKnownEntryId(String text, Map<String, String> entryNames) {
+    private static String findKnownEntryId(String text, Map<String, I18nCatalogEntry> entries) {
         String[] result = new String[1];
         CSharpNumericTokenScanner.scan(text, (offset, id) -> {
-            if (entryNames.containsKey(id)) {
+            if (entries.containsKey(id)) {
                 result[0] = id;
             }
         });
@@ -171,38 +170,14 @@ public final class EntryIdInlayEditorListener implements EditorFactoryListener {
         editor.putUserData(INLAYS_KEY, null);
     }
 
-    private static final class EntryNameRenderer implements EditorCustomElementRenderer {
-        private final Editor editor;
-        private final String text;
-
-        private EntryNameRenderer(Editor editor, String text) {
-            this.editor = editor;
-            this.text = text;
-        }
-
-        @Override
-        public int calcWidthInPixels(@NotNull Inlay inlay) {
-            return fontMetrics().stringWidth(text);
-        }
-
-        @Override
-        public void paint(
-            @NotNull Inlay inlay,
-            @NotNull Graphics graphics,
-            @NotNull Rectangle targetRegion,
-            @NotNull com.intellij.openapi.editor.markup.TextAttributes textAttributes) {
-            graphics.setFont(editorFont());
-            graphics.setColor(JBColor.GRAY);
-            graphics.drawString(text, targetRegion.x, targetRegion.y + editor.getAscent());
-        }
-
-        private Font editorFont() {
-            return editor.getColorsScheme().getFont(EditorFontType.PLAIN);
-        }
-
-        private FontMetrics fontMetrics() {
-            return editor.getContentComponent().getFontMetrics(editorFont());
-        }
+    private static EditorCustomElementRenderer createEntryPresentation(
+        Editor editor,
+        I18nCatalogEntry entry) {
+        PresentationFactory factory = new PresentationFactory(editor);
+        InlayPresentation name = factory.smallText(entry.name());
+        InlayPresentation compactName = factory.roundWithBackgroundAndNoInset(name);
+        InlayPresentation withTooltip = factory.withTooltip(entry.path(), compactName);
+        return new PresentationRenderer(withTooltip);
     }
 
     private static final class MissingEntryRenderer implements EditorCustomElementRenderer {

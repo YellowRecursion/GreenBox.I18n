@@ -16,8 +16,8 @@ final class I18nCatalogReader {
     private I18nCatalogReader() {
     }
 
-    static Map<String, String> readEntryNames(Path catalogPath) throws IOException {
-        Map<String, String> entries = new HashMap<>();
+    static Map<String, I18nCatalogEntry> readEntries(Path catalogPath) throws IOException {
+        Map<String, I18nCatalogEntry> entries = new HashMap<>();
         try (BufferedReader textReader = Files.newBufferedReader(catalogPath, StandardCharsets.UTF_8);
              JsonReader reader = new JsonReader(textReader)) {
             reader.beginObject();
@@ -34,7 +34,7 @@ final class I18nCatalogReader {
         return Map.copyOf(entries);
     }
 
-    private static void readEntries(JsonReader reader, Map<String, String> entries) throws IOException {
+    private static void readEntries(JsonReader reader, Map<String, I18nCatalogEntry> entries) throws IOException {
         if (reader.peek() != JsonToken.BEGIN_ARRAY) {
             reader.skipValue();
             return;
@@ -47,7 +47,7 @@ final class I18nCatalogReader {
         reader.endArray();
     }
 
-    private static void readEntry(JsonReader reader, Map<String, String> entries) throws IOException {
+    private static void readEntry(JsonReader reader, Map<String, I18nCatalogEntry> entries) throws IOException {
         if (reader.peek() != JsonToken.BEGIN_OBJECT) {
             reader.skipValue();
             return;
@@ -69,7 +69,7 @@ final class I18nCatalogReader {
         reader.endObject();
 
         if (id != null && path != null && !id.isBlank() && !path.isBlank()) {
-            entries.put(id, entryName(path));
+            entries.put(id, new I18nCatalogEntry(path, entryName(path)));
         }
     }
 

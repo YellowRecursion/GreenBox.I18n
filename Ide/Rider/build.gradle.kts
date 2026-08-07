@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.greenbox.i18n"
-version = "0.2.1-dev"
+version = "0.3.0-dev"
 
 repositories {
     mavenCentral()
