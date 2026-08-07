@@ -40,7 +40,7 @@ export function useCatalogSourceMonitor(mergeFromDisk: () => Promise<void>) {
         return
       }
 
-      setStatus(nextStatus)
+      setStatus((current) => areStatusesEqual(current, nextStatus) ? current : nextStatus)
     } catch {
       // Host connectivity is reported by the session provider. A transient polling
       // failure must not replace a known source-file status.
@@ -71,4 +71,10 @@ export function useCatalogSourceMonitor(mergeFromDisk: () => Promise<void>) {
 
   const markCurrent = useCallback(() => setStatus(unchangedStatus), [])
   return { status, check, markCurrent }
+}
+
+function areStatusesEqual(left: CatalogSourceStatus, right: CatalogSourceStatus) {
+  return left.hasChanged === right.hasChanged &&
+    left.isAvailable === right.isAvailable &&
+    left.message === right.message
 }

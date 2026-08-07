@@ -15,6 +15,7 @@ import {
   FileAddOutlined,
   FolderAddOutlined,
   PlusOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
 import {
   Button,
@@ -828,8 +829,20 @@ function TreeNodeTitle({
               </Tooltip>
             ))}
           </span>
+        ) : node.hasUsageWarning ? (
+          <WarningOutlined
+            aria-label={node.kind === 'entry' ? 'No usages' : 'Contains an entry with no usages'}
+            style={{ color: token.colorWarning, flex: '0 0 auto' }}
+          />
         ) : node.count !== undefined ? (
-          <Typography.Text type="secondary" style={{ flex: '0 0 auto', fontSize: 12 }}>
+          <Typography.Text
+            type={node.kind === 'entry' ? undefined : 'secondary'}
+            style={{
+              color: node.kind === 'entry' ? token.colorInfo : undefined,
+              flex: '0 0 auto',
+              fontSize: 12,
+            }}
+          >
             {node.count}
           </Typography.Text>
         ) : null}

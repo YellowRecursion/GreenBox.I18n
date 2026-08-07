@@ -10,6 +10,7 @@ import { useCatalog } from '../../entities/catalog/model/useCatalog'
 import { useCatalogSession } from '../../entities/catalog/model/useCatalogSession'
 import { useCatalogSourceMonitor } from '../../entities/catalog/model/useCatalogSourceMonitor'
 import { useUnityProjectStatus } from '../../entities/unity-project/model/useUnityProjectStatus'
+import { useUsageIndexSummary } from '../../entities/usage-index/model/useUsageIndexSummary'
 import {
   getEditorPreferences,
   updateEditorPreferences,
@@ -144,9 +145,20 @@ function CatalogWorkspace({
   const selectionHistoryRef = useRef<Key[][]>([[]])
   const selectionHistoryIndexRef = useRef(0)
   const isNavigatingSelectionRef = useRef(false)
+  const unityProject = useUnityProjectStatus()
+  const usageIndex = useUsageIndexSummary(Boolean(unityProject?.isEditorOnline))
+  const usageCounts = useMemo(() => {
+    const isReliable = unityProject?.isEditorOnline &&
+      usageIndex?.availability === 'available' &&
+      usageIndex.status === 'ready' &&
+      usageIndex.failedSourceCount === 0
+    return isReliable
+      ? new Map(usageIndex.entries.map((entry) => [entry.entryId, entry.totalCount]))
+      : undefined
+  }, [unityProject?.isEditorOnline, usageIndex])
   const tree = useMemo(
-    () => buildCatalogTree(catalog, temporaryFolderPaths),
-    [catalog, temporaryFolderPaths],
+    () => buildCatalogTree(catalog, temporaryFolderPaths, usageCounts),
+    [catalog, temporaryFolderPaths, usageCounts],
   )
   const selection = selectedKeys.flatMap((key) => {
     const item = tree.selectionByKey.get(String(key))
@@ -796,7 +808,6 @@ function CatalogWorkspace({
   }, [clearHistory, onMergeSource])
 
   const sourceMonitor = useCatalogSourceMonitor(mergeFromDisk)
-  const unityProject = useUnityProjectStatus()
 
   const handleSave = async (overwriteExternalChanges = false) => {
     await onSave(overwriteExternalChanges)

@@ -12,6 +12,16 @@ public sealed record UsageIndexSummaryResponse(
     IReadOnlyList<UsageEntrySummaryResponse> Entries);
 
 /// <summary>
+/// Describes lightweight usage-index state without per-entry counts.
+/// </summary>
+public sealed record UsageIndexStateResponse(
+    string Availability,
+    string? Status,
+    DateTimeOffset? UpdatedAtUtc,
+    string? LastError,
+    int FailedSourceCount);
+
+/// <summary>
 /// Contains usage counts for one entry. Entry IDs are strings because they exceed JavaScript's safe integer range.
 /// </summary>
 public sealed record UsageEntrySummaryResponse(

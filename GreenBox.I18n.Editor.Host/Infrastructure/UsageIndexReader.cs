@@ -39,7 +39,7 @@ public sealed class UsageIndexReader
             await using SqliteTransaction transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
             (string status, DateTimeOffset? updatedAtUtc, string? lastError) =
-                await ReadStateAsync(connection, transaction, cancellationToken);
+                await ReadIndexStateRowAsync(connection, transaction, cancellationToken);
             int failedSourceCount = await ReadFailedSourceCountAsync(connection, transaction, cancellationToken);
             IReadOnlyList<UsageEntrySummaryResponse> entries =
                 await ReadEntrySummariesAsync(connection, transaction, cancellationToken);
@@ -61,6 +61,45 @@ public sealed class UsageIndexReader
                 exception.Message,
                 0,
                 Array.Empty<UsageEntrySummaryResponse>());
+        }
+    }
+
+    /// <summary>
+    /// Reads lightweight index state without aggregating per-entry usage rows.
+    /// </summary>
+    public async Task<UsageIndexStateResponse> ReadStateAsync(
+        string? catalogPath,
+        CancellationToken cancellationToken)
+    {
+        UsageIndexLocation location = Locate(catalogPath);
+        if (location.Availability != UsageIndexAvailability.Available)
+        {
+            return EmptyState(location.Availability);
+        }
+
+        try
+        {
+            await using SqliteConnection connection = await OpenAsync(location.DatabasePath!, cancellationToken);
+            await using SqliteTransaction transaction =
+                (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+            (string status, DateTimeOffset? updatedAtUtc, string? lastError) =
+                await ReadIndexStateRowAsync(connection, transaction, cancellationToken);
+            int failedSourceCount = await ReadFailedSourceCountAsync(connection, transaction, cancellationToken);
+            return new UsageIndexStateResponse(
+                UsageIndexAvailability.Available,
+                status,
+                updatedAtUtc,
+                lastError,
+                failedSourceCount);
+        }
+        catch (Exception exception) when (IsReadFailure(exception))
+        {
+            return new UsageIndexStateResponse(
+                UsageIndexAvailability.Error,
+                null,
+                null,
+                exception.Message,
+                0);
         }
     }
 
@@ -135,7 +174,7 @@ public sealed class UsageIndexReader
         return connection;
     }
 
-    private static async Task<(string Status, DateTimeOffset? UpdatedAtUtc, string? LastError)> ReadStateAsync(
+    private static async Task<(string Status, DateTimeOffset? UpdatedAtUtc, string? LastError)> ReadIndexStateRowAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
         CancellationToken cancellationToken)
@@ -288,6 +327,9 @@ public sealed class UsageIndexReader
 
     private static UsageIndexSummaryResponse EmptySummary(string availability) =>
         new(availability, null, null, null, 0, Array.Empty<UsageEntrySummaryResponse>());
+
+    private static UsageIndexStateResponse EmptyState(string availability) =>
+        new(availability, null, null, null, 0);
 
     private static UsageEntryResponse EmptyEntry(string availability, string entryId) =>
         new(availability, entryId, 0, Array.Empty<CodeUsageResponse>(), Array.Empty<AssetUsageResponse>());

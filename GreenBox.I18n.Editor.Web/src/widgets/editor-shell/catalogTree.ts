@@ -20,6 +20,7 @@ export interface CatalogTreeNode {
   culture?: string
   isDirty?: boolean
   isTemporary?: boolean
+  hasUsageWarning?: boolean
   entryId?: string
   children?: CatalogTreeNode[]
 }
@@ -46,6 +47,7 @@ interface FolderBuilder {
 export function buildCatalogTree(
   catalog: CatalogSnapshot,
   temporaryFolderPaths: readonly string[] = [],
+  usageCounts?: ReadonlyMap<string, number>,
 ): CatalogTreeModel {
   const selectionByKey = new Map<string, CatalogSelectionItem>()
   const dirtyLocaleIds = new Set(catalog.dirtyLocaleIds ?? [])
@@ -78,7 +80,7 @@ export function buildCatalogTree(
   sortFolderChildren(rootFolder)
 
   const entryNodes = rootFolder.children.map((child) =>
-    createEntryTreeNode(child, selectionByKey, dirtyEntryIds, dirtyPaths))
+    createEntryTreeNode(child, selectionByKey, dirtyEntryIds, dirtyPaths, usageCounts))
 
   return {
     nodes: [
@@ -98,6 +100,7 @@ export function buildCatalogTree(
         kind: 'entries-root',
         searchText: 'entries',
         count: catalog.entries.length,
+        hasUsageWarning: usageCounts !== undefined && entryNodes.some((node) => node.hasUsageWarning),
         path: '',
         isDirty: dirtyPaths.size > 0 || dirtyEntryIds.size > 0 || temporaryFolderPaths.length > 0,
         selectable: false,
@@ -311,9 +314,12 @@ function createEntryTreeNode(
   selectionByKey: Map<string, CatalogSelectionItem>,
   dirtyEntryIds: ReadonlySet<string>,
   dirtyPaths: ReadonlySet<string>,
+  usageCounts?: ReadonlyMap<string, number>,
 ): CatalogTreeNode {
   if ('children' in child) {
     const key = folderKey(child.path)
+    const children = child.children.map((nestedChild) =>
+      createEntryTreeNode(nestedChild, selectionByKey, dirtyEntryIds, dirtyPaths, usageCounts))
     selectionByKey.set(key, {
       kind: 'folder',
       path: child.path,
@@ -327,16 +333,18 @@ function createEntryTreeNode(
       kind: 'folder',
       searchText: child.path,
       count: child.entryCount,
+      hasUsageWarning: usageCounts !== undefined && children.some((node) => node.hasUsageWarning),
       path: child.path,
       isDirty:
         child.isTemporary ||
         hasDirtyPath(child.path, dirtyPaths) ||
         hasDirtyEntry(child, dirtyEntryIds),
       isTemporary: child.isTemporary,
-      children: child.children.map((nestedChild) =>
-        createEntryTreeNode(nestedChild, selectionByKey, dirtyEntryIds, dirtyPaths)),
+      children,
     }
   }
+
+  const usageCount = usageCounts?.get(child.id) ?? 0
 
   return {
     key: entryKey(child.id),
@@ -344,6 +352,8 @@ function createEntryTreeNode(
     kind: 'entry',
     path: child.path,
     entryId: child.id,
+    count: usageCounts === undefined ? undefined : usageCount,
+    hasUsageWarning: usageCounts !== undefined && usageCount === 0,
     isDirty: dirtyEntryIds.has(child.id) || dirtyPaths.has(child.path),
     searchText: [
       child.id,

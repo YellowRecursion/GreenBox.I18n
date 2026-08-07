@@ -19,7 +19,7 @@ export function useUnityProjectStatus() {
     try {
       const nextStatus = await getUnityProjectStatus(signal)
       if (!signal?.aborted) {
-        setStatus(nextStatus)
+        setStatus((current) => areEqual(current, nextStatus) ? current : nextStatus)
       }
     } catch {
       // Session-level connectivity owns Host errors. Keep the last known presence
@@ -52,4 +52,11 @@ export function useUnityProjectStatus() {
   }, [check])
 
   return status
+}
+
+function areEqual(left: UnityProjectStatus | undefined, right: UnityProjectStatus) {
+  return left?.isUnityProject === right.isUnityProject &&
+    left.projectName === right.projectName &&
+    left.projectPath === right.projectPath &&
+    left.isEditorOnline === right.isEditorOnline
 }

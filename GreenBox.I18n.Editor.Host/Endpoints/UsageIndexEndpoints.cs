@@ -16,6 +16,7 @@ public static class UsageIndexEndpoints
     public static IEndpointRouteBuilder MapUsageIndexEndpoints(this IEndpointRouteBuilder endpoints)
     {
         RouteGroupBuilder usageEndpoints = endpoints.MapGroup("/api/usage-index");
+        usageEndpoints.MapGet("/state", ReadStateAsync);
         usageEndpoints.MapGet(string.Empty, ReadSummaryAsync);
         usageEndpoints.MapGet("/entries/{entryId}", ReadEntryAsync);
         return endpoints;
@@ -26,6 +27,12 @@ public static class UsageIndexEndpoints
         UsageIndexReader reader,
         CancellationToken cancellationToken) =>
         reader.ReadSummaryAsync(session.GetSnapshot().CatalogPath, cancellationToken);
+
+    private static Task<UsageIndexStateResponse> ReadStateAsync(
+        EditorSession session,
+        UsageIndexReader reader,
+        CancellationToken cancellationToken) =>
+        reader.ReadStateAsync(session.GetSnapshot().CatalogPath, cancellationToken);
 
     private static async Task<IResult> ReadEntryAsync(
         string entryId,

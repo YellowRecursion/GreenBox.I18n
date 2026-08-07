@@ -26,6 +26,20 @@ public sealed class UsageIndexReaderTests
     }
 
     [Fact]
+    public async Task ReadStateAsync_DoesNotLoadPerEntryCounts()
+    {
+        using var project = new TestUsageProject();
+        var reader = new UsageIndexReader(new UnityProjectLocator());
+
+        var result = await reader.ReadStateAsync(project.CatalogPath, CancellationToken.None);
+
+        Assert.Equal(UsageIndexAvailability.Available, result.Availability);
+        Assert.Equal("ready", result.Status);
+        Assert.NotNull(result.UpdatedAtUtc);
+        Assert.Equal(1, result.FailedSourceCount);
+    }
+
+    [Fact]
     public async Task ReadEntryAsync_ReturnsCodeAndUnityObjectLocations()
     {
         using var project = new TestUsageProject();
