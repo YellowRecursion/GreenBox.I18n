@@ -872,6 +872,8 @@ function CatalogWorkspace({
                 defaultLocale={catalog.defaultLocale}
                 locales={catalog.locales}
                 entries={catalog.entries}
+                usageCounts={usageCounts}
+                usageRevision={usageIndex?.updatedAtUtc ?? undefined}
                 onFolderPathChange={handleFolderPathChange}
                 onLocaleChange={handleLocaleChange}
                 onDefaultLocaleChange={handleDefaultLocaleChange}

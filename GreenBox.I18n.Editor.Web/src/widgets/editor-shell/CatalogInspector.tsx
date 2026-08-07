@@ -11,7 +11,9 @@ import {
   AppstoreOutlined,
   CloseOutlined,
   CopyOutlined,
+  CodeOutlined,
   ExpandOutlined,
+  ProductOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
 import {
@@ -22,9 +24,11 @@ import {
   Empty,
   Flex,
   Input,
+  List,
   Modal,
   Select,
   Space,
+  Spin,
   Tag,
   Table,
   Tabs,
@@ -41,12 +45,16 @@ import type { CatalogSelectionItem } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 import { EntryAssetInput } from './EntryAssetInput'
 import { commonCultureNames } from './localeCultures'
+import { useUsageEntry } from '../../entities/usage-index/model/useUsageEntry'
+import type { AssetUsage, CodeUsage } from '../../entities/usage-index/api/getUsageEntry'
 
 interface CatalogInspectorProps {
   selection: CatalogSelectionItem[]
   defaultLocale: string
   locales: CatalogLocale[]
   entries: CatalogEntry[]
+  usageCounts?: ReadonlyMap<string, number>
+  usageRevision?: string
   onFolderPathChange: (path: string, nextPath: string) => Promise<void>
   onLocaleChange: (locale: CatalogLocale, previousId?: string) => Promise<void>
   onDefaultLocaleChange: (localeId: string) => Promise<void>
@@ -65,6 +73,8 @@ export function CatalogInspector({
   defaultLocale,
   locales,
   entries,
+  usageCounts,
+  usageRevision,
   onFolderPathChange,
   onLocaleChange,
   onDefaultLocaleChange,
@@ -112,6 +122,8 @@ export function CatalogInspector({
           entry={item.entry}
           defaultLocale={defaultLocale}
           locales={locales}
+          usageCount={usageCounts === undefined ? undefined : usageCounts.get(item.entry.id) ?? 0}
+          usageRevision={usageRevision}
           onPathChange={onEntryPathChange}
           onCommentChange={onEntryCommentChange}
           onTextChange={onEntryTextChange}
@@ -560,6 +572,8 @@ function EntryInspector({
   entry,
   defaultLocale,
   locales,
+  usageCount,
+  usageRevision,
   onPathChange,
   onCommentChange,
   onTextChange,
@@ -568,6 +582,8 @@ function EntryInspector({
   entry: CatalogEntry
   defaultLocale: string
   locales: CatalogLocale[]
+  usageCount?: number
+  usageRevision?: string
   onPathChange: (id: string, path: string) => Promise<void>
   onCommentChange: (id: string, comment: string | null) => Promise<void>
   onTextChange: (id: string, localeId: string, text: string | null) => Promise<void>
@@ -579,12 +595,24 @@ function EntryInspector({
 }) {
   const { token } = theme.useToken()
   const [expandedLocaleId, setExpandedLocaleId] = useState<string>()
+  const [activeTab, setActiveTab] = useState('text')
   const orderedLocales = [...locales].sort((left, right) =>
     Number(right.id === defaultLocale) - Number(left.id === defaultLocale))
   const textCount = locales.filter((locale) =>
     Boolean(entry.locales[locale.id]?.text?.trim())).length
   const assetCount = locales.filter((locale) =>
     entry.locales[locale.id]?.asset != null).length
+  const usageEntry = useUsageEntry(
+    entry.id,
+    usageRevision,
+    activeTab === 'usage' && usageCount !== undefined && usageCount > 0,
+  )
+
+  useEffect(() => {
+    if (activeTab === 'usage' && usageCount === undefined) {
+      setActiveTab('text')
+    }
+  }, [activeTab, usageCount])
 
   return (
     <InspectorSection
@@ -600,7 +628,8 @@ function EntryInspector({
     >
       <EntryCommentInput entry={entry} onCommentChange={onCommentChange} />
       <Tabs
-        defaultActiveKey="text"
+        activeKey={activeTab}
+        onChange={setActiveTab}
         items={[
           {
             key: 'text',
@@ -652,10 +681,109 @@ function EntryInspector({
               </Flex>
             ),
           },
+          ...(usageCount === undefined
+            ? []
+            : [{
+                key: 'usage',
+                label: (
+                  <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+                    <span>Usage</span>
+                    {usageCount === 0
+                      ? <WarningOutlined style={{ color: token.colorWarning }} />
+                      : <Typography.Text style={{ color: token.colorInfo }}>{usageCount}</Typography.Text>}
+                  </Flex>
+                ),
+                children: usageCount === 0
+                  ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No usages" />
+                  : <EntryUsageList state={usageEntry} />,
+              }]),
         ]}
       />
     </InspectorSection>
   )
+}
+
+type UsageListItem = {
+  key: string
+  kind: 'code' | 'asset'
+  label: string
+  details: string
+}
+
+function EntryUsageList({ state }: { state: ReturnType<typeof useUsageEntry> }) {
+  const { token } = theme.useToken()
+  if (state.status === 'idle' || state.status === 'loading') {
+    return (
+      <Flex justify="center" style={{ padding: layoutTokens.spacing.large }}>
+        <Spin size="small" />
+      </Flex>
+    )
+  }
+
+  if (state.status === 'error') {
+    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={state.message} />
+  }
+
+  const items: UsageListItem[] = [
+    ...state.entry.code.map(createCodeUsageItem),
+    ...state.entry.assets.map(createAssetUsageItem),
+  ]
+  return (
+    <List
+      size="small"
+      dataSource={items}
+      locale={{ emptyText: 'No usages' }}
+      renderItem={(item) => (
+        <List.Item style={{ padding: 0 }}>
+          <Tooltip title={item.details}>
+            <Button
+              block
+              type="text"
+              aria-label={item.label}
+              icon={item.kind === 'code'
+                ? <CodeOutlined style={{ color: token.colorInfo }} />
+                : <ProductOutlined style={{ color: token.colorTextSecondary }} />}
+              style={{
+                height: token.controlHeight,
+                justifyContent: 'flex-start',
+                paddingInline: token.paddingXS,
+                minWidth: 0,
+              }}
+              onClick={() => undefined}
+            >
+              <Typography.Text ellipsis style={{ minWidth: 0 }}>
+                {item.label}
+              </Typography.Text>
+            </Button>
+          </Tooltip>
+        </List.Item>
+      )}
+    />
+  )
+}
+
+function createCodeUsageItem(usage: CodeUsage): UsageListItem {
+  const location = `${usage.filePath}:${usage.line}`
+  return {
+    key: `code:${usage.assembly}:${location}`,
+    kind: 'code',
+    label: location,
+    details: `${usage.assembly} / ${location}`,
+  }
+}
+
+function createAssetUsageItem(usage: AssetUsage): UsageListItem {
+  const fileName = usage.assetPath.split(/[\\/]/).at(-1) ?? usage.assetPath
+  const objectPath = usage.objectPath || usage.componentType
+  const propertyPath = usage.propertyPath.replace(/(?:^|\.)_greenBoxI18nEntryId$/, '')
+  return {
+    key: `asset:${usage.assetPath}:${usage.assetLocalId}:${usage.propertyPath}:${usage.line}`,
+    kind: 'asset',
+    label: `${fileName} / ${objectPath}`,
+    details: [usage.assetPath, usage.objectPath, usage.componentType, propertyPath]
+      .filter(Boolean)
+      .join(' / '),
+  }
 }
 
 function EntryTextInput({
