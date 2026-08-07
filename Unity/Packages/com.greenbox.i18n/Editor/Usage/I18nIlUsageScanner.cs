@@ -26,7 +26,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         internal static string FormatReport(
             I18nIlUsageScanResult result,
             int maximumReportedLocationCount,
-            out int reportedLocationCount)
+            out int reportedLocationCount,
+            bool includeLocations = true)
         {
             var lines = new List<string>
             {
@@ -54,37 +55,40 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             }
 
             reportedLocationCount = 0;
-            foreach (IGrouping<long, I18nIlUsage> group in result.Usages
-                         .GroupBy(usage => usage.EntryId)
-                         .OrderBy(group => group.Key))
+            if (includeLocations)
             {
-                if (reportedLocationCount >= maximumReportedLocationCount)
+                foreach (IGrouping<long, I18nIlUsage> group in result.Usages
+                             .GroupBy(usage => usage.EntryId)
+                             .OrderBy(group => group.Key))
                 {
-                    break;
+                    if (reportedLocationCount >= maximumReportedLocationCount)
+                    {
+                        break;
+                    }
+
+                    I18nIlUsage[] orderedLocations = group
+                        .OrderBy(usage => usage.AssetPath, StringComparer.Ordinal)
+                        .ThenBy(usage => usage.Line)
+                        .ToArray();
+                    int locationLimit = Math.Min(
+                        MaximumReportedLocationsPerEntry,
+                        maximumReportedLocationCount - reportedLocationCount);
+                    I18nIlUsage[] reportedLocations = orderedLocations
+                        .Take(locationLimit)
+                        .ToArray();
+
+                    lines.Add($"Entry {group.Key}: {group.Count()} IL usage(s)");
+                    lines.AddRange(reportedLocations.Select(FormatLocation));
+                    reportedLocationCount += reportedLocations.Length;
                 }
 
-                I18nIlUsage[] orderedLocations = group
-                    .OrderBy(usage => usage.AssetPath, StringComparer.Ordinal)
-                    .ThenBy(usage => usage.Line)
-                    .ToArray();
-                int locationLimit = Math.Min(
-                    MaximumReportedLocationsPerEntry,
-                    maximumReportedLocationCount - reportedLocationCount);
-                I18nIlUsage[] reportedLocations = orderedLocations
-                    .Take(locationLimit)
-                    .ToArray();
-
-                lines.Add($"Entry {group.Key}: {group.Count()} IL usage(s)");
-                lines.AddRange(reportedLocations.Select(FormatLocation));
-                reportedLocationCount += reportedLocations.Length;
-            }
-
-            int omittedLocationCount = result.Usages.Count - reportedLocationCount;
-            if (omittedLocationCount > 0)
-            {
-                lines.Add(
-                    $"Output truncated: displayed {reportedLocationCount} of {result.Usages.Count} locations; " +
-                    $"{omittedLocationCount} omitted.");
+                int omittedLocationCount = result.Usages.Count - reportedLocationCount;
+                if (omittedLocationCount > 0)
+                {
+                    lines.Add(
+                        $"Output truncated: displayed {reportedLocationCount} of {result.Usages.Count} locations; " +
+                        $"{omittedLocationCount} omitted.");
+                }
             }
 
             if (result.Warnings.Count > 0)

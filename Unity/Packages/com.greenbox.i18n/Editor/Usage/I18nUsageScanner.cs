@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using GreenBox.I18n.Unity.Editor.Diagnostics;
+using GreenBox.I18n.Unity.Editor.Settings;
 using UnityEditor;
 
 namespace GreenBox.I18n.Unity.Editor.Usage
@@ -20,6 +21,13 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         [MenuItem(MenuPath, false, 100)]
         private static void ScanAndLog()
         {
+            if (I18nPreferences.instance.UsageIndexing == I18nUsageIndexingMode.Disabled)
+            {
+                I18nLog.Warning(
+                    "Usage indexing is disabled. Enable it in Preferences > GreenBox > i18n.");
+                return;
+            }
+
             if (EditorApplication.isCompiling)
             {
                 I18nLog.Warning("Wait for script compilation to finish before scanning entry usage.");
@@ -34,24 +42,17 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             totalProfiler.Observe(assetResult.Performance.PeakManagedMemoryBytes);
             I18nUsageScanPerformance totalPerformance = totalProfiler.Complete();
 
-            string ilReport = I18nIlUsageScanner.FormatReport(
-                ilResult,
-                MaximumReportedLocationCount,
-                out int reportedLocationCount);
-            string assetReport = I18nAssetUsageScanner.FormatReport(
-                assetResult,
-                MaximumReportedLocationCount - reportedLocationCount,
-                out _);
-            string report = FormatPerformance(
-                                ilResult.Performance,
-                                assetResult.Performance,
-                                totalPerformance) +
-                            Environment.NewLine + Environment.NewLine +
-                            ilReport +
-                            Environment.NewLine + Environment.NewLine +
-                            assetReport;
-
             bool isSlow = totalPerformance.ElapsedMilliseconds > SlowScanThresholdMilliseconds;
+            bool hasWarnings = ilResult.Warnings.Count > 0 || assetResult.Warnings.Count > 0;
+            bool includePerformance = isSlow || I18nLog.IsPerformanceEnabled;
+            string report = includePerformance
+                ? FormatDetailedReport(
+                    ilResult,
+                    assetResult,
+                    totalPerformance,
+                    I18nLog.IsVerboseEnabled)
+                : FormatSummary(ilResult, assetResult, totalPerformance);
+
             if (isSlow)
             {
                 report = FormatSlowScanWarning("Full usage scan", totalPerformance.ElapsedMilliseconds) +
@@ -59,7 +60,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                          report;
             }
 
-            if (isSlow || ilResult.Warnings.Count > 0 || assetResult.Warnings.Count > 0)
+            if (isSlow || hasWarnings)
             {
                 I18nLog.Warning(report);
             }
@@ -67,6 +68,60 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             {
                 I18nLog.Info(report);
             }
+        }
+
+        private static string FormatSummary(
+            I18nIlUsageScanResult ilResult,
+            I18nAssetUsageScanResult assetResult,
+            I18nUsageScanPerformance totalPerformance)
+        {
+            var lines = new List<string>
+            {
+                $"Usage scan completed in {totalPerformance.ElapsedMilliseconds} ms. " +
+                $"Found {ilResult.Usages.Count} IL and {assetResult.Usages.Count} serialized usage(s).",
+            };
+
+            if (ilResult.Warnings.Count > 0 || assetResult.Warnings.Count > 0)
+            {
+                lines.Add("Warnings:");
+                foreach (string warning in ilResult.Warnings)
+                {
+                    lines.Add($"  {warning}");
+                }
+
+                foreach (string warning in assetResult.Warnings)
+                {
+                    lines.Add($"  {warning}");
+                }
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string FormatDetailedReport(
+            I18nIlUsageScanResult ilResult,
+            I18nAssetUsageScanResult assetResult,
+            I18nUsageScanPerformance totalPerformance,
+            bool includeLocations)
+        {
+            string ilReport = I18nIlUsageScanner.FormatReport(
+                ilResult,
+                MaximumReportedLocationCount,
+                out int reportedLocationCount,
+                includeLocations);
+            string assetReport = I18nAssetUsageScanner.FormatReport(
+                assetResult,
+                MaximumReportedLocationCount - reportedLocationCount,
+                out _,
+                includeLocations);
+            return FormatPerformance(
+                       ilResult.Performance,
+                       assetResult.Performance,
+                       totalPerformance) +
+                   Environment.NewLine + Environment.NewLine +
+                   ilReport +
+                   Environment.NewLine + Environment.NewLine +
+                   assetReport;
         }
 
         /// <summary>

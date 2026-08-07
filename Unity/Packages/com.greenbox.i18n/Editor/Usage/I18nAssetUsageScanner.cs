@@ -217,7 +217,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         internal static string FormatReport(
             I18nAssetUsageScanResult result,
             int maximumReportedLocationCount,
-            out int reportedLocationCount)
+            out int reportedLocationCount,
+            bool includeLocations = true)
         {
             reportedLocationCount = 0;
             if (!result.IsForceText)
@@ -251,30 +252,33 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     file => $"    {file.AssetPath}: {file.ElapsedMilliseconds:0.0} ms"));
             }
 
-            foreach (IGrouping<long, I18nAssetUsage> group in result.Usages
-                         .GroupBy(usage => usage.EntryId)
-                         .OrderBy(group => group.Key))
+            if (includeLocations)
             {
-                if (reportedLocationCount >= maximumReportedLocationCount)
+                foreach (IGrouping<long, I18nAssetUsage> group in result.Usages
+                             .GroupBy(usage => usage.EntryId)
+                             .OrderBy(group => group.Key))
                 {
-                    break;
+                    if (reportedLocationCount >= maximumReportedLocationCount)
+                    {
+                        break;
+                    }
+
+                    int locationLimit = Math.Min(
+                        MaximumReportedLocationsPerEntry,
+                        maximumReportedLocationCount - reportedLocationCount);
+                    I18nAssetUsage[] reportedLocations = group.Take(locationLimit).ToArray();
+                    lines.Add($"Entry {group.Key}: {group.Count()} serialized usage(s)");
+                    lines.AddRange(reportedLocations.Select(FormatLocation));
+                    reportedLocationCount += reportedLocations.Length;
                 }
 
-                int locationLimit = Math.Min(
-                    MaximumReportedLocationsPerEntry,
-                    maximumReportedLocationCount - reportedLocationCount);
-                I18nAssetUsage[] reportedLocations = group.Take(locationLimit).ToArray();
-                lines.Add($"Entry {group.Key}: {group.Count()} serialized usage(s)");
-                lines.AddRange(reportedLocations.Select(FormatLocation));
-                reportedLocationCount += reportedLocations.Length;
-            }
-
-            int omittedLocationCount = result.Usages.Count - reportedLocationCount;
-            if (omittedLocationCount > 0)
-            {
-                lines.Add(
-                    $"Asset output truncated: displayed {reportedLocationCount} of " +
-                    $"{result.Usages.Count} locations; {omittedLocationCount} omitted.");
+                int omittedLocationCount = result.Usages.Count - reportedLocationCount;
+                if (omittedLocationCount > 0)
+                {
+                    lines.Add(
+                        $"Asset output truncated: displayed {reportedLocationCount} of " +
+                        $"{result.Usages.Count} locations; {omittedLocationCount} omitted.");
+                }
             }
 
             if (result.Warnings.Count > 0)
