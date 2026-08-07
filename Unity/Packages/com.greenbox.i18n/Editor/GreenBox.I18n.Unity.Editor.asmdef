@@ -2,6 +2,8 @@
   "name": "GreenBox.I18n.Unity.Editor",
   "rootNamespace": "GreenBox.I18n.Unity.Editor",
   "references": [
+    "GreenBox.I18n.Usage.Analysis",
+    "GreenBox.I18n.Usage.Cecil",
     "GreenBox.I18n.Unity",
     "GreenBox.I18n.Unity.Audio",
     "GreenBox.I18n.Unity.Sprites",

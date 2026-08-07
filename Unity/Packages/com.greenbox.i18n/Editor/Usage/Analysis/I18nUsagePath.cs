@@ -3,10 +3,10 @@
 using System;
 using System.IO;
 
-namespace GreenBox.I18n.Unity.Editor.Usage
+namespace GreenBox.I18n.Usage.Analysis
 {
     /// <summary>
-    /// Converts compiler and symbol paths into Unity project asset paths.
+    /// Converts compiler and symbol paths into Unity project asset paths without using Unity APIs.
     /// </summary>
     internal static class I18nUsagePath
     {

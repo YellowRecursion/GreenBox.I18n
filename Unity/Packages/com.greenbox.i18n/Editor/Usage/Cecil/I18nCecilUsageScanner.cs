@@ -4,10 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using GreenBox.I18n.Usage.Analysis;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-namespace GreenBox.I18n.Unity.Editor.Usage
+namespace GreenBox.I18n.Usage.Cecil
 {
     /// <summary>
     /// Performs authoritative entry usage analysis for one candidate assembly using Mono.Cecil.
@@ -206,41 +207,4 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         }
     }
 
-    /// <summary>
-    /// Describes the measured Cecil stages for one candidate assembly.
-    /// </summary>
-    internal sealed class I18nCecilAssemblyScanPerformance
-    {
-        public I18nCecilAssemblyScanPerformance(
-            string assemblyName,
-            bool hasSymbols,
-            double totalMilliseconds,
-            double resolverMilliseconds,
-            double readMilliseconds,
-            double traversalMilliseconds,
-            double locationResolutionMilliseconds)
-        {
-            AssemblyName = assemblyName;
-            HasSymbols = hasSymbols;
-            TotalMilliseconds = totalMilliseconds;
-            ResolverMilliseconds = resolverMilliseconds;
-            ReadMilliseconds = readMilliseconds;
-            TraversalMilliseconds = traversalMilliseconds;
-            LocationResolutionMilliseconds = locationResolutionMilliseconds;
-        }
-
-        public string AssemblyName { get; }
-
-        public bool HasSymbols { get; }
-
-        public double TotalMilliseconds { get; }
-
-        public double ResolverMilliseconds { get; }
-
-        public double ReadMilliseconds { get; }
-
-        public double TraversalMilliseconds { get; }
-
-        public double LocationResolutionMilliseconds { get; }
-    }
 }

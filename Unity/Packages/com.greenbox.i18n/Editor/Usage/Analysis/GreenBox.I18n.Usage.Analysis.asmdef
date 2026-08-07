@@ -1,0 +1,18 @@
+{
+  "name": "GreenBox.I18n.Usage.Analysis",
+  "rootNamespace": "GreenBox.I18n.Usage.Analysis",
+  "references": [],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "GreenBox.I18n.Core.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

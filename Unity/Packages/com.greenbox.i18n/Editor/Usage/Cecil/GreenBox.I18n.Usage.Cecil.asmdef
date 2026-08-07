@@ -1,0 +1,21 @@
+{
+  "name": "GreenBox.I18n.Usage.Cecil",
+  "rootNamespace": "GreenBox.I18n.Usage.Cecil",
+  "references": [
+    "GreenBox.I18n.Usage.Analysis"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "GreenBox.I18n.Core.dll",
+    "Mono.Cecil.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

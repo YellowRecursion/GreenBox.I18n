@@ -1,0 +1,75 @@
+# Usage scanning architecture
+
+The usage scanner is split by responsibility so that file analysis can eventually run on worker
+threads without moving Unity APIs off the main thread.
+
+## Modules
+
+```text
+GreenBox.I18n.Unity.Editor (Unity Integration)
+    -> GreenBox.I18n.Usage.Cecil
+        -> GreenBox.I18n.Usage.Analysis
+    -> GreenBox.I18n.Usage.Analysis
+
+Future Usage Index
+    -> GreenBox.I18n.Usage.Analysis result models
+
+GreenBox.I18n.Usage.Analysis
+    -> GreenBox.I18n.Core (entry ID validation only)
+```
+
+`A -> B` means that A knows about and calls B. B does not know about A.
+
+### Usage Analysis
+
+`Analysis/GreenBox.I18n.Usage.Analysis.asmdef` has `noEngineReferences` enabled. It contains
+thread-agnostic contracts and utilities: usage/result models, path handling, profiling, source
+stamps, and the raw DLL prefilter. It must not reference UnityEngine, UnityEditor, Mono.Cecil,
+settings, logs, static events, or mutable Unity state.
+
+The serialized YAML parser will move into this module next. Any metadata it needs from Unity must
+be supplied as immutable input prepared by Unity Integration.
+
+### Usage Cecil
+
+`Cecil/GreenBox.I18n.Usage.Cecil.asmdef` also has `noEngineReferences` enabled. It is an
+infrastructure adapter that translates Mono.Cecil data into Usage Analysis result models. Keeping
+it separate prevents the central analysis contracts from depending on Cecil.
+
+### Unity Integration
+
+The files directly under `Usage/` are part of `GreenBox.I18n.Unity.Editor`. This layer owns
+Unity callbacks, `AssetDatabase`, `CompilationPipeline`, `SessionState`, preferences, logging,
+scan coordination, and result publication. Only this layer decides when a scan runs and whether a
+result is still current enough to publish.
+
+## Source changes during a scan
+
+Scanning uses optimistic consistency rather than locking Unity assets or compiler output:
+
+1. Unity Integration assigns a monotonically increasing in-memory revision to every notified
+   source change.
+2. A partial scan captures those revisions before analysis.
+3. The scanners capture cheap file stamps before reading and compare them after analysis. An asset
+   stamp includes its `.meta`; an IL stamp includes its `.pdb`.
+4. Before publishing, Unity Integration compares the captured revisions with the current ones.
+5. If either the revision or file stamp changed, the result is discarded. Automatic mode queues
+   the affected source again; manual mode asks the developer to rerun the scan.
+
+File stamps are consistency guards, not cache keys. They deliberately avoid hashing or rereading
+content. Cancellation can later reduce wasted work, but correctness must continue to rely on the
+final revision and stamp checks.
+
+When scans become asynchronous, pending work must have explicit `Pending` and `InFlight` states.
+Work is removed only after a stable result is published. A full scan should build a staging
+snapshot, replay changes received while it was running, and then atomically replace the published
+index.
+
+## Threading rules
+
+- Analysis and Cecil code must not call Unity APIs or read mutable Unity state.
+- Unity metadata is captured on the main thread and passed to analysis as immutable data.
+- Analysis remains synchronous; Unity Integration chooses whether to invoke it directly or on a
+  worker thread.
+- Results are immutable after construction.
+- Unity objects, logging, settings, and result publication stay on the main thread.

@@ -15,11 +15,6 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             string[] movedAssets,
             string[] movedFromAssetPaths)
         {
-            if (!I18nUsageAutoScanner.IsEnabled)
-            {
-                return;
-            }
-
             string[] changedAssets = new string[importedAssets.Length + movedAssets.Length];
             importedAssets.CopyTo(changedAssets, 0);
             movedAssets.CopyTo(changedAssets, importedAssets.Length);

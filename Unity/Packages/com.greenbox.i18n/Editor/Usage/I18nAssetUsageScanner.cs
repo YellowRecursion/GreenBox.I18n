@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using GreenBox.I18n.Usage.Analysis;
 using UnityEditor;
 using UnityEngine;
 
@@ -45,7 +46,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             return Scan(
                 EnumerateSerializedAssetPaths(Application.dataPath),
                 profiler,
-                warnings);
+                warnings,
+                Array.Empty<string>());
         }
 
         /// <summary>
@@ -60,17 +62,24 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
             var profiler = new I18nUsageScanProfiler(false);
             var warnings = new List<string>();
+            var changedSourcePaths = new List<string>();
             string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
             return Scan(
-                ResolveSerializedAssetPaths(assetPaths, projectRoot, warnings),
+                ResolveSerializedAssetPaths(
+                    assetPaths,
+                    projectRoot,
+                    warnings,
+                    changedSourcePaths),
                 profiler,
-                warnings);
+                warnings,
+                changedSourcePaths);
         }
 
         private static I18nAssetUsageScanResult Scan(
             IEnumerable<string> absolutePaths,
             I18nUsageScanProfiler profiler,
-            List<string> warnings)
+            List<string> warnings,
+            IReadOnlyList<string> initiallyChangedSourcePaths)
         {
             if (EditorSettings.serializationMode != SerializationMode.ForceText)
             {
@@ -85,7 +94,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     0,
                     profiler.Complete(),
                     I18nAssetUsageScanDiagnostics.Empty,
-                    false);
+                    false,
+                    Array.Empty<string>());
             }
 
             string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
@@ -100,11 +110,16 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             long yamlParseTicks = 0;
             long contextResolutionTicks = 0;
             var slowestFiles = new SlowestFileCollector(MaximumReportedSlowFileCount);
+            var initialSourceStamps = new Dictionary<string, I18nUsageSourceStamp>(
+                StringComparer.OrdinalIgnoreCase);
 
             using IEnumerator<string> pathEnumerator = absolutePaths.GetEnumerator();
             while (MoveNext(pathEnumerator, ref pathDiscoveryTicks))
             {
                 string absolutePath = pathEnumerator.Current;
+                initialSourceStamps[absolutePath] = I18nUsageSourceStamp.Capture(
+                    absolutePath,
+                    absolutePath + ".meta");
                 long fileStart = Stopwatch.GetTimestamp();
                 scannedAssetCount++;
                 try
@@ -194,6 +209,21 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 .ThenBy(usage => usage.Line)
                 .ToArray();
             long resultBuildTicks = Stopwatch.GetTimestamp() - resultBuildStart;
+            string[] changedSourcePaths = initialSourceStamps
+                .Where(pair => pair.Value != I18nUsageSourceStamp.Capture(
+                    pair.Key,
+                    pair.Key + ".meta"))
+                .Select(pair => ToAssetPath(pair.Key, projectRoot))
+                .Concat(initiallyChangedSourcePaths)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .ToArray();
+            foreach (string changedSourcePath in changedSourcePaths)
+            {
+                warnings.Add(
+                    $"'{changedSourcePath}' changed while the scan was being prepared or run; " +
+                    "the scan result will not be published.");
+            }
 
             I18nUsageScanPerformance performance = profiler.Complete();
             var diagnostics = new I18nAssetUsageScanDiagnostics(
@@ -212,7 +242,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 scannedByteCount,
                 performance,
                 diagnostics,
-                true);
+                true,
+                changedSourcePaths);
         }
 
         internal static string FormatReport(I18nAssetUsageScanResult result)
@@ -321,7 +352,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         private static IEnumerable<string> ResolveSerializedAssetPaths(
             IReadOnlyList<string> assetPaths,
             string projectRoot,
-            ICollection<string> warnings)
+            ICollection<string> warnings,
+            ICollection<string> changedSourcePaths)
         {
             var resolvedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             string assetsRoot = Path.GetFullPath(Application.dataPath)
@@ -357,7 +389,9 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
                 if (!File.Exists(absolutePath))
                 {
-                    warnings.Add($"Skipped missing asset: '{ToAssetPath(absolutePath, projectRoot)}'.");
+                    string assetPath = ToAssetPath(absolutePath, projectRoot);
+                    warnings.Add($"Skipped missing asset: '{assetPath}'.");
+                    changedSourcePaths.Add(assetPath);
                     continue;
                 }
 
@@ -1193,7 +1227,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             long scannedByteCount,
             I18nUsageScanPerformance performance,
             I18nAssetUsageScanDiagnostics diagnostics,
-            bool isForceText)
+            bool isForceText,
+            IReadOnlyList<string> changedSourcePaths)
         {
             Usages = usages;
             Warnings = warnings;
@@ -1203,6 +1238,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             Performance = performance;
             Diagnostics = diagnostics;
             IsForceText = isForceText;
+            ChangedSourcePaths = changedSourcePaths;
         }
 
         public IReadOnlyList<I18nAssetUsage> Usages { get; }
@@ -1222,6 +1258,10 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         public long ElapsedMilliseconds => Performance.ElapsedMilliseconds;
 
         public bool IsForceText { get; }
+
+        public IReadOnlyList<string> ChangedSourcePaths { get; }
+
+        public bool IsStable => ChangedSourcePaths.Count == 0;
     }
 
     internal sealed class I18nAssetUsageScanDiagnostics

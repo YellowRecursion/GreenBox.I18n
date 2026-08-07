@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GreenBox.I18n.Usage.Analysis;
 using GreenBox.I18n.Unity.Editor.Diagnostics;
 using GreenBox.I18n.Unity.Editor.Usage;
 using UnityEditor;

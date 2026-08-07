@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GreenBox.I18n.Usage.Analysis;
+using GreenBox.I18n.Usage.Cecil;
 using UnityEditor.Compilation;
 using UnityEngine;
 using UnityCompilationAssembly = UnityEditor.Compilation.Assembly;
@@ -148,6 +150,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             var usages = new HashSet<I18nIlUsage>();
             var warnings = new List<string>();
             var cecilPerformance = new List<I18nCecilAssemblyScanPerformance>();
+            var changedSourcePaths = new List<string>();
             int scannedAssemblyCount = 0;
             int candidateAssemblyCount = 0;
 
@@ -163,10 +166,15 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 if (!File.Exists(assemblyPath))
                 {
                     warnings.Add($"Skipped '{assembly.name}' because its compiled DLL was not found at '{assemblyPath}'.");
+                    changedSourcePaths.Add(assemblyPath);
                     continue;
                 }
 
                 scannedAssemblyCount++;
+                string symbolsPath = Path.ChangeExtension(assemblyPath, ".pdb");
+                I18nUsageSourceStamp initialStamp = I18nUsageSourceStamp.Capture(
+                    assemblyPath,
+                    symbolsPath);
                 bool mayContainEntryId;
                 try
                 {
@@ -182,10 +190,12 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
                 if (!mayContainEntryId)
                 {
+                    ObserveSourceStability(assemblyPath, symbolsPath, initialStamp, changedSourcePaths, warnings);
                     continue;
                 }
 
                 candidateAssemblyCount++;
+                var assemblyUsages = new HashSet<I18nIlUsage>();
                 try
                 {
                     cecilPerformance.Add(I18nCecilUsageScanner.Scan(
@@ -193,13 +203,23 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                         assemblyPath,
                         assembly.allReferences,
                         projectRoot,
-                        usages,
+                        assemblyUsages,
                         profiler));
                 }
                 catch (Exception exception)
                 {
                     warnings.Add(
                         $"Skipped '{assembly.name}': {exception.GetType().Name}: {exception.Message}");
+                }
+
+                if (ObserveSourceStability(
+                        assemblyPath,
+                        symbolsPath,
+                        initialStamp,
+                        changedSourcePaths,
+                        warnings))
+                {
+                    usages.UnionWith(assemblyUsages);
                 }
 
                 profiler.Sample();
@@ -216,7 +236,26 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 scannedAssemblyCount,
                 candidateAssemblyCount,
                 cecilPerformance,
-                performance);
+                performance,
+                changedSourcePaths);
+        }
+
+        private static bool ObserveSourceStability(
+            string assemblyPath,
+            string symbolsPath,
+            I18nUsageSourceStamp initialStamp,
+            ICollection<string> changedSourcePaths,
+            ICollection<string> warnings)
+        {
+            if (initialStamp == I18nUsageSourceStamp.Capture(assemblyPath, symbolsPath))
+            {
+                return true;
+            }
+
+            changedSourcePaths.Add(assemblyPath);
+            warnings.Add(
+                $"'{Path.GetFileName(assemblyPath)}' changed during scanning; its result was discarded.");
+            return false;
         }
 
         private static string FormatLocation(I18nIlUsage usage)
@@ -238,76 +277,4 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         }
     }
 
-    internal sealed class I18nIlUsageScanResult
-    {
-        public I18nIlUsageScanResult(
-            IReadOnlyList<I18nIlUsage> usages,
-            IReadOnlyList<string> warnings,
-            int scannedAssemblyCount,
-            int candidateAssemblyCount,
-            IReadOnlyList<I18nCecilAssemblyScanPerformance> cecilPerformance,
-            I18nUsageScanPerformance performance)
-        {
-            Usages = usages;
-            Warnings = warnings;
-            ScannedAssemblyCount = scannedAssemblyCount;
-            CandidateAssemblyCount = candidateAssemblyCount;
-            CecilPerformance = cecilPerformance;
-            Performance = performance;
-        }
-
-        public IReadOnlyList<I18nIlUsage> Usages { get; }
-
-        public IReadOnlyList<string> Warnings { get; }
-
-        public int ScannedAssemblyCount { get; }
-
-        public int CandidateAssemblyCount { get; }
-
-        public IReadOnlyList<I18nCecilAssemblyScanPerformance> CecilPerformance { get; }
-
-        public I18nUsageScanPerformance Performance { get; }
-
-        public long ElapsedMilliseconds => Performance.ElapsedMilliseconds;
-    }
-
-    internal sealed class I18nIlUsage : IEquatable<I18nIlUsage>
-    {
-        public I18nIlUsage(long entryId, string assetPath, int line)
-        {
-            EntryId = entryId;
-            AssetPath = assetPath;
-            Line = line;
-        }
-
-        public long EntryId { get; }
-
-        public string AssetPath { get; }
-
-        public int Line { get; }
-
-        public bool Equals(I18nIlUsage? other)
-        {
-            return other != null &&
-                   EntryId == other.EntryId &&
-                   Line == other.Line &&
-                   string.Equals(AssetPath, other.AssetPath, StringComparison.Ordinal);
-        }
-
-        public override bool Equals(object? obj)
-        {
-            return Equals(obj as I18nIlUsage);
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hashCode = EntryId.GetHashCode();
-                hashCode = (hashCode * 397) ^ StringComparer.Ordinal.GetHashCode(AssetPath);
-                hashCode = (hashCode * 397) ^ Line;
-                return hashCode;
-            }
-        }
-    }
 }

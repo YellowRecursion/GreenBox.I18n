@@ -2,7 +2,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using GreenBox.I18n.Usage.Analysis;
 using GreenBox.I18n.Unity.Editor.Diagnostics;
 using GreenBox.I18n.Unity.Editor.Settings;
 using UnityEditor;
@@ -26,6 +28,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
         internal static event Action<IReadOnlyList<string>>? AssetsRemoved;
 
+        internal static event Action<IReadOnlyList<string>>? AssembliesRemoved;
+
         [MenuItem(MenuPath, false, 100)]
         private static void ScanAndLog()
         {
@@ -42,6 +46,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 return;
             }
 
+            long initialRevision = I18nUsageSourceRevisionTracker.CurrentRevision;
             var totalProfiler = new I18nUsageScanProfiler();
             I18nIlUsageScanResult ilResult = I18nIlUsageScanner.Scan();
             totalProfiler.Observe(ilResult.Performance.PeakManagedMemoryBytes);
@@ -49,7 +54,13 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             I18nAssetUsageScanResult assetResult = I18nAssetUsageScanner.Scan();
             totalProfiler.Observe(assetResult.Performance.PeakManagedMemoryBytes);
             I18nUsageScanPerformance totalPerformance = totalProfiler.Complete();
-            FullScanCompleted?.Invoke(ilResult, assetResult);
+            bool isStable = ilResult.IsStable &&
+                            assetResult.IsStable &&
+                            initialRevision == I18nUsageSourceRevisionTracker.CurrentRevision;
+            if (isStable)
+            {
+                FullScanCompleted?.Invoke(ilResult, assetResult);
+            }
 
             bool isSlow = totalPerformance.ElapsedMilliseconds > SlowScanThresholdMilliseconds;
             bool hasWarnings = ilResult.Warnings.Count > 0 || assetResult.Warnings.Count > 0;
@@ -69,7 +80,15 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                          report;
             }
 
-            if (isSlow || hasWarnings)
+            if (!isStable)
+            {
+                report = "Usage sources changed while the full scan was running. " +
+                         "The result was not published; run the scan again." +
+                         Environment.NewLine + Environment.NewLine +
+                         report;
+            }
+
+            if (isSlow || hasWarnings || !isStable)
             {
                 I18nLog.Warning(report);
             }
@@ -138,8 +157,28 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         /// </summary>
         internal static I18nAssetUsageScanResult ScanAssets(IReadOnlyList<string> assetPaths)
         {
+            string[] sourceKeys = assetPaths
+                .Select(path => path.Replace('\\', '/'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            I18nUsageRevisionBatch revisionBatch = I18nUsageSourceRevisionTracker.Capture(sourceKeys);
             I18nAssetUsageScanResult result = I18nAssetUsageScanner.Scan(assetPaths);
-            AssetsScanned?.Invoke(assetPaths, result);
+            string[] changedSources = MergeChangedSources(
+                result.ChangedSourcePaths,
+                I18nUsageSourceRevisionTracker.FindChanged(revisionBatch));
+            if (changedSources.Length == 0)
+            {
+                AssetsScanned?.Invoke(assetPaths, result);
+            }
+            else
+            {
+                I18nUsageAutoScanner.RequeueAssets(changedSources);
+                I18nLog.Warning(FormatChangedSourcesWarning(
+                    "Asset usage scan",
+                    changedSources,
+                    I18nUsageAutoScanner.IsEnabled));
+            }
+
             if (result.ElapsedMilliseconds > SlowScanThresholdMilliseconds)
             {
                 (string stageName, double stageMilliseconds) = FindSlowestAssetStage(result.Diagnostics);
@@ -178,8 +217,37 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         /// </summary>
         internal static I18nIlUsageScanResult ScanAssemblies(IReadOnlyList<string> assemblyPaths)
         {
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath)!.FullName;
+            string[] sourceKeys = assemblyPaths
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => I18nUsagePath.Resolve(path, projectRoot))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            I18nUsageRevisionBatch revisionBatch = I18nUsageSourceRevisionTracker.Capture(sourceKeys);
             I18nIlUsageScanResult result = I18nIlUsageScanner.Scan(assemblyPaths);
-            AssembliesScanned?.Invoke(assemblyPaths, result);
+            string[] changedSources = MergeChangedSources(
+                result.ChangedSourcePaths,
+                I18nUsageSourceRevisionTracker.FindChanged(revisionBatch));
+            if (changedSources.Length == 0)
+            {
+                AssembliesScanned?.Invoke(assemblyPaths, result);
+            }
+            else
+            {
+                string[] removedAssemblies = changedSources.Where(path => !File.Exists(path)).ToArray();
+                string[] existingAssemblies = changedSources.Where(File.Exists).ToArray();
+                if (removedAssemblies.Length > 0)
+                {
+                    AssembliesRemoved?.Invoke(removedAssemblies);
+                }
+
+                I18nUsageAutoScanner.RequeueAssemblies(existingAssemblies);
+                I18nLog.Warning(FormatChangedSourcesWarning(
+                    "IL usage scan",
+                    changedSources,
+                    I18nUsageAutoScanner.IsEnabled));
+            }
+
             if (result.ElapsedMilliseconds > SlowScanThresholdMilliseconds)
             {
                 string warning =
@@ -224,6 +292,35 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         {
             return $"{operation} took {elapsedMilliseconds} ms, exceeding the " +
                    $"{SlowScanThresholdMilliseconds} ms warning threshold.";
+        }
+
+        private static string[] MergeChangedSources(
+            IEnumerable<string> first,
+            IEnumerable<string> second)
+        {
+            return first
+                .Concat(second)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        private static string FormatChangedSourcesWarning(
+            string operation,
+            IReadOnlyList<string> changedSources,
+            bool wasRequeued)
+        {
+            string action = wasRequeued
+                ? "The stale result was discarded and a replacement update was scheduled."
+                : "The stale result was discarded; run the scan again.";
+            string sources = string.Join(", ", changedSources.Take(3));
+            if (changedSources.Count > 3)
+            {
+                sources += $", and {changedSources.Count - 3} more";
+            }
+
+            return $"{operation} observed {changedSources.Count} source change(s) while running: " +
+                   $"{sources}. {action}";
         }
 
         private static (string Name, double Milliseconds) FindSlowestAssetStage(
@@ -287,86 +384,4 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         }
     }
 
-    /// <summary>
-    /// Captures low-overhead elapsed-time and managed-heap observations for one scan node.
-    /// </summary>
-    internal sealed class I18nUsageScanProfiler
-    {
-        private readonly Stopwatch _stopwatch;
-        private readonly bool _captureManagedMemory;
-        private readonly long _initialManagedMemoryBytes;
-        private long _peakManagedMemoryBytes;
-
-        public I18nUsageScanProfiler(bool captureManagedMemory = true)
-        {
-            _stopwatch = Stopwatch.StartNew();
-            _captureManagedMemory = captureManagedMemory;
-            if (!captureManagedMemory)
-            {
-                return;
-            }
-
-            _initialManagedMemoryBytes = GC.GetTotalMemory(false);
-            _peakManagedMemoryBytes = _initialManagedMemoryBytes;
-        }
-
-        public void Sample()
-        {
-            if (!_captureManagedMemory)
-            {
-                return;
-            }
-
-            Observe(GC.GetTotalMemory(false));
-        }
-
-        public void Observe(long managedMemoryBytes)
-        {
-            if (!_captureManagedMemory)
-            {
-                return;
-            }
-
-            if (managedMemoryBytes > _peakManagedMemoryBytes)
-            {
-                _peakManagedMemoryBytes = managedMemoryBytes;
-            }
-        }
-
-        public I18nUsageScanPerformance Complete()
-        {
-            Sample();
-            _stopwatch.Stop();
-            return new I18nUsageScanPerformance(
-                _stopwatch.ElapsedMilliseconds,
-                _initialManagedMemoryBytes,
-                _peakManagedMemoryBytes);
-        }
-    }
-
-    /// <summary>
-    /// Describes the observed performance of one usage scan node.
-    /// </summary>
-    internal sealed class I18nUsageScanPerformance
-    {
-        public I18nUsageScanPerformance(
-            long elapsedMilliseconds,
-            long initialManagedMemoryBytes,
-            long peakManagedMemoryBytes)
-        {
-            ElapsedMilliseconds = elapsedMilliseconds;
-            InitialManagedMemoryBytes = initialManagedMemoryBytes;
-            PeakManagedMemoryBytes = peakManagedMemoryBytes;
-        }
-
-        public long ElapsedMilliseconds { get; }
-
-        public long InitialManagedMemoryBytes { get; }
-
-        public long PeakManagedMemoryBytes { get; }
-
-        public long PeakMemoryIncreaseBytes => Math.Max(
-            0,
-            PeakManagedMemoryBytes - InitialManagedMemoryBytes);
-    }
 }

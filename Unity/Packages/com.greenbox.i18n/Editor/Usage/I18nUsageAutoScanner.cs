@@ -52,16 +52,18 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             IReadOnlyList<string> changedPaths,
             IReadOnlyList<string> removedPaths)
         {
-            if (!IsAutomatic)
-            {
-                return;
-            }
-
+            bool isAutomatic = IsAutomatic;
             bool changed = false;
             foreach (string path in removedPaths)
             {
                 string normalizedPath = NormalizeAssetPath(path);
                 if (!IsScannableAssetPath(normalizedPath))
+                {
+                    continue;
+                }
+
+                I18nUsageSourceRevisionTracker.NotifyChanged(normalizedPath);
+                if (!isAutomatic)
                 {
                     continue;
                 }
@@ -78,11 +80,17 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     continue;
                 }
 
+                I18nUsageSourceRevisionTracker.NotifyChanged(normalizedPath);
+                if (!isAutomatic)
+                {
+                    continue;
+                }
+
                 changed |= PendingAssetPaths.Add(normalizedPath);
                 changed |= RemovedAssetPaths.Remove(normalizedPath);
             }
 
-            if (!changed)
+            if (!isAutomatic || !changed)
             {
                 return;
             }
@@ -99,8 +107,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             string assemblyPath,
             CompilerMessage[] compilerMessages)
         {
-            if (!IsAutomatic || compilerMessages.Any(
-                    message => message.type == CompilerMessageType.Error))
+            if (compilerMessages.Any(message => message.type == CompilerMessageType.Error))
             {
                 return;
             }
@@ -115,7 +122,64 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 return;
             }
 
+            I18nUsageSourceRevisionTracker.NotifyChanged(normalizedPath);
+            if (!IsAutomatic)
+            {
+                return;
+            }
+
             if (PendingAssemblyPaths.Add(normalizedPath))
+            {
+                SavePaths(PendingAssemblyPathsKey, PendingAssemblyPaths);
+                Schedule();
+            }
+        }
+
+        internal static void RequeueAssets(IReadOnlyList<string> assetPaths)
+        {
+            bool changed = false;
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath)!.FullName;
+            foreach (string path in assetPaths)
+            {
+                string normalizedPath = NormalizeAssetPath(path);
+                if (!IsScannableAssetPath(normalizedPath))
+                {
+                    continue;
+                }
+
+                string absolutePath = Path.Combine(projectRoot, normalizedPath);
+                if (File.Exists(absolutePath))
+                {
+                    changed |= PendingAssetPaths.Add(normalizedPath);
+                    changed |= RemovedAssetPaths.Remove(normalizedPath);
+                }
+                else
+                {
+                    changed |= RemovedAssetPaths.Add(normalizedPath);
+                    changed |= PendingAssetPaths.Remove(normalizedPath);
+                }
+            }
+
+            if (changed)
+            {
+                SavePaths(PendingAssetPathsKey, PendingAssetPaths);
+                SavePaths(RemovedAssetPathsKey, RemovedAssetPaths);
+                Schedule();
+            }
+        }
+
+        internal static void RequeueAssemblies(IReadOnlyList<string> assemblyPaths)
+        {
+            bool changed = false;
+            foreach (string assemblyPath in assemblyPaths)
+            {
+                if (!string.IsNullOrWhiteSpace(assemblyPath))
+                {
+                    changed |= PendingAssemblyPaths.Add(assemblyPath);
+                }
+            }
+
+            if (changed)
             {
                 SavePaths(PendingAssemblyPathsKey, PendingAssemblyPaths);
                 Schedule();
