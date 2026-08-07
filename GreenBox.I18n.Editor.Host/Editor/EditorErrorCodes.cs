@@ -58,4 +58,16 @@ public static class EditorErrorCodes
 
     /// <summary>Indicates that the operating system could not open a Unity asset.</summary>
     public const string UnityAssetOpenFailed = "unity_asset_open_failed";
+
+    /// <summary>Indicates that the requested usage location is not in the current index.</summary>
+    public const string UsageLocationNotFound = "usage_location_not_found";
+
+    /// <summary>Indicates that the Unity Editor process associated with the project is offline.</summary>
+    public const string UnityEditorOffline = "unity_editor_offline";
+
+    /// <summary>Indicates that Unity did not answer a project bridge command in time.</summary>
+    public const string UnityEditorCommandTimeout = "unity_editor_command_timeout";
+
+    /// <summary>Indicates that a Unity bridge command could not be delivered.</summary>
+    public const string UnityEditorCommandFailed = "unity_editor_command_failed";
 }

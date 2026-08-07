@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using GreenBox.I18n.Editor.Host.Contracts;
 using Microsoft.Data.Sqlite;
 
@@ -254,7 +256,7 @@ public sealed class UsageIndexReader
         CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT source.source_key, usage.file_path, usage.line
+            SELECT source.source_id, source.source_key, usage.file_path, usage.line
             FROM code_usages usage
             JOIN sources source ON source.source_id = usage.source_id
             WHERE usage.entry_id = @entry_id AND source.status = 'current'
@@ -266,7 +268,15 @@ public sealed class UsageIndexReader
         var usages = new List<CodeUsageResponse>();
         while (await reader.ReadAsync(cancellationToken))
         {
-            usages.Add(new CodeUsageResponse(reader.GetString(0), reader.GetString(1), reader.GetInt32(2)));
+            long sourceId = reader.GetInt64(0);
+            string assembly = reader.GetString(1);
+            string filePath = reader.GetString(2);
+            int line = reader.GetInt32(3);
+            usages.Add(new CodeUsageResponse(
+                CreateCodeLocationId(sourceId, filePath, line),
+                assembly,
+                filePath,
+                line));
         }
 
         return usages;
@@ -279,7 +289,7 @@ public sealed class UsageIndexReader
         CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT source.source_key, source.asset_guid,
+            SELECT usage.usage_id, source.source_key, source.asset_guid,
                    usage.asset_local_id, usage.game_object_local_id,
                    usage.object_path, usage.component_type, usage.property_path, usage.line,
                    usage.is_prefab_override, usage.target_asset_guid, usage.target_local_id
@@ -295,17 +305,18 @@ public sealed class UsageIndexReader
         while (await reader.ReadAsync(cancellationToken))
         {
             usages.Add(new AssetUsageResponse(
-                reader.GetString(0),
-                reader.IsDBNull(1) ? null : reader.GetString(1),
-                reader.GetInt64(2).ToString(CultureInfo.InvariantCulture),
-                reader.IsDBNull(3) ? null : reader.GetInt64(3).ToString(CultureInfo.InvariantCulture),
-                reader.GetString(4),
+                $"asset-{reader.GetInt64(0).ToString(CultureInfo.InvariantCulture)}",
+                reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                reader.GetInt64(3).ToString(CultureInfo.InvariantCulture),
+                reader.IsDBNull(4) ? null : reader.GetInt64(4).ToString(CultureInfo.InvariantCulture),
                 reader.GetString(5),
                 reader.GetString(6),
-                reader.GetInt32(7),
-                reader.GetBoolean(8),
-                reader.IsDBNull(9) ? null : reader.GetString(9),
-                reader.IsDBNull(10) ? null : reader.GetInt64(10).ToString(CultureInfo.InvariantCulture)));
+                reader.GetString(7),
+                reader.GetInt32(8),
+                reader.GetBoolean(9),
+                reader.IsDBNull(10) ? null : reader.GetString(10),
+                reader.IsDBNull(11) ? null : reader.GetInt64(11).ToString(CultureInfo.InvariantCulture)));
         }
 
         return usages;
@@ -320,6 +331,15 @@ public sealed class UsageIndexReader
         command.Transaction = transaction;
         command.CommandText = sql;
         return command;
+    }
+
+    private static string CreateCodeLocationId(long sourceId, string filePath, int line)
+    {
+        string identity = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{sourceId}\n{filePath}\n{line}");
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(identity));
+        return $"code-{Convert.ToHexString(hash).ToLowerInvariant()}";
     }
 
     private static bool IsReadFailure(Exception exception) =>

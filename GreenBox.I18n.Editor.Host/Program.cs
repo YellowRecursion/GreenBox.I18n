@@ -11,6 +11,8 @@ builder.Services.AddSingleton<UnityProjectLocator>();
 builder.Services.AddSingleton<UnityProjectPresenceService>();
 builder.Services.AddSingleton<UnityAssetReferenceService>();
 builder.Services.AddSingleton<UsageIndexReader>();
+builder.Services.AddSingleton<UnityEditorCommandTransport>();
+builder.Services.AddSingleton<UsageNavigationService>();
 builder.Services.AddSingleton<EditorPreferencesStore>();
 
 var app = builder.Build();

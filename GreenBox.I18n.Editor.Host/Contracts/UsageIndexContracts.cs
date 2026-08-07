@@ -44,6 +44,7 @@ public sealed record UsageEntryResponse(
 /// Describes one C# usage location.
 /// </summary>
 public sealed record CodeUsageResponse(
+    string LocationId,
     string Assembly,
     string FilePath,
     int Line);
@@ -52,6 +53,7 @@ public sealed record CodeUsageResponse(
 /// Describes one serialized Unity usage location.
 /// </summary>
 public sealed record AssetUsageResponse(
+    string LocationId,
     string AssetPath,
     string? AssetGuid,
     string AssetLocalId,
@@ -63,3 +65,13 @@ public sealed record AssetUsageResponse(
     bool IsPrefabOverride,
     string? TargetAssetGuid,
     string? TargetLocalId);
+
+/// <summary>
+/// Requests navigation to a location returned by the current usage index.
+/// </summary>
+public sealed record OpenUsageRequest(string EntryId, string LocationId);
+
+/// <summary>
+/// Describes the result of a navigation command handled by Unity.
+/// </summary>
+public sealed record OpenUsageResponse(string Status, string? Message);

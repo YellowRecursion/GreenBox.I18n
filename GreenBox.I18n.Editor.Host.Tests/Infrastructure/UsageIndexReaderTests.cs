@@ -50,10 +50,12 @@ public sealed class UsageIndexReaderTests
         Assert.Equal(2, result.TotalCount);
         var code = Assert.Single(result.Code);
         Assert.Equal("Assembly-CSharp", code.Assembly);
+        Assert.StartsWith("code-", code.LocationId);
         Assert.Equal("Assets/Scripts/Shop.cs", code.FilePath);
         Assert.Equal(42, code.Line);
 
         var asset = Assert.Single(result.Assets);
+        Assert.Equal("asset-1", asset.LocationId);
         Assert.Equal("Assets/Scenes/Shop.unity", asset.AssetPath);
         Assert.Equal("11500000", asset.AssetLocalId);
         Assert.Equal("1001", asset.GameObjectLocalId);

@@ -19,6 +19,7 @@ public static class UsageIndexEndpoints
         usageEndpoints.MapGet("/state", ReadStateAsync);
         usageEndpoints.MapGet(string.Empty, ReadSummaryAsync);
         usageEndpoints.MapGet("/entries/{entryId}", ReadEntryAsync);
+        usageEndpoints.MapPost("/open", OpenUsageAsync);
         return endpoints;
     }
 
@@ -52,5 +53,39 @@ public static class UsageIndexEndpoints
             numericEntryId,
             cancellationToken);
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> OpenUsageAsync(
+        OpenUsageRequest request,
+        EditorSession session,
+        UsageNavigationService navigation,
+        CancellationToken cancellationToken)
+    {
+        if (!I18nEntryId.TryParse(request.EntryId, out long entryId))
+        {
+            return Results.BadRequest(new EditorErrorResponse(
+                I18nEditCodes.InvalidId,
+                $"Entry ID does not use the GreenBox I18n ID format: '{request.EntryId}'."));
+        }
+
+        UsageNavigationResult result = await navigation.OpenAsync(
+            session.GetSnapshot().CatalogPath,
+            entryId,
+            request.LocationId,
+            cancellationToken);
+        if (result.Response != null)
+        {
+            return Results.Ok(result.Response);
+        }
+
+        int statusCode = result.Error!.Code switch
+        {
+            EditorErrorCodes.UsageLocationNotFound => StatusCodes.Status404NotFound,
+            EditorErrorCodes.UnityEditorOffline or EditorErrorCodes.UnityProjectNotFound =>
+                StatusCodes.Status409Conflict,
+            EditorErrorCodes.UnityEditorCommandTimeout => StatusCodes.Status504GatewayTimeout,
+            _ => StatusCodes.Status422UnprocessableEntity,
+        };
+        return Results.Json(result.Error, statusCode: statusCode);
     }
 }

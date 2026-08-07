@@ -15,3 +15,5 @@ The Unity package owns and writes `Library/GreenBox.I18n/usage-index.db`. The ho
 `/api/usage-index/state` is the cheap polling surface. Clients load the full per-entry summary only when its successful-update timestamp changes, so a large catalog is not repeatedly serialized while idle.
 
 Unity holds `Library/GreenBox.I18n/unity-editor.lock` with write sharing disabled while the Editor is running. The host probes that project-scoped lease through `/api/unity-project`; the operating system releases it after both a normal shutdown and a process crash. Presence and usage-index state remain separate concerns.
+
+Usage navigation is also project-scoped. The browser posts only an entry ID and an opaque location ID. The host re-reads the current index, verifies that the location still belongs to the entry, and publishes a short-lived command under `Library/GreenBox.I18n/Bridge`. Unity consumes it on the main thread and writes a bounded response. Paths supplied by the browser are never forwarded to the operating system or Unity.
