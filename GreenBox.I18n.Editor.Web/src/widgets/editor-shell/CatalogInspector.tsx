@@ -11,9 +11,7 @@ import {
   AppstoreOutlined,
   CloseOutlined,
   CopyOutlined,
-  CodeOutlined,
   ExpandOutlined,
-  ProductOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
 import {
@@ -25,17 +23,14 @@ import {
   Empty,
   Flex,
   Input,
-  List,
   Modal,
   Select,
   Space,
-  Spin,
   Tag,
   Table,
   Tabs,
   Tooltip,
   Typography,
-  message,
   theme,
   type InputRef,
   type MenuProps,
@@ -47,9 +42,7 @@ import type { CatalogSelectionItem } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 import { EntryAssetInput } from './EntryAssetInput'
 import { commonCultureNames } from './localeCultures'
-import { useUsageEntry } from '../../entities/usage-index/model/useUsageEntry'
-import type { AssetUsage, CodeUsage } from '../../entities/usage-index/api/getUsageEntry'
-import { openUsage } from '../../entities/usage-index/api/openUsage'
+import { EntryUsageLocations } from './EntryUsageLocations'
 
 interface CatalogInspectorProps {
   selection: CatalogSelectionItem[]
@@ -599,56 +592,30 @@ function EntryInspector({
   const { token } = theme.useToken()
   const [expandedLocaleId, setExpandedLocaleId] = useState<string>()
   const [activeTab, setActiveTab] = useState('text')
-  const [openingLocationId, setOpeningLocationId] = useState<string>()
-  const [messageApi, messageContextHolder] = message.useMessage()
   const orderedLocales = [...locales].sort((left, right) =>
     Number(right.id === defaultLocale) - Number(left.id === defaultLocale))
   const textCount = locales.filter((locale) =>
     Boolean(entry.locales[locale.id]?.text?.trim())).length
   const assetCount = locales.filter((locale) =>
     entry.locales[locale.id]?.asset != null).length
-  const usageEntry = useUsageEntry(
-    entry.id,
-    usageRevision,
-    activeTab === 'usage' && usageCount !== undefined && usageCount > 0,
-  )
-
   useEffect(() => {
     if (activeTab === 'usage' && usageCount === undefined) {
       setActiveTab('text')
     }
   }, [activeTab, usageCount])
 
-  const handleOpenUsage = async (locationId: string) => {
-    setOpeningLocationId(locationId)
-    try {
-      const result = await openUsage(entry.id, locationId)
-      if (result.status === 'requiresUserAction') {
-        messageApi.warning(result.message ?? 'Open the asset in Unity and try again.')
-      } else if (result.status !== 'opened') {
-        messageApi.error(result.message ?? 'Unity could not open this usage.')
-      }
-    } catch (error) {
-      messageApi.error(error instanceof Error ? error.message : 'Unity could not open this usage.')
-    } finally {
-      setOpeningLocationId(undefined)
-    }
-  }
-
   return (
-    <>
-      {messageContextHolder}
-      <InspectorSection
-        type={<EntryTypeLabel entryId={entry.id} />}
-        icon={renderCatalogNodeIcon('entry', getCatalogNodeIconColor('entry', token))}
-        headerContent={(
-          <CatalogPathInput
-            path={entry.path}
-            ariaLabel="Entry path"
-            onChange={(path) => onPathChange(entry.id, path)}
-          />
-        )}
-      >
+    <InspectorSection
+      type={<EntryTypeLabel entryId={entry.id} />}
+      icon={renderCatalogNodeIcon('entry', getCatalogNodeIconColor('entry', token))}
+      headerContent={(
+        <CatalogPathInput
+          path={entry.path}
+          ariaLabel="Entry path"
+          onChange={(path) => onPathChange(entry.id, path)}
+        />
+      )}
+    >
       <EntryCommentInput entry={entry} onCommentChange={onCommentChange} />
       <Tabs
         activeKey={activeTab}
@@ -729,114 +696,17 @@ function EntryInspector({
                       />
                     )
                   : (
-                      <EntryUsageList
-                        state={usageEntry}
-                        openingLocationId={openingLocationId}
-                        onOpen={handleOpenUsage}
+                      <EntryUsageLocations
+                        entryId={entry.id}
+                        usageRevision={usageRevision}
+                        enabled={activeTab === 'usage'}
                       />
                     ),
               }]),
         ]}
       />
-      </InspectorSection>
-    </>
+    </InspectorSection>
   )
-}
-
-type UsageListItem = {
-  key: string
-  locationId: string
-  kind: 'code' | 'asset'
-  label: string
-  details: string
-}
-
-function EntryUsageList({
-  state,
-  openingLocationId,
-  onOpen,
-}: {
-  state: ReturnType<typeof useUsageEntry>
-  openingLocationId?: string
-  onOpen: (locationId: string) => Promise<void>
-}) {
-  const { token } = theme.useToken()
-  if (state.status === 'idle' || state.status === 'loading') {
-    return (
-      <Flex justify="center" style={{ padding: layoutTokens.spacing.large }}>
-        <Spin size="small" />
-      </Flex>
-    )
-  }
-
-  if (state.status === 'error') {
-    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={state.message} />
-  }
-
-  const items: UsageListItem[] = [
-    ...state.entry.code.map(createCodeUsageItem),
-    ...state.entry.assets.map(createAssetUsageItem),
-  ]
-  return (
-    <List
-      size="small"
-      dataSource={items}
-      locale={{ emptyText: 'No usages' }}
-      renderItem={(item) => (
-        <List.Item style={{ padding: 0 }}>
-          <Tooltip title={item.details}>
-            <Button
-              block
-              type="text"
-              aria-label={item.label}
-              loading={openingLocationId === item.locationId}
-              disabled={openingLocationId !== undefined}
-              icon={item.kind === 'code'
-                ? <CodeOutlined style={{ color: token.colorInfo }} />
-                : <ProductOutlined style={{ color: token.colorTextSecondary }} />}
-              style={{
-                height: token.controlHeight,
-                justifyContent: 'flex-start',
-                paddingInline: token.paddingXS,
-                minWidth: 0,
-              }}
-              onClick={() => void onOpen(item.locationId)}
-            >
-              <Typography.Text ellipsis style={{ minWidth: 0 }}>
-                {item.label}
-              </Typography.Text>
-            </Button>
-          </Tooltip>
-        </List.Item>
-      )}
-    />
-  )
-}
-
-function createCodeUsageItem(usage: CodeUsage): UsageListItem {
-  const location = `${usage.filePath}:${usage.line}`
-  return {
-    key: usage.locationId,
-    locationId: usage.locationId,
-    kind: 'code',
-    label: location,
-    details: `${usage.assembly} / ${location}`,
-  }
-}
-
-function createAssetUsageItem(usage: AssetUsage): UsageListItem {
-  const fileName = usage.assetPath.split(/[\\/]/).at(-1) ?? usage.assetPath
-  const objectPath = usage.objectPath || usage.componentType
-  const propertyPath = usage.propertyPath.replace(/(?:^|\.)_greenBoxI18nEntryId$/, '')
-  return {
-    key: usage.locationId,
-    locationId: usage.locationId,
-    kind: 'asset',
-    label: `${fileName} / ${objectPath}`,
-    details: [usage.assetPath, usage.objectPath, usage.componentType, propertyPath]
-      .filter(Boolean)
-      .join(' / '),
-  }
 }
 
 function EntryTextInput({

@@ -1,6 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
-import { EditOutlined, ProjectOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Empty, Flex, Spin, Splitter, Switch, Tabs, Tag, Tooltip, Typography, theme } from 'antd'
+import {
+  EditOutlined,
+  ProjectOutlined,
+  SettingOutlined,
+  UserOutlined,
+  WarningOutlined,
+} from '@ant-design/icons'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Empty,
+  Flex,
+  List,
+  Spin,
+  Splitter,
+  Switch,
+  Tabs,
+  Tag,
+  Tooltip,
+  Typography,
+  theme,
+} from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogLocale, CatalogSnapshot } from '../../entities/catalog/model/catalog'
 import type { CatalogEntryMove } from '../../entities/catalog/api/moveCatalogEntries'
@@ -11,6 +33,7 @@ import { useCatalogSession } from '../../entities/catalog/model/useCatalogSessio
 import { useCatalogSourceMonitor } from '../../entities/catalog/model/useCatalogSourceMonitor'
 import { useUnityProjectStatus } from '../../entities/unity-project/model/useUnityProjectStatus'
 import { useUsageIndexSummary } from '../../entities/usage-index/model/useUsageIndexSummary'
+import type { UsageEntrySummary } from '../../entities/usage-index/api/getUsageIndexSummary'
 import {
   getEditorPreferences,
   updateEditorPreferences,
@@ -20,6 +43,7 @@ import { OpenCatalogDialog } from '../../features/open-catalog/OpenCatalogDialog
 import { CatalogInspector } from './CatalogInspector'
 import { CatalogTreePanel } from './CatalogTreePanel'
 import { EditorHeader } from './EditorHeader'
+import { EntryUsageLocations } from './EntryUsageLocations'
 import { buildCatalogTree, type CatalogSelectionItem } from './catalogTree'
 import {
   createEditorHistoryEntry,
@@ -29,7 +53,7 @@ import {
 } from './editorHistory'
 
 const historyLimit = 100
-type EditorPage = 'editor' | 'settings'
+type EditorPage = 'editor' | 'missing-references' | 'settings'
 
 export function EditorShell() {
   const { token } = theme.useToken()
@@ -156,6 +180,19 @@ function CatalogWorkspace({
       ? new Map(usageIndex.entries.map((entry) => [entry.entryId, entry.totalCount]))
       : undefined
   }, [unityProject?.isEditorOnline, usageIndex])
+  const missingUsageEntries = useMemo(() => {
+    if (usageCounts === undefined || usageIndex === undefined) {
+      return []
+    }
+
+    const catalogEntryIds = new Set(catalog.entries.map((entry) => entry.id))
+    return usageIndex.entries.filter((entry) =>
+      entry.totalCount > 0 && !catalogEntryIds.has(entry.entryId))
+  }, [catalog.entries, usageCounts, usageIndex])
+  const missingUsageCount = useMemo(
+    () => missingUsageEntries.reduce((total, entry) => total + entry.totalCount, 0),
+    [missingUsageEntries],
+  )
   const tree = useMemo(
     () => buildCatalogTree(catalog, temporaryFolderPaths, usageCounts),
     [catalog, temporaryFolderPaths, usageCounts],
@@ -184,6 +221,12 @@ function CatalogWorkspace({
     selectionHistoryRef.current = nextHistory
     selectionHistoryIndexRef.current = nextHistory.length - 1
   }, [selectedKeys])
+
+  useEffect(() => {
+    if (activePage === 'missing-references' && missingUsageEntries.length === 0) {
+      setActivePage('editor')
+    }
+  }, [activePage, missingUsageEntries.length])
 
   useEffect(() => {
     const navigateSelection = (direction: -1 | 1) => {
@@ -837,7 +880,11 @@ function CatalogWorkspace({
       />
 
       <Flex style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
-        <EditorNavigationRail activePage={activePage} onPageChange={setActivePage} />
+        <EditorNavigationRail
+          activePage={activePage}
+          missingUsageCount={missingUsageCount}
+          onPageChange={setActivePage}
+        />
         {activePage === 'editor' ? (
           <Splitter style={{ flex: 1, minHeight: 0 }}>
           <Splitter.Panel defaultSize="34%" min="280" max="60%">
@@ -885,6 +932,11 @@ function CatalogWorkspace({
             </div>
           </Splitter.Panel>
           </Splitter>
+        ) : activePage === 'missing-references' ? (
+          <MissingReferencesPage
+            entries={missingUsageEntries}
+            usageRevision={usageIndex?.updatedAtUtc ?? undefined}
+          />
         ) : (
           <SettingsPage />
         )}
@@ -895,9 +947,11 @@ function CatalogWorkspace({
 
 function EditorNavigationRail({
   activePage,
+  missingUsageCount,
   onPageChange,
 }: {
   activePage: EditorPage
+  missingUsageCount: number
   onPageChange: (page: EditorPage) => void
 }) {
   const { token } = theme.useToken()
@@ -922,6 +976,19 @@ function EditorNavigationRail({
             style={{ width: token.controlHeight, paddingInline: 0 }}
           />
         </Tooltip>
+        {missingUsageCount > 0 && (
+          <Tooltip title="Missing references" placement="right">
+            <Badge count={missingUsageCount} size="small" overflowCount={99}>
+              <Button
+                type={activePage === 'missing-references' ? 'primary' : 'text'}
+                icon={<WarningOutlined />}
+                aria-label={`Missing references: ${missingUsageCount}`}
+                onClick={() => onPageChange('missing-references')}
+                style={{ width: token.controlHeight, paddingInline: 0 }}
+              />
+            </Badge>
+          </Tooltip>
+        )}
         <Tooltip title="Settings" placement="right">
           <Button
             type={activePage === 'settings' ? 'primary' : 'text'}
@@ -933,6 +1000,116 @@ function EditorNavigationRail({
         </Tooltip>
       </Flex>
     </aside>
+  )
+}
+
+function MissingReferencesPage({
+  entries,
+  usageRevision,
+}: {
+  entries: UsageEntrySummary[]
+  usageRevision?: string
+}) {
+  const { token } = theme.useToken()
+  const [selectedEntryId, setSelectedEntryId] = useState(entries[0]?.entryId)
+  const selectedEntry = entries.find((entry) => entry.entryId === selectedEntryId)
+
+  useEffect(() => {
+    if (!entries.some((entry) => entry.entryId === selectedEntryId)) {
+      setSelectedEntryId(entries[0]?.entryId)
+    }
+  }, [entries, selectedEntryId])
+
+  return (
+    <Splitter style={{ flex: 1, minHeight: 0 }}>
+      <Splitter.Panel defaultSize={360} min={280} max={520}>
+        <Flex
+          vertical
+          gap={layoutTokens.spacing.large}
+          style={{ height: '100%', padding: layoutTokens.spacing.xLarge }}
+        >
+          <div>
+            <Typography.Title level={3} style={{ margin: 0 }}>Missing references</Typography.Title>
+            <Typography.Text type="secondary">
+              Entry IDs used by Unity but missing from this catalog.
+            </Typography.Text>
+          </div>
+
+          <List
+            size="small"
+            dataSource={entries}
+            style={{ minHeight: 0, overflow: 'auto' }}
+            pagination={entries.length > 50
+              ? { pageSize: 50, size: 'small', showSizeChanger: false }
+              : false}
+            renderItem={(entry) => (
+              <List.Item style={{ padding: 0 }}>
+                <Button
+                  block
+                  type={entry.entryId === selectedEntryId ? 'primary' : 'text'}
+                  onClick={() => setSelectedEntryId(entry.entryId)}
+                  style={{
+                    height: token.controlHeight,
+                    paddingInline: token.paddingXS,
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Typography.Text
+                    ellipsis
+                    style={{
+                      minWidth: 0,
+                      color: entry.entryId === selectedEntryId ? token.colorTextLightSolid : undefined,
+                    }}
+                  >
+                    {entry.entryId}
+                  </Typography.Text>
+                  <Typography.Text
+                    style={{
+                      color: entry.entryId === selectedEntryId
+                        ? token.colorTextLightSolid
+                        : token.colorInfo,
+                    }}
+                  >
+                    {entry.totalCount}
+                  </Typography.Text>
+                </Button>
+              </List.Item>
+            )}
+          />
+        </Flex>
+      </Splitter.Panel>
+
+      <Splitter.Panel min={360}>
+        <Flex
+          vertical
+          gap={layoutTokens.spacing.large}
+          style={{
+            height: '100%',
+            paddingTop: layoutTokens.spacing.large,
+            paddingInline: layoutTokens.spacing.xLarge,
+            paddingBottom: layoutTokens.spacing.xLarge,
+            overflow: 'auto',
+          }}
+        >
+          {selectedEntry ? (
+            <>
+              <Alert
+                showIcon
+                type="warning"
+                message={`Entry ${selectedEntry.entryId} is missing from the catalog`}
+                description={`${selectedEntry.totalCount} ${selectedEntry.totalCount === 1 ? 'usage references' : 'usages reference'} this ID.`}
+              />
+              <EntryUsageLocations
+                entryId={selectedEntry.entryId}
+                usageRevision={usageRevision}
+              />
+            </>
+          ) : (
+            <Empty description="Select a missing entry ID" />
+          )}
+        </Flex>
+      </Splitter.Panel>
+    </Splitter>
   )
 }
 

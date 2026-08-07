@@ -22,3 +22,5 @@ Usage counts are shown only while Unity is online and `/api/usage-index` reports
 The Web editor polls only `/api/usage-index/state`. It downloads and rebuilds the full per-entry count map when `updatedAtUtc` changes, avoiding repeated O(entries) work for idle projects with thousands of entries.
 
 An entry usage row carries an opaque `locationId`. Clicking it sends that ID back to the Host; the browser never decides which local file or Unity object should be opened.
+
+The missing-references page compares the reliable usage summary with a `Set` of IDs in the current catalog working copy. Its navigation item is hidden while Unity or the index is unavailable and when no references are missing. Location details are fetched only for the selected missing ID, avoiding one request and one rendered list per problem in large projects.
