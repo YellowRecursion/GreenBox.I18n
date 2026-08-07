@@ -34,10 +34,30 @@ namespace GreenBox.I18n.Usage.Index
             using I18nSqliteConnection connection = OpenConnection();
         }
 
+        public I18nUsageIndexSnapshot ReadCurrentUsages()
+        {
+            using I18nSqliteConnection connection = OpenConnection();
+            using I18nSqliteTransaction transaction = connection.BeginReadTransaction();
+            I18nUsageIndexSnapshot snapshot = I18nUsageIndexReader.ReadCurrent(connection);
+            transaction.Commit();
+            return snapshot;
+        }
+
         public void RecoverInterruptedUpdate()
         {
             using I18nSqliteConnection connection = OpenConnection();
             using I18nSqliteTransaction transaction = connection.BeginTransaction();
+            connection.Execute(@"
+UPDATE sources
+SET status = 'current', error = NULL
+WHERE status = 'pending'
+  AND (
+      EXISTS(SELECT 1 FROM code_usages WHERE code_usages.source_id = sources.source_id)
+      OR EXISTS(SELECT 1 FROM asset_usages WHERE asset_usages.source_id = sources.source_id)
+  );
+
+DELETE FROM sources
+WHERE status = 'pending';");
             if (GetIndexStatus(connection, transaction) == "updating")
             {
                 string status = HasCompletedBaseline(connection, transaction) ? "ready" : "empty";
@@ -185,9 +205,17 @@ WHERE id = 1 AND status = 'disabled';");
 
         private void BeginPartialUpdate(string kind, IEnumerable<string> sourceKeys)
         {
+            string[] normalizedSourceKeys = I18nUsageIndexSourceWriter
+                .NormalizeSourceKeys(sourceKeys)
+                .ToArray();
+            if (normalizedSourceKeys.Length == 0)
+            {
+                return;
+            }
+
             using I18nSqliteConnection connection = OpenConnection();
             using I18nSqliteTransaction transaction = connection.BeginTransaction();
-            foreach (string sourceKey in I18nUsageIndexSourceWriter.NormalizeSourceKeys(sourceKeys))
+            foreach (string sourceKey in normalizedSourceKeys)
             {
                 I18nUsageIndexSourceWriter.UpsertSource(
                     connection,

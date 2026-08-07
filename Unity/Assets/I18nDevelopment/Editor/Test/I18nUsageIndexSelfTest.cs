@@ -79,6 +79,7 @@ namespace GreenBox.I18n.Development.Editor
             AssertScalar(databasePath, "SELECT COUNT(*) FROM sources;", 2L, errors);
             AssertScalar(databasePath, "SELECT COUNT(*) FROM code_usages;", 1L, errors);
             AssertScalar(databasePath, "SELECT COUNT(*) FROM asset_usages;", 1L, errors);
+            AssertCurrentUsageCount(store, 2, errors);
 
             long successfulUpdate = ReadInt64(
                 databasePath,
@@ -92,6 +93,7 @@ namespace GreenBox.I18n.Development.Editor
                 "failed",
                 errors);
             AssertScalar(databasePath, "SELECT COUNT(*) FROM asset_usages;", 1L, errors);
+            AssertCurrentUsageCount(store, 1, errors);
             AssertScalar(
                 databasePath,
                 "SELECT updated_at_utc FROM index_state WHERE id = 1;",
@@ -107,7 +109,18 @@ namespace GreenBox.I18n.Development.Editor
                 "pending",
                 errors);
             AssertScalar(databasePath, "SELECT COUNT(*) FROM asset_usages;", 1L, errors);
+            AssertCurrentUsageCount(store, 1, errors);
 
+            store.RecoverInterruptedUpdate();
+            AssertScalar(databasePath, "SELECT status FROM index_state WHERE id = 1;", "ready", errors);
+            AssertScalar(
+                databasePath,
+                "SELECT status FROM sources WHERE kind = 'asset';",
+                "current",
+                errors);
+            AssertCurrentUsageCount(store, 2, errors);
+
+            store.BeginAssetUpdate(new[] { "Assets/Test.prefab" });
             store.ApplyAssets(CreateAssetResult(I18nUsageSourceScanStatus.Success, false));
             AssertScalar(databasePath, "SELECT status FROM index_state WHERE id = 1;", "ready", errors);
             AssertScalar(
@@ -116,6 +129,16 @@ namespace GreenBox.I18n.Development.Editor
                 "current",
                 errors);
             AssertScalar(databasePath, "SELECT COUNT(*) FROM asset_usages;", 0L, errors);
+            AssertCurrentUsageCount(store, 1, errors);
+
+            store.BeginAssemblyUpdate(new[] { "GreenBox.I18n.EditorOnly" });
+            store.RecoverInterruptedUpdate();
+            AssertScalar(
+                databasePath,
+                "SELECT COUNT(*) FROM sources WHERE source_key = 'GreenBox.I18n.EditorOnly';",
+                0L,
+                errors);
+            AssertScalar(databasePath, "SELECT status FROM index_state WHERE id = 1;", "ready", errors);
 
             store.RemoveAssemblies(new[] { "Assembly-CSharp" });
             AssertScalar(
@@ -124,6 +147,7 @@ namespace GreenBox.I18n.Development.Editor
                 0L,
                 errors);
             AssertScalar(databasePath, "SELECT COUNT(*) FROM code_usages;", 0L, errors);
+            AssertCurrentUsageCount(store, 0, errors);
         }
 
         private static I18nIlUsageScanResult CreateIlResult()
@@ -190,6 +214,20 @@ namespace GreenBox.I18n.Development.Editor
         private static I18nUsageScanPerformance EmptyPerformance()
         {
             return new I18nUsageScanPerformance(0, 0, 0);
+        }
+
+        private static void AssertCurrentUsageCount(
+            I18nUsageIndexStore store,
+            int expected,
+            ICollection<string> errors)
+        {
+            I18nUsageIndexSnapshot snapshot = store.ReadCurrentUsages();
+            if (snapshot.Usages.Count != expected)
+            {
+                errors.Add(
+                    $"expected {expected} current indexed usage(s), " +
+                    $"got {snapshot.Usages.Count}");
+            }
         }
 
         private static long ReadInt64(string databasePath, string sql)

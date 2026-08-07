@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using UnityEditor;
 
 namespace GreenBox.I18n.Unity.Editor.Settings
@@ -10,6 +11,8 @@ namespace GreenBox.I18n.Unity.Editor.Settings
     [FilePath("ProjectSettings/GreenBox.I18n.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class I18nProjectSettings : ScriptableSingleton<I18nProjectSettings>
     {
+        internal static event Action? ActiveCatalogChanged;
+
         [UnityEngine.SerializeField]
         private string _activeCatalogGuid = string.Empty;
 
@@ -26,8 +29,15 @@ namespace GreenBox.I18n.Unity.Editor.Settings
             set
             {
                 var assetPath = value ? AssetDatabase.GetAssetPath(value) : string.Empty;
-                _activeCatalogGuid = AssetDatabase.AssetPathToGUID(assetPath);
+                string activeCatalogGuid = AssetDatabase.AssetPathToGUID(assetPath);
+                if (string.Equals(_activeCatalogGuid, activeCatalogGuid, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _activeCatalogGuid = activeCatalogGuid;
                 Save(true);
+                ActiveCatalogChanged?.Invoke();
             }
         }
     }

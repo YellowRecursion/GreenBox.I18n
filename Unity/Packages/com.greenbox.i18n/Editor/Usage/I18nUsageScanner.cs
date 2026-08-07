@@ -260,14 +260,16 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         /// </summary>
         internal static I18nIlUsageScanResult ScanAssemblies(IReadOnlyList<string> assemblyPaths)
         {
-            AssembliesScanStarted?.Invoke(assemblyPaths);
+            IReadOnlyList<string> scannableAssemblyPaths =
+                I18nIlUsageScanner.GetScannableAssemblyPaths(assemblyPaths);
+            AssembliesScanStarted?.Invoke(scannableAssemblyPaths);
             try
             {
-                return ScanAssembliesCore(assemblyPaths);
+                return ScanAssembliesCore(scannableAssemblyPaths);
             }
             catch (Exception exception)
             {
-                AssembliesScanFailed?.Invoke(assemblyPaths, exception);
+                AssembliesScanFailed?.Invoke(scannableAssemblyPaths, exception);
                 throw;
             }
         }

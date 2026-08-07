@@ -21,6 +21,8 @@ namespace GreenBox.I18n.Unity.Editor.Usage
     {
         private static readonly I18nUsageIndexStore Store = new(GetDatabasePath());
 
+        internal static event Action? IndexChanged;
+
         static I18nUsageIndexController()
         {
             I18nUsageScanner.FullScanStarted += HandleFullScanStarted;
@@ -56,10 +58,13 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             I18nIlUsageScanResult ilResult,
             I18nAssetUsageScanResult assetResult)
         {
-            Execute(
+            if (Execute(
                 "write the full usage index",
                 () => Store.ApplyFull(ilResult, assetResult),
-                Store.FailFullUpdate);
+                Store.FailFullUpdate))
+            {
+                IndexChanged?.Invoke();
+            }
         }
 
         private static void HandleFullScanFailed(Exception exception)
@@ -87,16 +92,22 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             IReadOnlyList<string> assetPaths,
             I18nAssetUsageScanResult result)
         {
-            Execute("write asset usage results", () => Store.ApplyAssets(result));
+            if (Execute("write asset usage results", () => Store.ApplyAssets(result)))
+            {
+                IndexChanged?.Invoke();
+            }
         }
 
         private static void HandleAssetsScanFailed(
             IReadOnlyList<string> assetPaths,
             Exception exception)
         {
-            Execute(
+            if (Execute(
                 "record failed asset usage sources",
-                () => Store.FailAssetUpdate(NormalizeAssetPaths(assetPaths), exception));
+                () => Store.FailAssetUpdate(NormalizeAssetPaths(assetPaths), exception)))
+            {
+                IndexChanged?.Invoke();
+            }
         }
 
         private static void HandleAssembliesScanStarted(IReadOnlyList<string> assemblyPaths)
@@ -110,30 +121,47 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             IReadOnlyList<string> assemblyPaths,
             I18nIlUsageScanResult result)
         {
-            Execute("write assembly usage results", () => Store.ApplyAssemblies(result));
+            if (result.Sources.Count == 0)
+            {
+                return;
+            }
+
+            if (Execute("write assembly usage results", () => Store.ApplyAssemblies(result)))
+            {
+                IndexChanged?.Invoke();
+            }
         }
 
         private static void HandleAssembliesScanFailed(
             IReadOnlyList<string> assemblyPaths,
             Exception exception)
         {
-            Execute(
+            if (Execute(
                 "record failed assembly usage sources",
-                () => Store.FailAssemblyUpdate(GetAssemblyKeys(assemblyPaths), exception));
+                () => Store.FailAssemblyUpdate(GetAssemblyKeys(assemblyPaths), exception)))
+            {
+                IndexChanged?.Invoke();
+            }
         }
 
         private static void HandleAssetsRemoved(IReadOnlyList<string> assetPaths)
         {
-            Execute(
+            if (Execute(
                 "remove deleted assets from the usage index",
-                () => Store.RemoveAssets(NormalizeAssetPaths(assetPaths)));
+                () => Store.RemoveAssets(NormalizeAssetPaths(assetPaths))))
+            {
+                IndexChanged?.Invoke();
+            }
         }
 
         private static void HandleAssembliesRemoved(IReadOnlyList<string> assemblyPaths)
         {
-            Execute(
+            if (Execute(
                 "remove deleted assemblies from the usage index",
-                () => Store.RemoveAssemblies(GetAssemblyKeys(assemblyPaths)));
+                () => Store.RemoveAssemblies(GetAssemblyKeys(assemblyPaths))))
+            {
+                IndexChanged?.Invoke();
+            }
         }
 
         private static void HandleUsageIndexingChanged(I18nUsageIndexingMode mode)
@@ -175,7 +203,12 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             return Path.Combine(projectRoot, "Library", "GreenBox.I18n", "usage-index.db");
         }
 
-        private static void Execute(
+        internal static I18nUsageIndexSnapshot ReadCurrentUsages()
+        {
+            return Store.ReadCurrentUsages();
+        }
+
+        private static bool Execute(
             string operation,
             Action action,
             Action<Exception>? failureAction = null)
@@ -183,6 +216,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             try
             {
                 action();
+                return true;
             }
             catch (Exception exception)
             {
@@ -200,6 +234,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
                 I18nLog.Error(
                     $"Failed to {operation}: {exception.GetType().Name}: {exception.Message}");
+                return false;
             }
         }
     }

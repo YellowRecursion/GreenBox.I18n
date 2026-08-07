@@ -87,7 +87,12 @@ namespace GreenBox.I18n.Usage.Index
 
         public I18nSqliteTransaction BeginTransaction()
         {
-            return new I18nSqliteTransaction(this);
+            return new I18nSqliteTransaction(this, true);
+        }
+
+        public I18nSqliteTransaction BeginReadTransaction()
+        {
+            return new I18nSqliteTransaction(this, false);
         }
 
         internal void ThrowOnError(int result)
@@ -120,10 +125,10 @@ namespace GreenBox.I18n.Usage.Index
         private readonly I18nSqliteConnection _connection;
         private bool _completed;
 
-        public I18nSqliteTransaction(I18nSqliteConnection connection)
+        public I18nSqliteTransaction(I18nSqliteConnection connection, bool immediate)
         {
             _connection = connection;
-            _connection.Execute("BEGIN IMMEDIATE;");
+            _connection.Execute(immediate ? "BEGIN IMMEDIATE;" : "BEGIN;");
         }
 
         public void Commit()
@@ -250,6 +255,35 @@ namespace GreenBox.I18n.Usage.Index
             string value = I18nSqliteNative.ReadUtf8(textPointer, byteCount);
             Reset();
             return value;
+        }
+
+        public bool Read()
+        {
+            int result = I18nSqliteNative.Step(_handle);
+            if (result == I18nSqliteNative.Row)
+            {
+                return true;
+            }
+
+            if (result == I18nSqliteNative.Done)
+            {
+                Reset();
+                return false;
+            }
+
+            throw new I18nSqliteException(result, _connection.GetErrorMessage());
+        }
+
+        public long GetInt64(int column)
+        {
+            return I18nSqliteNative.ColumnInt64(_handle, column);
+        }
+
+        public string GetString(int column)
+        {
+            IntPtr textPointer = I18nSqliteNative.ColumnText(_handle, column);
+            int byteCount = I18nSqliteNative.ColumnBytes(_handle, column);
+            return I18nSqliteNative.ReadUtf8(textPointer, byteCount);
         }
 
         private int BindText(int index, string value)

@@ -123,6 +123,33 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             }
 
             string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
+            UnityCompilationAssembly[] assemblies = GetScannableAssemblies(
+                assemblyPaths,
+                projectRoot);
+            return Scan(
+                assemblies,
+                projectRoot,
+                new I18nUsageScanProfiler(false));
+        }
+
+        internal static IReadOnlyList<string> GetScannableAssemblyPaths(
+            IReadOnlyList<string> assemblyPaths)
+        {
+            if (assemblyPaths == null)
+            {
+                throw new ArgumentNullException(nameof(assemblyPaths));
+            }
+
+            string projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
+            return GetScannableAssemblies(assemblyPaths, projectRoot)
+                .Select(assembly => I18nUsagePath.Resolve(assembly.outputPath, projectRoot))
+                .ToArray();
+        }
+
+        private static UnityCompilationAssembly[] GetScannableAssemblies(
+            IEnumerable<string> assemblyPaths,
+            string projectRoot)
+        {
             var requestedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (string assemblyPath in assemblyPaths)
             {
@@ -132,15 +159,13 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 }
             }
 
-            UnityCompilationAssembly[] assemblies = CompilationPipeline
+            return CompilationPipeline
                 .GetAssemblies(AssembliesType.Player)
-                .Where(assembly => requestedPaths.Contains(
-                    I18nUsagePath.Resolve(assembly.outputPath, projectRoot)))
+                .Where(assembly =>
+                    requestedPaths.Contains(I18nUsagePath.Resolve(assembly.outputPath, projectRoot)) &&
+                    assembly.sourceFiles.Any(
+                        sourceFile => I18nUsagePath.IsAssetPath(sourceFile, projectRoot)))
                 .ToArray();
-            return Scan(
-                assemblies,
-                projectRoot,
-                new I18nUsageScanProfiler(false));
         }
 
         private static I18nIlUsageScanResult Scan(

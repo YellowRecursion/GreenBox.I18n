@@ -67,6 +67,13 @@ scan result is intentionally discarded. Deleting a source cascades to its usage 
 lifecycle events, preferences, automatic retries, and the storage module. Initialization is
 silent unless the database cannot be opened or migrated.
 
+`I18nMissingCatalogEntryDiagnostic` reads a current immutable index snapshot after index changes
+or a successful active-catalog compilation. It compares valid catalog IDs with usages from
+`current` sources and synchronously emits one bounded warning with clickable locations after each
+completed update. Synchronous publication is deliberate: Unity can reload the managed domain
+immediately after compilation, which discards delayed editor callbacks. It does not run at editor
+startup, report stale or failed sources, or treat a missing catalog as an empty one.
+
 ## Source changes during a scan
 
 Scanning uses optimistic consistency rather than locking Unity assets or compiler output:
