@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -20,6 +21,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         private const int ReadBufferSize = 64 * 1024;
         private const int MaximumReportedLocationCount = 100;
         private const int MaximumReportedLocationsPerEntry = 10;
+        private const int MaximumReportedSlowFileCount = 5;
 
         private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -76,6 +78,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                     0,
                     0,
                     profiler.Complete(),
+                    I18nAssetUsageScanDiagnostics.Empty,
                     false);
             }
 
@@ -85,27 +88,77 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             int scannedAssetCount = 0;
             long scannedByteCount = 0;
             byte[] readBuffer = new byte[ReadBufferSize];
+            long pathDiscoveryTicks = 0;
+            long markerPrefilterTicks = 0;
+            long assetMetadataTicks = 0;
+            long yamlParseTicks = 0;
+            long contextResolutionTicks = 0;
+            var slowestFiles = new SlowestFileCollector(MaximumReportedSlowFileCount);
 
-            foreach (string absolutePath in absolutePaths)
+            using IEnumerator<string> pathEnumerator = absolutePaths.GetEnumerator();
+            while (MoveNext(pathEnumerator, ref pathDiscoveryTicks))
             {
+                string absolutePath = pathEnumerator.Current;
+                long fileStart = Stopwatch.GetTimestamp();
                 scannedAssetCount++;
                 try
                 {
-                    scannedByteCount += new FileInfo(absolutePath).Length;
-                    if (!ContainsEntryIdMarker(absolutePath, readBuffer))
+                    bool containsEntryIdMarker;
+                    long stageStart = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        scannedByteCount += new FileInfo(absolutePath).Length;
+                        containsEntryIdMarker = ContainsEntryIdMarker(absolutePath, readBuffer);
+                    }
+                    finally
+                    {
+                        markerPrefilterTicks += Stopwatch.GetTimestamp() - stageStart;
+                    }
+
+                    if (!containsEntryIdMarker)
                     {
                         continue;
                     }
 
-                    string assetPath = ToAssetPath(absolutePath, projectRoot);
-                    string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
-                    SerializedAssetModel model = ParseAsset(
-                        absolutePath,
-                        assetPath,
-                        assetGuid,
-                        warnings);
+                    string assetPath;
+                    string assetGuid;
+                    stageStart = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        assetPath = ToAssetPath(absolutePath, projectRoot);
+                        assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
+                    }
+                    finally
+                    {
+                        assetMetadataTicks += Stopwatch.GetTimestamp() - stageStart;
+                    }
+
+                    SerializedAssetModel model;
+                    stageStart = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        model = ParseAsset(
+                            absolutePath,
+                            assetPath,
+                            assetGuid,
+                            warnings);
+                    }
+                    finally
+                    {
+                        yamlParseTicks += Stopwatch.GetTimestamp() - stageStart;
+                    }
+
                     profiler.Sample();
-                    model.PrepareContexts(scriptTypeResolver);
+                    stageStart = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        model.PrepareContexts(scriptTypeResolver);
+                    }
+                    finally
+                    {
+                        contextResolutionTicks += Stopwatch.GetTimestamp() - stageStart;
+                    }
+
                     profiler.Sample();
                     models.Add(model);
                 }
@@ -115,8 +168,15 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                         $"Skipped '{ToAssetPath(absolutePath, projectRoot)}': " +
                         $"{exception.GetType().Name}: {exception.Message}");
                 }
+                finally
+                {
+                    slowestFiles.Observe(
+                        absolutePath,
+                        Stopwatch.GetTimestamp() - fileStart);
+                }
             }
 
+            long resultBuildStart = Stopwatch.GetTimestamp();
             IReadOnlyDictionary<string, SerializedAssetModel> modelsByGuid = models
                 .Where(model => model.AssetGuid.Length > 0)
                 .GroupBy(model => model.AssetGuid, StringComparer.Ordinal)
@@ -127,8 +187,17 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 .ThenBy(usage => usage.AssetPath, StringComparer.Ordinal)
                 .ThenBy(usage => usage.Line)
                 .ToArray();
+            long resultBuildTicks = Stopwatch.GetTimestamp() - resultBuildStart;
 
             I18nUsageScanPerformance performance = profiler.Complete();
+            var diagnostics = new I18nAssetUsageScanDiagnostics(
+                ToMilliseconds(pathDiscoveryTicks),
+                ToMilliseconds(markerPrefilterTicks),
+                ToMilliseconds(assetMetadataTicks),
+                ToMilliseconds(yamlParseTicks),
+                ToMilliseconds(contextResolutionTicks),
+                ToMilliseconds(resultBuildTicks),
+                slowestFiles.CreateResult(projectRoot));
             return new I18nAssetUsageScanResult(
                 usages,
                 warnings,
@@ -136,6 +205,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 models.Count,
                 scannedByteCount,
                 performance,
+                diagnostics,
                 true);
         }
 
@@ -165,6 +235,21 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 $"found {result.Usages.Count} usage(s) across " +
                 $"{result.Usages.Select(usage => usage.EntryId).Distinct().Count()} ID(s).",
             };
+
+            I18nAssetUsageScanDiagnostics diagnostics = result.Diagnostics;
+            lines.Add("Asset analysis breakdown:");
+            lines.Add($"  Discover paths: {diagnostics.PathDiscoveryMilliseconds:0.0} ms");
+            lines.Add($"  Read + marker prefilter: {diagnostics.MarkerPrefilterMilliseconds:0.0} ms");
+            lines.Add($"  AssetDatabase metadata: {diagnostics.AssetMetadataMilliseconds:0.0} ms");
+            lines.Add($"  Parse matched YAML: {diagnostics.YamlParseMilliseconds:0.0} ms");
+            lines.Add($"  Resolve contexts: {diagnostics.ContextResolutionMilliseconds:0.0} ms");
+            lines.Add($"  Build results: {diagnostics.ResultBuildMilliseconds:0.0} ms");
+            if (diagnostics.SlowestFiles.Count > 0)
+            {
+                lines.Add("  Slowest files:");
+                lines.AddRange(diagnostics.SlowestFiles.Select(
+                    file => $"    {file.AssetPath}: {file.ElapsedMilliseconds:0.0} ms"));
+            }
 
             foreach (IGrouping<long, I18nAssetUsage> group in result.Usages
                          .GroupBy(usage => usage.EntryId)
@@ -199,6 +284,21 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             }
 
             return string.Join(Environment.NewLine, lines);
+        }
+
+        private static bool MoveNext(
+            IEnumerator<string> enumerator,
+            ref long elapsedTicks)
+        {
+            long start = Stopwatch.GetTimestamp();
+            try
+            {
+                return enumerator.MoveNext();
+            }
+            finally
+            {
+                elapsedTicks += Stopwatch.GetTimestamp() - start;
+            }
         }
 
         private static IEnumerable<string> EnumerateSerializedAssetPaths(string assetsRoot)
@@ -650,6 +750,69 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             return $"{byteCount / (1024d * 1024d):0.0} MiB";
         }
 
+        private static double ToMilliseconds(long stopwatchTicks)
+        {
+            return stopwatchTicks * 1000d / Stopwatch.Frequency;
+        }
+
+        private sealed class SlowestFileCollector
+        {
+            private readonly int _capacity;
+            private readonly List<SlowFileCandidate> _files;
+
+            public SlowestFileCollector(int capacity)
+            {
+                _capacity = capacity;
+                _files = new List<SlowFileCandidate>(capacity);
+            }
+
+            public void Observe(string absolutePath, long elapsedTicks)
+            {
+                if (_files.Count < _capacity)
+                {
+                    _files.Add(new SlowFileCandidate(absolutePath, elapsedTicks));
+                    return;
+                }
+
+                int fastestIndex = 0;
+                for (int index = 1; index < _files.Count; index++)
+                {
+                    if (_files[index].ElapsedTicks < _files[fastestIndex].ElapsedTicks)
+                    {
+                        fastestIndex = index;
+                    }
+                }
+
+                if (elapsedTicks > _files[fastestIndex].ElapsedTicks)
+                {
+                    _files[fastestIndex] = new SlowFileCandidate(absolutePath, elapsedTicks);
+                }
+            }
+
+            public IReadOnlyList<I18nAssetFileScanPerformance> CreateResult(string projectRoot)
+            {
+                return _files
+                    .OrderByDescending(file => file.ElapsedTicks)
+                    .Select(file => new I18nAssetFileScanPerformance(
+                        ToAssetPath(file.AbsolutePath, projectRoot),
+                        ToMilliseconds(file.ElapsedTicks)))
+                    .ToArray();
+            }
+
+            private sealed class SlowFileCandidate
+            {
+                public SlowFileCandidate(string absolutePath, long elapsedTicks)
+                {
+                    AbsolutePath = absolutePath;
+                    ElapsedTicks = elapsedTicks;
+                }
+
+                public string AbsolutePath { get; }
+
+                public long ElapsedTicks { get; }
+            }
+        }
+
         private sealed class SerializedPropertyPathBuilder
         {
             private readonly List<PathNode> _nodes = new();
@@ -1020,6 +1183,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             int matchedAssetCount,
             long scannedByteCount,
             I18nUsageScanPerformance performance,
+            I18nAssetUsageScanDiagnostics diagnostics,
             bool isForceText)
         {
             Usages = usages;
@@ -1028,6 +1192,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             MatchedAssetCount = matchedAssetCount;
             ScannedByteCount = scannedByteCount;
             Performance = performance;
+            Diagnostics = diagnostics;
             IsForceText = isForceText;
         }
 
@@ -1043,9 +1208,68 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
         public I18nUsageScanPerformance Performance { get; }
 
+        public I18nAssetUsageScanDiagnostics Diagnostics { get; }
+
         public long ElapsedMilliseconds => Performance.ElapsedMilliseconds;
 
         public bool IsForceText { get; }
+    }
+
+    internal sealed class I18nAssetUsageScanDiagnostics
+    {
+        public static I18nAssetUsageScanDiagnostics Empty { get; } = new(
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            Array.Empty<I18nAssetFileScanPerformance>());
+
+        public I18nAssetUsageScanDiagnostics(
+            double pathDiscoveryMilliseconds,
+            double markerPrefilterMilliseconds,
+            double assetMetadataMilliseconds,
+            double yamlParseMilliseconds,
+            double contextResolutionMilliseconds,
+            double resultBuildMilliseconds,
+            IReadOnlyList<I18nAssetFileScanPerformance> slowestFiles)
+        {
+            PathDiscoveryMilliseconds = pathDiscoveryMilliseconds;
+            MarkerPrefilterMilliseconds = markerPrefilterMilliseconds;
+            AssetMetadataMilliseconds = assetMetadataMilliseconds;
+            YamlParseMilliseconds = yamlParseMilliseconds;
+            ContextResolutionMilliseconds = contextResolutionMilliseconds;
+            ResultBuildMilliseconds = resultBuildMilliseconds;
+            SlowestFiles = slowestFiles;
+        }
+
+        public double PathDiscoveryMilliseconds { get; }
+
+        public double MarkerPrefilterMilliseconds { get; }
+
+        public double AssetMetadataMilliseconds { get; }
+
+        public double YamlParseMilliseconds { get; }
+
+        public double ContextResolutionMilliseconds { get; }
+
+        public double ResultBuildMilliseconds { get; }
+
+        public IReadOnlyList<I18nAssetFileScanPerformance> SlowestFiles { get; }
+    }
+
+    internal sealed class I18nAssetFileScanPerformance
+    {
+        public I18nAssetFileScanPerformance(string assetPath, double elapsedMilliseconds)
+        {
+            AssetPath = assetPath;
+            ElapsedMilliseconds = elapsedMilliseconds;
+        }
+
+        public string AssetPath { get; }
+
+        public double ElapsedMilliseconds { get; }
     }
 
     internal sealed class I18nAssetUsage

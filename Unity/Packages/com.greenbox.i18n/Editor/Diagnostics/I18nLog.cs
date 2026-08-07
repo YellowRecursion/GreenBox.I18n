@@ -11,16 +11,19 @@ namespace GreenBox.I18n.Unity.Editor.Diagnostics
     {
         private const string Prefix = "[i18n]";
 
+        [HideInCallstack]
         internal static void Info(string message, Object? context = null)
         {
             Debug.Log(Format(message), context);
         }
 
+        [HideInCallstack]
         internal static void Warning(string message, Object? context = null)
         {
             Debug.LogWarning(Format(message), context);
         }
 
+        [HideInCallstack]
         internal static void Error(string message, Object? context = null)
         {
             Debug.LogError(Format(message), context);
