@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GreenBox.I18n.Unity.Editor::GreenBox.I18n.Unity.Editor.Settings.I18nProjectSettings
   _activeCatalogGuid: 2fbf4bcb9d352204798cba3f5fb9bb25
+  _activeCatalogPath: Assets/I18nDevelopment/catalog.json

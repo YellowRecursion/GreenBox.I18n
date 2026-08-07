@@ -1,0 +1,22 @@
+<idea-plugin require-restart="true">
+  <id>com.greenbox.i18n.rider</id>
+  <name>GreenBox I18n</name>
+  <vendor>GreenBox</vendor>
+
+  <description><![CDATA[
+    <p>GreenBox I18n support for JetBrains Rider.</p>
+  ]]></description>
+
+  <depends>com.intellij.modules.rider</depends>
+
+  <applicationListeners>
+    <listener
+        class="com.greenbox.i18n.rider.EntryIdInlayEditorListener"
+        topic="com.intellij.openapi.editor.event.EditorFactoryListener" />
+  </applicationListeners>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <projectService serviceImplementation="com.greenbox.i18n.rider.I18nProjectCatalogService" />
+    <postStartupActivity implementation="com.greenbox.i18n.rider.EntryIdInlayStartupActivity" />
+  </extensions>
+</idea-plugin>
