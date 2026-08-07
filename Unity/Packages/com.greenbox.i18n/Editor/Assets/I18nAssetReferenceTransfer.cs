@@ -3,6 +3,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using GreenBox.I18n.Unity.Editor.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using UnityEditor;
@@ -43,7 +44,7 @@ namespace GreenBox.I18n.Unity.Editor.Assets
             }
 
             EditorGUIUtility.systemCopyBuffer = JsonConvert.SerializeObject(payload, JsonSettings);
-            Debug.Log($"Copied i18n asset reference for '{payload.ObjectName}'.");
+            I18nLog.Info($"Copied asset reference for '{payload.ObjectName}'.");
         }
 
         /// <summary>

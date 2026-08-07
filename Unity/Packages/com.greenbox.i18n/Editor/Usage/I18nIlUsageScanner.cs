@@ -30,7 +30,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         {
             var lines = new List<string>
             {
-                $"[GreenBox I18n] IL usage scan completed in {result.ElapsedMilliseconds} ms. " +
+                $"IL usage scan completed in {result.ElapsedMilliseconds} ms. " +
                 $"Scanned {result.ScannedAssemblyCount} player assembly(s) with Assets sources; " +
                 $"{result.CandidateAssemblyCount} required Cecil analysis; " +
                 $"found {result.Usages.Count} usage(s) across " +

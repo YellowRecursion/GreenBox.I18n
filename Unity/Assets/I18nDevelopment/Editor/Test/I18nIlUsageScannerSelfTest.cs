@@ -3,9 +3,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GreenBox.I18n.Unity.Editor.Diagnostics;
 using GreenBox.I18n.Unity.Editor.Usage;
 using UnityEditor;
-using UnityEngine;
 
 namespace GreenBox.I18n.Development.Editor
 {
@@ -38,7 +38,7 @@ namespace GreenBox.I18n.Development.Editor
         {
             if (EditorApplication.isCompiling)
             {
-                Debug.LogWarning("[GreenBox I18n] Wait for script compilation to finish before testing the usage scanner.");
+                I18nLog.Warning("Wait for script compilation to finish before testing the usage scanner.");
                 return;
             }
 
@@ -81,14 +81,14 @@ namespace GreenBox.I18n.Development.Editor
 
             if (errors.Count == 0)
             {
-                Debug.Log(
-                    $"[GreenBox I18n] PASS - entry usage scanner self-test completed in " +
+                I18nLog.Info(
+                    $"PASS - entry usage scanner self-test completed in " +
                     $"{result.ElapsedMilliseconds} ms. All {ExpectedUsages.Length + ExpectedAbsentUsages.Length} cases passed.");
                 return;
             }
 
-            Debug.LogError(
-                $"[GreenBox I18n] FAIL - entry usage scanner self-test found {errors.Count} problem(s):" +
+            I18nLog.Error(
+                $"FAIL - entry usage scanner self-test found {errors.Count} problem(s):" +
                 Environment.NewLine +
                 string.Join(Environment.NewLine, errors.Select(error => $"  - {error}")));
         }

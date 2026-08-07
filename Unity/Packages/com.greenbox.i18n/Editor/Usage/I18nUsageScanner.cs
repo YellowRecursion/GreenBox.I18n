@@ -2,8 +2,8 @@
 
 using System;
 using System.Diagnostics;
+using GreenBox.I18n.Unity.Editor.Diagnostics;
 using UnityEditor;
-using Debug = UnityEngine.Debug;
 
 namespace GreenBox.I18n.Unity.Editor.Usage
 {
@@ -20,7 +20,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         {
             if (EditorApplication.isCompiling)
             {
-                Debug.LogWarning("[GreenBox I18n] Wait for script compilation to finish before scanning entry usage.");
+                I18nLog.Warning("Wait for script compilation to finish before scanning entry usage.");
                 return;
             }
 
@@ -51,11 +51,11 @@ namespace GreenBox.I18n.Unity.Editor.Usage
 
             if (ilResult.Warnings.Count > 0 || assetResult.Warnings.Count > 0)
             {
-                Debug.LogWarning(report);
+                I18nLog.Warning(report);
             }
             else
             {
-                Debug.Log(report);
+                I18nLog.Info(report);
             }
         }
 
@@ -66,7 +66,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         {
             return string.Join(
                 Environment.NewLine,
-                "[GreenBox I18n] Usage scan performance (observed managed-heap peak):",
+                "Usage scan performance (observed managed-heap peak):",
                 FormatPerformanceLine("IL code", ilPerformance),
                 FormatPerformanceLine("Unity assets", assetPerformance),
                 FormatPerformanceLine("Total", totalPerformance));

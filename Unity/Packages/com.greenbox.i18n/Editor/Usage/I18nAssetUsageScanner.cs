@@ -152,13 +152,13 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             reportedLocationCount = 0;
             if (!result.IsForceText)
             {
-                return "[GreenBox I18n] Asset usage scan was not run." + Environment.NewLine +
+                return "Asset usage scan was not run." + Environment.NewLine +
                        string.Join(Environment.NewLine, result.Warnings.Select(warning => $"  {warning}"));
             }
 
             var lines = new List<string>
             {
-                $"[GreenBox I18n] Asset usage scan completed in {result.ElapsedMilliseconds} ms. " +
+                $"Asset usage scan completed in {result.ElapsedMilliseconds} ms. " +
                 $"Scanned {result.ScannedAssetCount} serialized asset file(s), " +
                 $"{FormatByteCount(result.ScannedByteCount)} of source data; " +
                 $"{result.MatchedAssetCount} contained I18nKey data; " +

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using GreenBox.I18n.Unity.Editor.Diagnostics;
 using UnityEditor;
 using UnityEngine;
 
@@ -142,7 +143,7 @@ namespace GreenBox.I18n.Unity.Editor.Compilation
                 I18nCatalogCompilationResult result = I18nCatalogCompiler.Compile(catalogAsset);
                 if (!result.IsSuccess)
                 {
-                    Debug.LogError(BuildFailureMessage(catalogAsset, result), catalogAsset);
+                    I18nLog.Error(BuildFailureMessage(catalogAsset, result), catalogAsset);
                 }
             }
         }
