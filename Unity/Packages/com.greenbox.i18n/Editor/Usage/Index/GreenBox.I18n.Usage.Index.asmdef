@@ -1,0 +1,18 @@
+{
+  "name": "GreenBox.I18n.Usage.Index",
+  "rootNamespace": "GreenBox.I18n.Usage.Index",
+  "references": [
+    "GreenBox.I18n.Usage.Analysis"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

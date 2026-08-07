@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -25,6 +26,8 @@ namespace GreenBox.I18n.Unity.Editor.Settings
     [FilePath("GreenBox/I18n.asset", FilePathAttribute.Location.PreferencesFolder)]
     internal sealed class I18nPreferences : ScriptableSingleton<I18nPreferences>
     {
+        internal static event Action<I18nUsageIndexingMode>? UsageIndexingChanged;
+
         [SerializeField]
         private I18nUsageIndexingMode _usageIndexing = I18nUsageIndexingMode.Manual;
 
@@ -43,6 +46,7 @@ namespace GreenBox.I18n.Unity.Editor.Settings
 
                 _usageIndexing = value;
                 Save(true);
+                UsageIndexingChanged?.Invoke(value);
             }
         }
 

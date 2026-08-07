@@ -3,6 +3,7 @@
   "rootNamespace": "GreenBox.I18n.Development.Editor",
   "references": [
     "GreenBox.I18n.Usage.Analysis",
+    "GreenBox.I18n.Usage.Index",
     "GreenBox.I18n.Unity.Editor"
   ],
   "includePlatforms": [

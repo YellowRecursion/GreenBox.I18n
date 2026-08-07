@@ -20,18 +20,32 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         private const int MaximumReportedLocationCount = 100;
         private const long SlowScanThresholdMilliseconds = 3000;
 
+        internal static event Action? FullScanStarted;
+
         internal static event Action<I18nIlUsageScanResult, I18nAssetUsageScanResult>? FullScanCompleted;
+
+        internal static event Action? FullScanInvalidated;
+
+        internal static event Action<Exception>? FullScanFailed;
+
+        internal static event Action<IReadOnlyList<string>>? AssetsScanStarted;
 
         internal static event Action<IReadOnlyList<string>, I18nAssetUsageScanResult>? AssetsScanned;
 
+        internal static event Action<IReadOnlyList<string>, Exception>? AssetsScanFailed;
+
+        internal static event Action<IReadOnlyList<string>>? AssembliesScanStarted;
+
         internal static event Action<IReadOnlyList<string>, I18nIlUsageScanResult>? AssembliesScanned;
+
+        internal static event Action<IReadOnlyList<string>, Exception>? AssembliesScanFailed;
 
         internal static event Action<IReadOnlyList<string>>? AssetsRemoved;
 
         internal static event Action<IReadOnlyList<string>>? AssembliesRemoved;
 
         [MenuItem(MenuPath, false, 100)]
-        private static void ScanAndLog()
+        internal static void ScanAndLog()
         {
             if (I18nPreferences.instance.UsageIndexing == I18nUsageIndexingMode.Disabled)
             {
@@ -46,6 +60,21 @@ namespace GreenBox.I18n.Unity.Editor.Usage
                 return;
             }
 
+            FullScanStarted?.Invoke();
+            try
+            {
+                ScanFullAndLog();
+            }
+            catch (Exception exception)
+            {
+                FullScanFailed?.Invoke(exception);
+                I18nLog.Error(
+                    $"Full usage scan failed: {exception.GetType().Name}: {exception.Message}");
+            }
+        }
+
+        private static void ScanFullAndLog()
+        {
             long initialRevision = I18nUsageSourceRevisionTracker.CurrentRevision;
             var totalProfiler = new I18nUsageScanProfiler();
             I18nIlUsageScanResult ilResult = I18nIlUsageScanner.Scan();
@@ -60,6 +89,10 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             if (isStable)
             {
                 FullScanCompleted?.Invoke(ilResult, assetResult);
+            }
+            else
+            {
+                FullScanInvalidated?.Invoke();
             }
 
             bool isSlow = totalPerformance.ElapsedMilliseconds > SlowScanThresholdMilliseconds;
@@ -157,6 +190,20 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         /// </summary>
         internal static I18nAssetUsageScanResult ScanAssets(IReadOnlyList<string> assetPaths)
         {
+            AssetsScanStarted?.Invoke(assetPaths);
+            try
+            {
+                return ScanAssetsCore(assetPaths);
+            }
+            catch (Exception exception)
+            {
+                AssetsScanFailed?.Invoke(assetPaths, exception);
+                throw;
+            }
+        }
+
+        private static I18nAssetUsageScanResult ScanAssetsCore(IReadOnlyList<string> assetPaths)
+        {
             string[] sourceKeys = assetPaths
                 .Select(path => path.Replace('\\', '/'))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -212,6 +259,20 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         /// Scans a changed set of compiled assemblies and warns only when the operation is slow.
         /// </summary>
         internal static I18nIlUsageScanResult ScanAssemblies(IReadOnlyList<string> assemblyPaths)
+        {
+            AssembliesScanStarted?.Invoke(assemblyPaths);
+            try
+            {
+                return ScanAssembliesCore(assemblyPaths);
+            }
+            catch (Exception exception)
+            {
+                AssembliesScanFailed?.Invoke(assemblyPaths, exception);
+                throw;
+            }
+        }
+
+        private static I18nIlUsageScanResult ScanAssembliesCore(IReadOnlyList<string> assemblyPaths)
         {
             string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath)!.FullName;
             string[] sourceKeys = assemblyPaths

@@ -20,6 +20,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         private const string PendingAssetPathsKey = "GreenBox.I18n.Usage.PendingAssets";
         private const string RemovedAssetPathsKey = "GreenBox.I18n.Usage.RemovedAssets";
         private const string PendingAssemblyPathsKey = "GreenBox.I18n.Usage.PendingAssemblies";
+        private const string PendingFullScanKey = "GreenBox.I18n.Usage.PendingFullScan";
 
         private static readonly HashSet<string> PendingAssetPaths = LoadPaths(
             PendingAssetPathsKey,
@@ -34,11 +35,13 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             StringComparer.OrdinalIgnoreCase);
 
         private static bool _isScheduled;
+        private static bool _isFullScanPending = SessionState.GetBool(PendingFullScanKey, false);
 
         static I18nUsageAutoScanner()
         {
             CompilationPipeline.assemblyCompilationFinished += HandleAssemblyCompilationFinished;
-            if (PendingAssetPaths.Count > 0 ||
+            if (_isFullScanPending ||
+                PendingAssetPaths.Count > 0 ||
                 RemovedAssetPaths.Count > 0 ||
                 PendingAssemblyPaths.Count > 0)
             {
@@ -47,6 +50,18 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         }
 
         internal static bool IsEnabled => IsAutomatic;
+
+        internal static void QueueFullScan()
+        {
+            if (!IsAutomatic || _isFullScanPending)
+            {
+                return;
+            }
+
+            _isFullScanPending = true;
+            SessionState.SetBool(PendingFullScanKey, true);
+            Schedule();
+        }
 
         internal static void QueueAssetChanges(
             IReadOnlyList<string> changedPaths,
@@ -220,7 +235,14 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             string[] changedAssemblies = PendingAssemblyPaths
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+            bool runFullScan = _isFullScanPending;
             ClearPendingChanges();
+
+            if (runFullScan)
+            {
+                TryRun("full scan", I18nUsageScanner.ScanAndLog);
+                return;
+            }
 
             if (removedAssets.Length > 0)
             {
@@ -291,9 +313,11 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             PendingAssetPaths.Clear();
             RemovedAssetPaths.Clear();
             PendingAssemblyPaths.Clear();
+            _isFullScanPending = false;
             SessionState.SetString(PendingAssetPathsKey, string.Empty);
             SessionState.SetString(RemovedAssetPathsKey, string.Empty);
             SessionState.SetString(PendingAssemblyPathsKey, string.Empty);
+            SessionState.SetBool(PendingFullScanKey, false);
         }
     }
 }

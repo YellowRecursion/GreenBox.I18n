@@ -10,9 +10,8 @@ GreenBox.I18n.Unity.Editor (Unity Integration)
     -> GreenBox.I18n.Usage.Cecil
         -> GreenBox.I18n.Usage.Analysis
     -> GreenBox.I18n.Usage.Analysis
-
-Future Usage Index
-    -> GreenBox.I18n.Usage.Analysis result models
+    -> GreenBox.I18n.Usage.Index
+        -> GreenBox.I18n.Usage.Analysis
 
 GreenBox.I18n.Usage.Analysis
     -> GreenBox.I18n.Core (entry ID validation only)
@@ -43,6 +42,30 @@ scan coordination, and result publication. Only this layer decides when a scan r
 result is still current enough to publish. It also resolves script GUIDs through `AssetDatabase`
 after pure YAML analysis; this keeps Unity calls on the main thread while allowing the expensive
 file work to move to a worker later.
+
+### Usage Index
+
+`Index/GreenBox.I18n.Usage.Index.asmdef` has `noEngineReferences` enabled. It accepts immutable
+Usage Analysis results and persists them without knowing when Unity scans run. The index is a
+derived local cache stored at `Library/GreenBox.I18n/usage-index.db`; it is never project content
+and can always be rebuilt by a full scan.
+
+The index uses SQLite in WAL mode and is split into four responsibilities:
+
+- `I18nUsageIndexStore` owns index state and full or partial transactions;
+- `I18nUsageIndexSourceWriter` replaces rows owned by one asset or assembly;
+- `I18nUsageIndexSchema` owns the versioned schema;
+- the small `I18nSqlite` adapter talks to the SQLite library supplied by the operating system, so
+  the Unity package does not ship machine-specific managed or native binaries.
+
+Every source is stored even when it has zero usages. A successful source replacement deletes only
+that source's previous rows and inserts its new snapshot in the same transaction. A failed source
+keeps its previous usage rows and records the error. A changed source stays pending because its
+scan result is intentionally discarded. Deleting a source cascades to its usage rows.
+
+`I18nUsageIndexController` belongs to Unity Integration. It is the only bridge between scanner
+lifecycle events, preferences, automatic retries, and the storage module. Initialization is
+silent unless the database cannot be opened or migrated.
 
 ## Source changes during a scan
 
