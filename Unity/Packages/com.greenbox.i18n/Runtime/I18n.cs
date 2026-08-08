@@ -10,7 +10,7 @@ using UnityEngine;
 /// <summary>
 /// Provides short, project-wide access to the active Unity localization runtime.
 /// </summary>
-public static class i18n
+public static class I18n
 {
     /// <summary>
     /// Text returned for an unassigned localization key.

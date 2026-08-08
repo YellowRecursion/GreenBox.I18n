@@ -11,7 +11,12 @@ namespace GreenBox.I18n.Unity.Editor.Settings
     [FilePath("ProjectSettings/GreenBox.I18n.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class I18nProjectSettings : ScriptableSingleton<I18nProjectSettings>
     {
+        private const int CurrentSetupVersion = 1;
+
         internal static event Action? ActiveCatalogChanged;
+
+        [UnityEngine.SerializeField]
+        private int _setupVersion;
 
         [UnityEngine.SerializeField]
         private string _activeCatalogGuid = string.Empty;
@@ -20,30 +25,63 @@ namespace GreenBox.I18n.Unity.Editor.Settings
         private string _activeCatalogPath = string.Empty;
 
         /// <summary>
-        /// Gets or sets the catalog used by localization editor tools in this project.
+        /// Gets the catalog managed for this Unity project.
         /// </summary>
-        internal I18nCatalogAsset? ActiveCatalog
-        {
-            get
-            {
-                return ResolveActiveCatalog();
-            }
-            set
-            {
-                var assetPath = value ? AssetDatabase.GetAssetPath(value) : string.Empty;
-                string activeCatalogGuid = AssetDatabase.AssetPathToGUID(assetPath);
-                string activeCatalogPath = GetSourceCatalogPath(value);
-                if (string.Equals(_activeCatalogGuid, activeCatalogGuid, StringComparison.Ordinal) &&
-                    string.Equals(_activeCatalogPath, activeCatalogPath, StringComparison.Ordinal))
-                {
-                    return;
-                }
+        internal I18nCatalogAsset? ActiveCatalog => ResolveActiveCatalog();
 
-                _activeCatalogGuid = activeCatalogGuid;
-                _activeCatalogPath = activeCatalogPath;
-                Save(true);
-                ActiveCatalogChanged?.Invoke();
+        /// <summary>
+        /// Gets whether automatic project setup has already completed.
+        /// </summary>
+        internal bool IsSetupComplete => _setupVersion >= CurrentSetupVersion;
+
+        /// <summary>
+        /// Records the project catalog selected by the setup workflow.
+        /// </summary>
+        internal void ConfigureActiveCatalog(I18nCatalogAsset activeCatalog)
+        {
+            if (!activeCatalog)
+            {
+                throw new ArgumentNullException(nameof(activeCatalog));
             }
+
+            string assetPath = AssetDatabase.GetAssetPath(activeCatalog);
+            string activeCatalogGuid = AssetDatabase.AssetPathToGUID(assetPath);
+            if (string.IsNullOrEmpty(activeCatalogGuid))
+            {
+                throw new ArgumentException(
+                    "The project catalog must be saved in the Unity project.",
+                    nameof(activeCatalog));
+            }
+
+            string activeCatalogPath = GetSourceCatalogPath(activeCatalog);
+            bool changed =
+                _setupVersion != CurrentSetupVersion ||
+                !string.Equals(_activeCatalogGuid, activeCatalogGuid, StringComparison.Ordinal) ||
+                !string.Equals(_activeCatalogPath, activeCatalogPath, StringComparison.Ordinal);
+            if (!changed)
+            {
+                return;
+            }
+
+            _setupVersion = CurrentSetupVersion;
+            _activeCatalogGuid = activeCatalogGuid;
+            _activeCatalogPath = activeCatalogPath;
+            Save(true);
+            ActiveCatalogChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Migrates valid settings written before automatic setup was introduced.
+        /// </summary>
+        internal void EnsureCurrentSetupVersion()
+        {
+            if (_setupVersion >= CurrentSetupVersion)
+            {
+                return;
+            }
+
+            _setupVersion = CurrentSetupVersion;
+            Save(true);
         }
 
         /// <summary>

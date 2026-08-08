@@ -76,13 +76,13 @@ namespace GreenBox.I18n.Unity.Text
                 return;
             }
 
-            string localizedText = i18n.Text(Key);
+            string localizedText = global::I18n.Text(Key);
             if (Key.IsAssigned)
             {
                 localizedText = I18nTextTransformUtility.Apply(
                     localizedText,
                     _textTransform,
-                    i18n.CurrentLocale.Culture);
+                    global::I18n.CurrentLocale.Culture);
             }
 
             switch (target)

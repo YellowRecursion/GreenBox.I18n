@@ -1,0 +1,13 @@
+{
+  "$comment": "Managed by GreenBox I18n. Prefer the Web Editor or CLI. Edit manually only if you understand the format. Never change existing entry IDs.",
+  "schemaVersion": 1,
+  "defaultLocale": "en",
+  "locales": [
+    {
+      "id": "en",
+      "displayName": "English",
+      "culture": "en-US"
+    }
+  ],
+  "entries": []
+}

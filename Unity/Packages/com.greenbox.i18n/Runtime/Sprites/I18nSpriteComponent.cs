@@ -20,7 +20,7 @@ namespace GreenBox.I18n.Unity.Sprites
             Sprite? sprite;
             try
             {
-                sprite = i18n.Asset<Sprite>(Key);
+                sprite = global::I18n.Asset<Sprite>(Key);
             }
             catch (Exception exception) when (
                 exception is InvalidCastException ||

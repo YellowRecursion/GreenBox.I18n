@@ -98,7 +98,7 @@ namespace GreenBox.I18n.Unity.Editor.Text
 
             if (id == 0)
             {
-                return i18n.NonePlaceholder;
+                return global::I18n.NonePlaceholder;
             }
 
             I18nCatalog? catalog = I18nEditorCatalogProvider.GetCatalog(out string? error);

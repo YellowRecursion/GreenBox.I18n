@@ -48,7 +48,7 @@ namespace GreenBox.I18n.Unity.Audio
             AudioClip? clip;
             try
             {
-                clip = i18n.Asset<AudioClip>(Key);
+                clip = global::I18n.Asset<AudioClip>(Key);
             }
             catch (Exception exception) when (
                 exception is InvalidCastException ||

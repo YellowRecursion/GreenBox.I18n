@@ -31,9 +31,11 @@ namespace GreenBox.I18n.Development
 
         private void Awake()
         {
-            i18n.Initialize(Catalog, "en");
+            global::I18n.Initialize(Catalog, "en");
 
-            // var str = i18n.Text(3857404068572302532);
+            var str = global::I18n.Text(3857404068572302532);
+            var unknown = global::I18n.Text(3857535036959804040);
+            var unknown2 = global::I18n.Text(3857535036959804040);
         }
 
         /// <summary>
@@ -42,13 +44,13 @@ namespace GreenBox.I18n.Development
         [ContextMenu("Log Runtime Text")]
         private void LogRuntimeText()
         {
-            i18n.Initialize(Catalog, "en");
-            Debug.Log(i18n.Text(Existing), this);
+            global::I18n.Initialize(Catalog, "en");
+            Debug.Log(global::I18n.Text(Existing), this);
 
-            i18n.SetLocale("ru");
-            Debug.Log(i18n.Text(Existing), this);
+            global::I18n.SetLocale("ru");
+            Debug.Log(global::I18n.Text(Existing), this);
 
-            TextAsset asset = i18n.Asset<TextAsset>(Existing);
+            TextAsset asset = global::I18n.Asset<TextAsset>(Existing);
             Debug.Log($"Resolved asset: {asset.name}", asset);
         }
     }

@@ -11,6 +11,19 @@ namespace GreenBox.I18n
     public sealed class I18nCatalog
     {
         /// <summary>
+        /// Explains how humans and automated tools should edit the catalog file.
+        /// </summary>
+        public const string ManagedFileComment =
+            "Managed by GreenBox I18n. Prefer the Web Editor or CLI. " +
+            "Edit manually only if you understand the format. Never change existing entry IDs.";
+
+        /// <summary>
+        /// Gets or sets the human-readable file editing notice.
+        /// </summary>
+        [JsonProperty("$comment", Order = -1)]
+        public string FileComment { get; set; } = ManagedFileComment;
+
+        /// <summary>
         /// Gets or sets the version of the JSON data contract used by this file.
         /// </summary>
         [JsonProperty("schemaVersion", Order = 0)]

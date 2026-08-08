@@ -1,0 +1,24 @@
+{
+  "name": "GreenBox.I18n.Unity.Editor.Tests",
+  "rootNamespace": "GreenBox.I18n.Unity.Editor.Tests",
+  "references": [
+    "GreenBox.I18n.Unity.Editor",
+    "GreenBox.I18n.Unity"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "GreenBox.I18n.Core.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

@@ -251,6 +251,16 @@
             Represents the complete source localization catalog stored in a single file.
             </summary>
         </member>
+        <member name="F:GreenBox.I18n.I18nCatalog.ManagedFileComment">
+            <summary>
+            Explains how humans and automated tools should edit the catalog file.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalog.FileComment">
+            <summary>
+            Gets or sets the human-readable file editing notice.
+            </summary>
+        </member>
         <member name="P:GreenBox.I18n.I18nCatalog.SchemaVersion">
             <summary>
             Gets or sets the version of the JSON data contract used by this file.

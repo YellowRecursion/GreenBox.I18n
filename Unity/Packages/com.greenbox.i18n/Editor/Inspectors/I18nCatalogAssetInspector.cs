@@ -39,18 +39,15 @@ namespace GreenBox.I18n.Unity.Editor.Inspectors
         {
             serializedObject.Update();
 
-            EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(_sourceCatalogProperty);
-            if (EditorGUI.EndChangeCheck())
+            using (new EditorGUI.DisabledScope(true))
             {
-                serializedObject.ApplyModifiedProperties();
-                _lastCompilationResult = null;
-                I18nCatalogAutoCompiler.Queue(CatalogAsset);
+                EditorGUILayout.PropertyField(
+                    _sourceCatalogProperty,
+                    new GUIContent(
+                        "Source Catalog",
+                        "Managed automatically by GreenBox I18n."));
             }
-            else
-            {
-                serializedObject.ApplyModifiedProperties();
-            }
+            serializedObject.ApplyModifiedProperties();
 
             EditorGUILayout.Space();
             DrawCompilationState();

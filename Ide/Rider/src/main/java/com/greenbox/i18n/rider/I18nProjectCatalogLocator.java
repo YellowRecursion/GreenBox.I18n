@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,9 +44,14 @@ final class I18nProjectCatalogLocator {
             return new CatalogLocation(projectRoot, settingsPath, null);
         }
 
-        Path catalogPath = projectRoot
-            .resolve(relativeCatalogPath.replace('/', java.io.File.separatorChar))
-            .normalize();
+        Path catalogPath;
+        try {
+            catalogPath = projectRoot
+                .resolve(relativeCatalogPath.replace('/', java.io.File.separatorChar))
+                .normalize();
+        } catch (InvalidPathException exception) {
+            return new CatalogLocation(projectRoot, settingsPath, null);
+        }
         if (!catalogPath.startsWith(projectRoot)) {
             return new CatalogLocation(projectRoot, settingsPath, null);
         }

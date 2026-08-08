@@ -33,7 +33,7 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         public void Refresh()
         {
-            if (i18n.IsInitialized)
+            if (global::I18n.IsInitialized)
             {
                 UpdateContent();
             }
@@ -44,8 +44,8 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         protected virtual void OnEnable()
         {
-            i18n.CatalogChanged += Refresh;
-            i18n.LocaleChanged += Refresh;
+            global::I18n.CatalogChanged += Refresh;
+            global::I18n.LocaleChanged += Refresh;
             Refresh();
         }
 
@@ -54,8 +54,8 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         protected virtual void OnDisable()
         {
-            i18n.CatalogChanged -= Refresh;
-            i18n.LocaleChanged -= Refresh;
+            global::I18n.CatalogChanged -= Refresh;
+            global::I18n.LocaleChanged -= Refresh;
         }
         /// <summary>
         /// Applies serialized key changes when the active runtime is available.

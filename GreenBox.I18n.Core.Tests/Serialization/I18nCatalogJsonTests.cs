@@ -53,6 +53,7 @@ public sealed class I18nCatalogJsonTests
 
         const string expected = """
                                 {
+                                  "$comment": "Managed by GreenBox I18n. Prefer the Web Editor or CLI. Edit manually only if you understand the format. Never change existing entry IDs.",
                                   "schemaVersion": 1,
                                   "defaultLocale": "en",
                                   "locales": [
@@ -95,6 +96,7 @@ public sealed class I18nCatalogJsonTests
         Assert.Equal(expected + "\n", json);
         Assert.DoesNotContain('\r', json);
         Assert.DoesNotContain("\"comment\"", json);
+        Assert.Contains("\"$comment\"", json);
     }
 
     [Fact]
@@ -130,6 +132,7 @@ public sealed class I18nCatalogJsonTests
 
         I18nEntry entry = Assert.Single(catalog.Entries);
         Assert.Equal(1, catalog.SchemaVersion);
+        Assert.Equal(I18nCatalog.ManagedFileComment, catalog.FileComment);
         Assert.Equal("en", catalog.DefaultLocale);
         I18nLocaleDefinition locale = Assert.Single(catalog.Locales);
         Assert.Equal("en", locale.Id);

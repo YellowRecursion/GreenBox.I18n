@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5e63057268a422eb5f855c69c4f091f, type: 3}
+  m_Name: localization
+  m_EditorClassIdentifier: GreenBox.I18n.Unity::GreenBox.I18n.Unity.I18nCatalogAsset
+  _sourceCatalog: {fileID: 4900000, guid: da576d4878c6df7428a24c5db82b124f, type: 3}
+  _sourceHash: 6f7a4bd135aa48235da617bdc3a1bb54061874bb17235495459474f4e13605e3
+  _assetBindings: []
