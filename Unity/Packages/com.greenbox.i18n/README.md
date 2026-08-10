@@ -43,3 +43,13 @@ I18n.LocaleChanged += locale => RefreshUi(locale.Id);
 
 The `GreenBox.I18n` folder may be moved as a whole inside `Assets`. Keep its name and managed internal structure unchanged.
 The `Resources` folder contains generated runtime data and is intentionally excluded from Git.
+
+## Safe Git merges
+
+After installing GreenBox Desktop Tools, open `Preferences > GreenBox > i18n`. The integration can be configured there or with:
+
+```text
+i18n git install
+```
+
+The command registers the merge driver once for the current user. Every GreenBox project opts into it through its generated `.gitattributes`, so Git merges `localization.json` structurally by stable locale and entry IDs instead of relying on JSON line positions.

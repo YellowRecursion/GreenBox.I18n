@@ -26,8 +26,22 @@ namespace GreenBox.I18n
             if (incoming == null) throw new ArgumentNullException(nameof(incoming));
 
             var conflicts = new List<I18nCatalogMergeConflict>();
+            AddInputValidationConflicts(baseline, "Baseline", conflicts);
+            AddInputValidationConflicts(current, "Current", conflicts);
+            AddInputValidationConflicts(incoming, "Incoming", conflicts);
+            if (conflicts.Count > 0)
+            {
+                return I18nCatalogMergeResult.Failure(conflicts);
+            }
+
             var merged = new I18nCatalog
             {
+                FileComment = MergeValue(
+                    baseline.FileComment,
+                    current.FileComment,
+                    incoming.FileComment,
+                    "$.$comment",
+                    conflicts),
                 SchemaVersion = MergeValue(
                     baseline.SchemaVersion,
                     current.SchemaVersion,
@@ -299,8 +313,104 @@ namespace GreenBox.I18n
             if (currentOrder.SequenceEqual(baselineOrder)) return incomingOrder;
             if (incomingOrder.SequenceEqual(baselineOrder)) return currentOrder;
 
-            conflicts.Add(new I18nCatalogMergeConflict(path, "Both sides changed the locale order differently."));
-            return currentOrder;
+            IReadOnlyList<string>? combinedOrder = TryCombineOrders(
+                baselineOrder,
+                currentOrder,
+                incomingOrder,
+                included);
+            if (combinedOrder != null)
+            {
+                return combinedOrder;
+            }
+
+            conflicts.Add(new I18nCatalogMergeConflict(path, "Both sides reordered locales incompatibly."));
+            return currentOrder.Concat(incomingOrder).Distinct(StringComparer.Ordinal).ToList();
+        }
+
+        private static IReadOnlyList<string>? TryCombineOrders(
+            IReadOnlyList<string> baseline,
+            IReadOnlyList<string> current,
+            IReadOnlyList<string> incoming,
+            IReadOnlyCollection<string> included)
+        {
+            var outgoing = included.ToDictionary(
+                id => id,
+                _ => new HashSet<string>(StringComparer.Ordinal),
+                StringComparer.Ordinal);
+            var incomingEdgeCount = included.ToDictionary(id => id, _ => 0, StringComparer.Ordinal);
+
+            AddOrderEdges(current, outgoing, incomingEdgeCount);
+            AddOrderEdges(incoming, outgoing, incomingEdgeCount);
+
+            var baselineIndex = baseline
+                .Select((id, index) => new { id, index })
+                .ToDictionary(pair => pair.id, pair => pair.index, StringComparer.Ordinal);
+            var available = new SortedSet<string>(Comparer<string>.Create((left, right) =>
+            {
+                if (ReferenceEquals(left, right)) return 0;
+                int leftIndex = baselineIndex.TryGetValue(left, out int value) ? value : int.MaxValue;
+                int rightIndex = baselineIndex.TryGetValue(right, out value) ? value : int.MaxValue;
+                int byBaseline = leftIndex.CompareTo(rightIndex);
+                return byBaseline != 0 ? byBaseline : StringComparer.Ordinal.Compare(left, right);
+            }));
+
+            foreach (string id in included)
+            {
+                if (incomingEdgeCount[id] == 0)
+                {
+                    available.Add(id);
+                }
+            }
+
+            var result = new List<string>(included.Count);
+            while (available.Count > 0)
+            {
+                string id = available.Min!;
+                available.Remove(id);
+                result.Add(id);
+
+                foreach (string next in outgoing[id])
+                {
+                    incomingEdgeCount[next]--;
+                    if (incomingEdgeCount[next] == 0)
+                    {
+                        available.Add(next);
+                    }
+                }
+            }
+
+            return result.Count == included.Count ? result : null;
+        }
+
+        private static void AddOrderEdges(
+            IReadOnlyList<string> order,
+            IReadOnlyDictionary<string, HashSet<string>> outgoing,
+            IDictionary<string, int> incomingEdgeCount)
+        {
+            for (int index = 1; index < order.Count; index++)
+            {
+                string previous = order[index - 1];
+                string next = order[index];
+                if (outgoing[previous].Add(next))
+                {
+                    incomingEdgeCount[next]++;
+                }
+            }
+        }
+
+        private static void AddInputValidationConflicts(
+            I18nCatalog catalog,
+            string inputName,
+            ICollection<I18nCatalogMergeConflict> conflicts)
+        {
+            I18nValidationResult validation = I18nCatalogValidator.Validate(catalog);
+            foreach (I18nValidationDiagnostic diagnostic in validation.Diagnostics.Where(
+                         diagnostic => diagnostic.Severity == I18nValidationSeverity.Error))
+            {
+                conflicts.Add(new I18nCatalogMergeConflict(
+                    diagnostic.JsonPath,
+                    $"{inputName} catalog is invalid: {diagnostic.Message}"));
+            }
         }
 
         private static IEnumerable<string> AllKeys<T>(

@@ -88,18 +88,22 @@ namespace GreenBox.I18n.Unity.Editor.Setup
                 "- `localization.json` is the editable source of truth. Prefer the GreenBox Web Editor or CLI.\n" +
                 "- `Resources/greenbox-i18n.asset` is generated runtime data and is excluded from Git. Do not edit or reference it manually.\n" +
                 "- `.gitignore` and `.gitattributes` keep generated data out of Git and normalize text files across operating systems. Commit both files to your project repository.\n" +
+                "- To enable structural Git merges, install GreenBox Desktop Tools and follow Preferences > GreenBox > i18n.\n" +
                 "- If you must edit `localization.json` manually, preserve existing entry IDs and validate the result afterwards.\n";
         }
 
         internal static string CreateGitIgnore()
         {
+            // TODO: Add a Unity Version Control integration instead of treating these Git files
+            // as universal VCS configuration. It must generate the appropriate ignore and EOL
+            // rules and configure the same three-way CLI merge through UVCS's external merge tool.
             return "/Resources/\n/Resources.meta\n";
         }
 
         internal static string CreateGitAttributes()
         {
             return
-                "/localization.json text eol=lf\n" +
+                "/localization.json text eol=lf merge=greenbox-i18n\n" +
                 "/readme.md text eol=lf\n" +
                 "/.gitignore text eol=lf\n" +
                 "/.gitattributes text eol=lf\n";

@@ -14,9 +14,19 @@ internal sealed class TestCatalog : IDisposable
 
     public FileInfo Write(string json)
     {
-        string path = Path.Combine(_temporaryDirectory, "catalog.json");
+        return Write("catalog.json", json);
+    }
+
+    public FileInfo Write(string fileName, string json)
+    {
+        string path = Path.Combine(_temporaryDirectory, fileName);
         File.WriteAllText(path, json);
         return new FileInfo(path);
+    }
+
+    public FileInfo GetFile(string fileName)
+    {
+        return new FileInfo(Path.Combine(_temporaryDirectory, fileName));
     }
 
     public FileInfo MissingFile => new(Path.Combine(_temporaryDirectory, "missing.json"));

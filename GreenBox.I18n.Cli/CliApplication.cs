@@ -14,6 +14,8 @@ internal static class CliApplication
         rootCommand.Subcommands.Add(AddCommand.Create());
         rootCommand.Subcommands.Add(RemoveCommand.Create());
         rootCommand.Subcommands.Add(MoveCommand.Create());
+        rootCommand.Subcommands.Add(MergeCommand.Create());
+        rootCommand.Subcommands.Add(GitCommand.Create());
         return rootCommand;
     }
 }

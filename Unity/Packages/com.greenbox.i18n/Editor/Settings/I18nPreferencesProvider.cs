@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using GreenBox.I18n.Unity.Editor.VersionControl.Git;
 using UnityEditor;
 using UnityEngine;
 
@@ -11,6 +12,10 @@ namespace GreenBox.I18n.Unity.Editor.Settings
     /// </summary>
     internal static class I18nPreferencesProvider
     {
+        private const string GitInstallCommand = "i18n git install";
+        private static I18nGitIntegrationStatus? _gitStatus;
+        private static string _gitSetupError = string.Empty;
+
         [SettingsProvider]
         private static SettingsProvider CreateProvider()
         {
@@ -27,6 +32,8 @@ namespace GreenBox.I18n.Unity.Editor.Settings
                     "Indexing",
                     "Diagnostics",
                     "Logging",
+                    "Git",
+                    "Merge",
                 },
             };
         }
@@ -65,6 +72,58 @@ namespace GreenBox.I18n.Unity.Editor.Settings
             }
 
             EditorGUILayout.HelpBox(GetDiagnosticLoggingHelp(diagnosticLogging), MessageType.None);
+            DrawGitIntegration();
+        }
+
+        private static void DrawGitIntegration()
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Git merge", EditorStyles.boldLabel);
+
+            _gitStatus ??= I18nGitIntegration.GetStatus();
+            I18nGitIntegrationStatus status = _gitStatus.Value;
+            EditorGUILayout.HelpBox(
+                status.Message,
+                status.State == I18nGitIntegrationState.Configured
+                    ? MessageType.Info
+                    : MessageType.Warning);
+
+            if (!string.IsNullOrEmpty(_gitSetupError))
+            {
+                EditorGUILayout.HelpBox(_gitSetupError, MessageType.Error);
+            }
+
+            if (status.State == I18nGitIntegrationState.DriverNotConfigured &&
+                GUILayout.Button("Configure Git Integration"))
+            {
+                _gitSetupError = I18nGitIntegration.TryConfigure(out string error)
+                    ? string.Empty
+                    : error;
+                _gitStatus = I18nGitIntegration.GetStatus();
+            }
+
+            if (status.State != I18nGitIntegrationState.Configured)
+            {
+                EditorGUILayout.LabelField(
+                    "After installing GreenBox Desktop Tools, you can also run:");
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.SelectableLabel(
+                        GitInstallCommand,
+                        EditorStyles.textField,
+                        GUILayout.Height(EditorGUIUtility.singleLineHeight));
+                    if (GUILayout.Button("Copy", GUILayout.Width(56f)))
+                    {
+                        EditorGUIUtility.systemCopyBuffer = GitInstallCommand;
+                    }
+                }
+            }
+
+            if (GUILayout.Button("Refresh Git Status"))
+            {
+                _gitStatus = I18nGitIntegration.GetStatus();
+                _gitSetupError = string.Empty;
+            }
         }
 
         private static string GetUsageIndexingHelp(I18nUsageIndexingMode mode)

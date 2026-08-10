@@ -75,6 +75,7 @@ namespace GreenBox.I18n.Unity.Editor.Settings
                 Selection.activeObject = sourceCatalog;
                 EditorGUIUtility.PingObject(sourceCatalog);
             }
+
         }
     }
 }

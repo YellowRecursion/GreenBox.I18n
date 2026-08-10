@@ -1,4 +1,4 @@
-/localization.json text eol=lf
+/localization.json text eol=lf merge=greenbox-i18n
 /readme.md text eol=lf
 /.gitignore text eol=lf
 /.gitattributes text eol=lf

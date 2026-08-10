@@ -57,7 +57,7 @@ namespace GreenBox.I18n.Unity.Editor.Tests
                 Is.EqualTo("/Resources/\n/Resources.meta\n"));
             Assert.That(
                 I18nProjectLayout.CreateGitAttributes(),
-                Does.Contain("/localization.json text eol=lf"));
+                Does.Contain("/localization.json text eol=lf merge=greenbox-i18n"));
         }
     }
 }

@@ -25,7 +25,14 @@ internal static class CatalogFileWriter
                 stream.Flush(true);
             }
 
-            File.Replace(temporaryPath, catalogFile.FullName, null);
+            if (catalogFile.Exists)
+            {
+                File.Replace(temporaryPath, catalogFile.FullName, null);
+            }
+            else
+            {
+                File.Move(temporaryPath, catalogFile.FullName);
+            }
             return null;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)

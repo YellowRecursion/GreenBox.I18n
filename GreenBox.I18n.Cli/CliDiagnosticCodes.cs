@@ -10,4 +10,6 @@ internal static class CliDiagnosticCodes
     public const string EntryNotFound = "entry_not_found";
     public const string InvalidId = "invalid_id";
     public const string EmptyQuery = "empty_query";
+    public const string GitNotFound = "git_not_found";
+    public const string GitConfigurationFailed = "git_configuration_failed";
 }
