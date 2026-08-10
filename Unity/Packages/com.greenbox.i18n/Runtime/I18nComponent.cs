@@ -44,7 +44,7 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         protected virtual void OnEnable()
         {
-            global::I18n.LocaleChanged += Refresh;
+            global::I18n.LocaleChanged += HandleLocaleChanged;
             Refresh();
         }
 
@@ -53,7 +53,7 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         protected virtual void OnDisable()
         {
-            global::I18n.LocaleChanged -= Refresh;
+            global::I18n.LocaleChanged -= HandleLocaleChanged;
         }
 
         /// <summary>
@@ -68,5 +68,10 @@ namespace GreenBox.I18n.Unity
         /// Resolves and applies content for the current localization key.
         /// </summary>
         protected abstract void UpdateContent();
+
+        private void HandleLocaleChanged(I18nRuntimeLocale _)
+        {
+            Refresh();
+        }
     }
 }

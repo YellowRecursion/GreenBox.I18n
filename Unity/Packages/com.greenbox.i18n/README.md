@@ -12,10 +12,33 @@ GreenBox I18n creates and configures the project catalog automatically:
 ```text
 Assets/GreenBox.I18n/
 ├── localization.json
-├── localization.asset
-└── readme.md
+├── readme.md
+└── Resources/
+    └── greenbox-i18n.asset
 ```
 
-The folder and files may be moved or renamed in Unity. Their relationships are tracked by Unity GUIDs rather than by the default paths.
+No runtime initialization is required:
 
-The active project catalog is managed automatically. Its current location and recovery controls are available in **Edit → Project Settings → GreenBox → i18n**.
+```csharp
+string text = I18n.Text(entryId);
+```
+
+The initial locale is selected from the device language. An explicit selection is remembered:
+
+```csharp
+I18n.SetLocale("ru");
+```
+
+Clear the saved selection to return to automatic device-language selection:
+
+```csharp
+I18n.ClearLocaleOverride();
+```
+
+Subscribe when UI outside the built-in GreenBox components needs to react:
+
+```csharp
+I18n.LocaleChanged += locale => RefreshUi(locale.Id);
+```
+
+The `GreenBox.I18n` folder may be moved as a whole inside `Assets`. Keep its name and managed internal structure unchanged.

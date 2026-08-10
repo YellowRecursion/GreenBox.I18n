@@ -12,6 +12,9 @@ using UnityEngine;
 /// </summary>
 public static class I18n
 {
+    private const string LocaleOverridePlayerPrefsKey =
+        "com.greenbox.i18n.locale-override";
+
     /// <summary>
     /// Text returned for an unassigned localization key.
     /// </summary>
@@ -26,7 +29,7 @@ public static class I18n
     /// <summary>
     /// Occurs after the current locale changes.
     /// </summary>
-    public static event Action? LocaleChanged;
+    public static event Action<I18nRuntimeLocale>? LocaleChanged;
 
     /// <summary>
     /// Gets a value indicating whether the localization catalog has been loaded.
@@ -119,6 +122,7 @@ public static class I18n
 
             I18nCatalog catalog = catalogAsset.Deserialize();
             var runtime = new I18nRuntime(catalog);
+            ApplyInitialLocale(runtime);
             var assetResolver = new I18nUnityAssetResolver(catalogAsset.AssetBindings);
 
             _runtime = runtime;
@@ -160,7 +164,7 @@ public static class I18n
     /// <param name="id">Positive entry ID, or zero for an unassigned key.</param>
     /// <returns>The resolved Unity object, or <see langword="null"/> when no asset is assigned.</returns>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when localization is not initialized or the catalog was not compiled.
+    /// Thrown when the project catalog cannot be loaded or was not compiled.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
     public static UnityEngine.Object? Asset(long id)
@@ -183,7 +187,7 @@ public static class I18n
     /// <returns>The resolved object, or <see langword="null"/> when no asset is assigned.</returns>
     /// <exception cref="InvalidCastException">Thrown when the assigned object has an incompatible type.</exception>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when localization is not initialized or the catalog was not compiled.
+    /// Thrown when the project catalog cannot be loaded or was not compiled.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
     public static T? Asset<T>(long id)
@@ -215,7 +219,7 @@ public static class I18n
     /// <see langword="true"/> when a compatible asset is assigned; otherwise, <see langword="false"/>.
     /// </returns>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when localization is not initialized or the catalog was not compiled.
+    /// Thrown when the project catalog cannot be loaded or was not compiled.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
     public static bool TryGetAsset<T>(long id, out T? asset)
@@ -236,13 +240,38 @@ public static class I18n
     /// <exception cref="ArgumentException">Thrown when the locale is not declared by the catalog.</exception>
     public static bool SetLocale(string localeId)
     {
-        if (!Runtime.SetLocale(localeId))
+        I18nRuntime runtime = Runtime;
+        bool changed = runtime.SetLocale(localeId);
+        PlayerPrefs.SetString(LocaleOverridePlayerPrefsKey, localeId);
+
+        if (changed)
         {
-            return false;
+            LocaleChanged?.Invoke(runtime.CurrentLocale);
         }
 
-        LocaleChanged?.Invoke();
-        return true;
+        return changed;
+    }
+
+    /// <summary>
+    /// Removes the saved locale override and selects the best locale for the current device.
+    /// </summary>
+    /// <returns><see langword="true"/> when the active locale changed; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the project catalog cannot be loaded.</exception>
+    public static bool ClearLocaleOverride()
+    {
+        PlayerPrefs.DeleteKey(LocaleOverridePlayerPrefsKey);
+        I18nRuntime runtime = Runtime;
+
+        string localeId = I18nLocaleSelector.SelectDeviceLocale(
+            runtime.Locales,
+            runtime.DefaultLocale.Id);
+        bool changed = runtime.SetLocale(localeId);
+        if (changed)
+        {
+            LocaleChanged?.Invoke(runtime.CurrentLocale);
+        }
+
+        return changed;
     }
 
     /// <summary>
@@ -257,6 +286,43 @@ public static class I18n
         _isLoading = false;
         _hasWarnedAboutNone = false;
         LocaleChanged = null;
+    }
+
+    private static void ApplyInitialLocale(I18nRuntime runtime)
+    {
+        if (PlayerPrefs.HasKey(LocaleOverridePlayerPrefsKey))
+        {
+            string localeId = PlayerPrefs.GetString(LocaleOverridePlayerPrefsKey);
+            if (ContainsLocale(runtime.Locales, localeId))
+            {
+                runtime.SetLocale(localeId);
+                return;
+            }
+
+            PlayerPrefs.DeleteKey(LocaleOverridePlayerPrefsKey);
+        }
+
+        runtime.SetLocale(I18nLocaleSelector.SelectDeviceLocale(
+            runtime.Locales,
+            runtime.DefaultLocale.Id));
+    }
+
+    private static bool ContainsLocale(
+        IReadOnlyList<I18nRuntimeLocale> locales,
+        string localeId)
+    {
+        for (int localeIndex = 0; localeIndex < locales.Count; localeIndex++)
+        {
+            if (string.Equals(
+                    locales[localeIndex].Id,
+                    localeId,
+                    StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void WarnAboutNone()
