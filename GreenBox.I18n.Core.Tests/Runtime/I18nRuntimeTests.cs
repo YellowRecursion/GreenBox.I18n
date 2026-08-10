@@ -1,4 +1,3 @@
-using System.Globalization;
 using GreenBox.I18n;
 
 namespace GreenBox.I18n.Core.Tests;
@@ -213,17 +212,6 @@ public sealed class I18nRuntimeTests
 
         Assert.Throws<ArgumentException>(() => runtime.SetLocale("de"));
         Assert.Equal("en", runtime.CurrentLocale.Id);
-    }
-
-    [Fact]
-    public void Format_UsesCurrentCulture()
-    {
-        I18nEntry entry = CreateEntry("3857333080842830204", "Stats.Value", ("en", "{0:N2}", null), ("ru", "{0:N2}", null));
-        var runtime = new I18nRuntime(CreateCatalog(entry), "ru");
-
-        string result = runtime.Format(3857333080842830204, 1234.5);
-
-        Assert.Equal(string.Format(CultureInfo.GetCultureInfo("ru-RU"), "{0:N2}", 1234.5), result);
     }
 
     [Fact]

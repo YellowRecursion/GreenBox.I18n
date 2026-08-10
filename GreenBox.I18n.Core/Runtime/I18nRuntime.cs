@@ -148,22 +148,6 @@ namespace GreenBox.I18n
         }
 
         /// <summary>
-        /// Formats localized text using the current locale culture.
-        /// </summary>
-        /// <param name="id">The self-identifying stable entry ID.</param>
-        /// <param name="arguments">The values inserted into the localized composite format string.</param>
-        /// <returns>The formatted localized text.</returns>
-        public string Format(long id, params object?[] arguments)
-        {
-            if (arguments == null)
-            {
-                throw new ArgumentNullException(nameof(arguments));
-            }
-
-            return string.Format(CurrentCulture, Text(id), arguments);
-        }
-
-        /// <summary>
         /// Attempts to resolve localized text through the current locale fallback chain.
         /// </summary>
         /// <param name="id">The self-identifying stable entry ID.</param>

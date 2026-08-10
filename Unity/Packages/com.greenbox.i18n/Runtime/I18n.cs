@@ -19,12 +19,9 @@ public static class I18n
 
     private static I18nRuntime? _runtime;
     private static I18nUnityAssetResolver? _assetResolver;
+    private static Exception? _loadException;
+    private static bool _isLoading;
     private static bool _hasWarnedAboutNone;
-
-    /// <summary>
-    /// Occurs after a catalog is successfully initialized or replaced.
-    /// </summary>
-    public static event Action? CatalogChanged;
 
     /// <summary>
     /// Occurs after the current locale changes.
@@ -32,62 +29,111 @@ public static class I18n
     public static event Action? LocaleChanged;
 
     /// <summary>
-    /// Gets a value indicating whether a localization catalog has been initialized.
+    /// Gets a value indicating whether the localization catalog has been loaded.
     /// </summary>
     public static bool IsInitialized => _runtime != null;
 
     /// <summary>
     /// Gets the locales declared by the active catalog in display order.
     /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when localization has not been initialized.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the project catalog cannot be loaded.</exception>
     public static IReadOnlyList<I18nRuntimeLocale> Locales => Runtime.Locales;
 
     /// <summary>
     /// Gets the currently selected locale.
     /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when localization has not been initialized.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the project catalog cannot be loaded.</exception>
     public static I18nRuntimeLocale CurrentLocale => Runtime.CurrentLocale;
 
-    private static I18nRuntime Runtime => _runtime ?? throw new InvalidOperationException(
-        "Localization has not been initialized. Call i18n.Initialize before using it.");
+    private static I18nRuntime Runtime
+    {
+        get
+        {
+            EnsureLoaded();
+            return _runtime!;
+        }
+    }
 
-    private static I18nUnityAssetResolver AssetResolver => _assetResolver ?? throw new InvalidOperationException(
-        "Localization has not been initialized. Call i18n.Initialize before using it.");
+    private static I18nUnityAssetResolver AssetResolver
+    {
+        get
+        {
+            EnsureLoaded();
+            return _assetResolver!;
+        }
+    }
 
     /// <summary>
-    /// Builds a runtime snapshot from a Unity catalog asset.
+    /// Loads the project catalog before the first scene starts.
     /// </summary>
-    /// <param name="catalogAsset">Catalog asset whose JSON source will be loaded.</param>
-    /// <param name="localeId">
-    /// Initial locale identifier, or <see langword="null"/> to use the catalog default locale.
-    /// </param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="catalogAsset"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when the catalog has no JSON source.</exception>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="localeId"/> is not declared by the catalog.</exception>
-    /// <exception cref="I18nInvalidCatalogException">Thrown when the source catalog is invalid.</exception>
-    public static void Initialize(I18nCatalogAsset catalogAsset, string? localeId = null)
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void LoadBeforeFirstScene()
     {
-        if (!catalogAsset)
+        try
         {
-            throw new ArgumentNullException(nameof(catalogAsset));
+            EnsureLoaded();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("[i18n] Automatic catalog loading failed. " + exception.Message);
+        }
+    }
+
+    private static void EnsureLoaded()
+    {
+        if (_runtime != null)
+        {
+            return;
         }
 
-        if (!catalogAsset.SourceCatalog)
+        if (_loadException != null)
         {
             throw new InvalidOperationException(
-                $"Localization catalog asset '{catalogAsset.name}' has no source JSON.");
+                "The GreenBox I18n project catalog could not be loaded.",
+                _loadException);
         }
 
-        I18nCatalog catalog = catalogAsset.Deserialize();
-        I18nRuntime runtime = localeId == null
-            ? new I18nRuntime(catalog)
-            : new I18nRuntime(catalog, localeId);
-        var assetResolver = new I18nUnityAssetResolver(catalogAsset.AssetBindings);
+        if (_isLoading)
+        {
+            throw new InvalidOperationException(
+                "Recursive GreenBox I18n catalog loading was detected.");
+        }
 
-        _runtime = runtime;
-        _assetResolver = assetResolver;
-        _hasWarnedAboutNone = false;
-        CatalogChanged?.Invoke();
+        _isLoading = true;
+        try
+        {
+            I18nCatalogAsset? catalogAsset =
+                Resources.Load<I18nCatalogAsset>(I18nCatalogAsset.ResourcesPath);
+            if (!catalogAsset)
+            {
+                throw new InvalidOperationException(
+                    $"Catalog resource '{I18nCatalogAsset.ResourcesPath}' was not found. " +
+                    "Open the Unity project once to let GreenBox I18n repair its project files.");
+            }
+
+            if (!catalogAsset.SourceCatalog)
+            {
+                throw new InvalidOperationException(
+                    $"Localization catalog asset '{catalogAsset.name}' has no source JSON.");
+            }
+
+            I18nCatalog catalog = catalogAsset.Deserialize();
+            var runtime = new I18nRuntime(catalog);
+            var assetResolver = new I18nUnityAssetResolver(catalogAsset.AssetBindings);
+
+            _runtime = runtime;
+            _assetResolver = assetResolver;
+            _hasWarnedAboutNone = false;
+        }
+        catch (Exception exception)
+        {
+            _loadException = exception;
+            throw;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     /// <summary>
@@ -95,7 +141,7 @@ public static class I18n
     /// </summary>
     /// <param name="id">Positive entry ID, or zero for an unassigned key.</param>
     /// <returns>The resolved localized text or <see cref="NonePlaceholder"/>.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when localization has not been initialized.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the project catalog cannot be loaded.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
     public static string Text(long id)
     {
@@ -106,31 +152,6 @@ public static class I18n
         }
 
         return Runtime.Text(id);
-    }
-
-    /// <summary>
-    /// Formats localized text using the current locale culture.
-    /// </summary>
-    /// <param name="id">Positive entry ID, or zero for an unassigned key.</param>
-    /// <param name="arguments">Values inserted into the localized composite format string.</param>
-    /// <returns>The formatted localized text.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when localization has not been initialized.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is negative.</exception>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="arguments"/> is null.</exception>
-    public static string Format(long id, params object?[] arguments)
-    {
-        if (arguments == null)
-        {
-            throw new ArgumentNullException(nameof(arguments));
-        }
-
-        if (id == 0)
-        {
-            WarnAboutNone();
-            return NonePlaceholder;
-        }
-
-        return Runtime.Format(id, arguments);
     }
 
     /// <summary>
@@ -210,7 +231,7 @@ public static class I18n
     /// </summary>
     /// <param name="localeId">Declared locale identifier to select.</param>
     /// <returns><see langword="true"/> when the locale changed; otherwise, <see langword="false"/>.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when localization has not been initialized.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the project catalog cannot be loaded.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="localeId"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when the locale is not declared by the catalog.</exception>
     public static bool SetLocale(string localeId)
@@ -232,8 +253,9 @@ public static class I18n
     {
         _runtime = null;
         _assetResolver = null;
+        _loadException = null;
+        _isLoading = false;
         _hasWarnedAboutNone = false;
-        CatalogChanged = null;
         LocaleChanged = null;
     }
 

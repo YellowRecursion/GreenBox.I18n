@@ -8,6 +8,11 @@ namespace GreenBox.I18n.Unity
     /// </summary>
     public sealed class I18nCatalogAsset : ScriptableObject
     {
+        /// <summary>
+        /// Logical Resources path used by the automatic runtime loader.
+        /// </summary>
+        internal const string ResourcesPath = "greenbox-i18n";
+
         [SerializeField]
         private TextAsset _sourceCatalog;
 

@@ -504,14 +504,6 @@
             <returns>The resolved text, entry path, or numeric ID.</returns>
             <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Format(System.Int64,System.Object[])">
-            <summary>
-            Formats localized text using the current locale culture.
-            </summary>
-            <param name="id">The self-identifying stable entry ID.</param>
-            <param name="arguments">The values inserted into the localized composite format string.</param>
-            <returns>The formatted localized text.</returns>
-        </member>
         <member name="M:GreenBox.I18n.I18nRuntime.TryGetText(System.Int64,System.String@)">
             <summary>
             Attempts to resolve localized text through the current locale fallback chain.

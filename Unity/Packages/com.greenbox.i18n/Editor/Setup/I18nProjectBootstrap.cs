@@ -21,13 +21,11 @@ namespace GreenBox.I18n.Unity.Editor.Setup
         {
             I18nProjectSettings settings = I18nProjectSettings.instance;
             I18nCatalogAsset? activeCatalog = settings.ActiveCatalog;
-            if (activeCatalog && activeCatalog.SourceCatalog)
-            {
-                settings.EnsureCurrentSetupVersion();
-                return;
-            }
-
-            if (settings.IsSetupComplete)
+            if (settings.IsSetupComplete &&
+                activeCatalog &&
+                activeCatalog.SourceCatalog &&
+                I18nProjectLayout.IsRuntimeCatalogPath(
+                    AssetDatabase.GetAssetPath(activeCatalog)))
             {
                 return;
             }

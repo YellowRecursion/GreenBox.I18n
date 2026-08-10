@@ -25,13 +25,26 @@ namespace GreenBox.I18n.Unity.Editor.Tests
         public void DefaultFileNames_AreLowercaseAndDocumented()
         {
             Assert.That(I18nProjectLayout.SourceCatalogPath, Does.EndWith("/localization.json"));
-            Assert.That(I18nProjectLayout.CatalogAssetPath, Does.EndWith("/localization.asset"));
+            Assert.That(I18nProjectLayout.CatalogAssetPath, Does.EndWith("/greenbox-i18n.asset"));
+            Assert.That(
+                I18nProjectLayout.CatalogAssetPath,
+                Does.EndWith(I18nProjectLayout.RuntimeCatalogPathSuffix));
+            Assert.That(
+                I18nProjectLayout.IsRuntimeCatalogPath(
+                    "Assets/Custom/Resources/greenbox-i18n.asset"),
+                Is.True);
+            Assert.That(
+                I18nProjectLayout.IsRuntimeCatalogPath(
+                    "Assets/Custom/localization.asset"),
+                Is.False);
             Assert.That(I18nProjectLayout.ReadmePath, Does.EndWith("/readme.md"));
 
             string readme = I18nProjectLayout.CreateReadme();
             Assert.That(readme, Does.Contain("localization.json"));
-            Assert.That(readme, Does.Contain("localization.asset"));
-            Assert.That(readme, Does.Contain(".meta"));
+            Assert.That(readme, Does.Contain("greenbox-i18n.asset"));
+            Assert.That(readme, Does.Contain("move this whole folder"));
+            Assert.That(readme, Does.Contain("Do not rename, move, replace, or delete"));
+            Assert.That(readme, Does.Contain("validates and repairs"));
         }
     }
 }

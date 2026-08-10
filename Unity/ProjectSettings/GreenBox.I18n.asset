@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 504f4f2ae8914a329056c18f435ade05, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GreenBox.I18n.Unity.Editor::GreenBox.I18n.Unity.Editor.Settings.I18nProjectSettings
-  _setupVersion: 1
+  _setupVersion: 2
   _activeCatalogGuid: e8b967640049a7f44b47e9a100010f6e
   _activeCatalogPath: Assets/GreenBox.I18n/localization.json

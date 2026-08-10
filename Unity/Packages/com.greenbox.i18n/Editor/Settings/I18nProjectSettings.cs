@@ -11,7 +11,7 @@ namespace GreenBox.I18n.Unity.Editor.Settings
     [FilePath("ProjectSettings/GreenBox.I18n.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class I18nProjectSettings : ScriptableSingleton<I18nProjectSettings>
     {
-        private const int CurrentSetupVersion = 1;
+        private const int CurrentSetupVersion = 2;
 
         internal static event Action? ActiveCatalogChanged;
 
@@ -68,20 +68,6 @@ namespace GreenBox.I18n.Unity.Editor.Settings
             _activeCatalogPath = activeCatalogPath;
             Save(true);
             ActiveCatalogChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// Migrates valid settings written before automatic setup was introduced.
-        /// </summary>
-        internal void EnsureCurrentSetupVersion()
-        {
-            if (_setupVersion >= CurrentSetupVersion)
-            {
-                return;
-            }
-
-            _setupVersion = CurrentSetupVersion;
-            Save(true);
         }
 
         /// <summary>

@@ -24,7 +24,9 @@ namespace GreenBox.I18n.Unity.Editor.Setup
                 I18nCatalogAsset? activeCatalog = settings.ActiveCatalog;
                 if (activeCatalog && activeCatalog.SourceCatalog)
                 {
+                    activeCatalog = EnsureRuntimeCatalogLocation(activeCatalog);
                     settings.ConfigureActiveCatalog(activeCatalog);
+                    I18nCatalogAutoCompiler.Queue(activeCatalog);
                     error = string.Empty;
                     return true;
                 }
@@ -41,7 +43,7 @@ namespace GreenBox.I18n.Unity.Editor.Setup
                 I18nCatalogAsset catalogAsset;
                 if (existingCatalogs.Count == 1)
                 {
-                    catalogAsset = existingCatalogs[0];
+                    catalogAsset = EnsureRuntimeCatalogLocation(existingCatalogs[0]);
                     if (!catalogAsset.SourceCatalog)
                     {
                         TextAsset sourceCatalog = EnsureDefaultSourceFiles();
@@ -88,6 +90,7 @@ namespace GreenBox.I18n.Unity.Editor.Setup
 
         private static I18nCatalogAsset CreateDefaultCatalogAsset()
         {
+            EnsureDefaultFolder();
             UnityEngine.Object? occupiedAsset =
                 AssetDatabase.LoadMainAssetAtPath(I18nProjectLayout.CatalogAssetPath);
             if (occupiedAsset)
@@ -133,17 +136,60 @@ namespace GreenBox.I18n.Unity.Editor.Setup
 
         private static void EnsureDefaultFolder()
         {
-            if (AssetDatabase.IsValidFolder(I18nProjectLayout.RootFolderPath))
+            EnsureFolder("Assets", "GreenBox.I18n");
+            EnsureFolder(I18nProjectLayout.RootFolderPath, "Resources");
+        }
+
+        private static void EnsureFolder(string parentPath, string folderName)
+        {
+            string folderPath = parentPath + "/" + folderName;
+            if (AssetDatabase.IsValidFolder(folderPath))
             {
                 return;
             }
 
-            string folderGuid = AssetDatabase.CreateFolder("Assets", "GreenBox.I18n");
+            string folderGuid = AssetDatabase.CreateFolder(parentPath, folderName);
             if (string.IsNullOrEmpty(folderGuid))
             {
-                throw new IOException(
-                    $"Could not create the folder '{I18nProjectLayout.RootFolderPath}'.");
+                throw new IOException($"Could not create the folder '{folderPath}'.");
             }
+        }
+
+        private static I18nCatalogAsset EnsureRuntimeCatalogLocation(
+            I18nCatalogAsset catalogAsset)
+        {
+            string currentPath = AssetDatabase.GetAssetPath(catalogAsset);
+            if (I18nProjectLayout.IsRuntimeCatalogPath(currentPath))
+            {
+                return catalogAsset;
+            }
+
+            EnsureDefaultFolder();
+            UnityEngine.Object? occupiedAsset =
+                AssetDatabase.LoadMainAssetAtPath(I18nProjectLayout.CatalogAssetPath);
+            if (occupiedAsset && occupiedAsset != catalogAsset)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot move the project catalog to '{I18nProjectLayout.CatalogAssetPath}' " +
+                    "because that path is occupied by another asset.");
+            }
+
+            string moveError = AssetDatabase.MoveAsset(
+                currentPath,
+                I18nProjectLayout.CatalogAssetPath);
+            if (!string.IsNullOrEmpty(moveError))
+            {
+                throw new InvalidOperationException(
+                    $"Could not move the project catalog to its runtime location. {moveError}");
+            }
+
+            I18nCatalogAsset? movedCatalog =
+                AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(
+                    I18nProjectLayout.CatalogAssetPath);
+            return movedCatalog
+                ? movedCatalog
+                : throw new InvalidOperationException(
+                    "Unity could not reload the project catalog after moving it.");
         }
 
         private static void WriteFileIfMissing(string assetPath, string contents)

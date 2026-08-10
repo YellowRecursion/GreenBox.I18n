@@ -24,27 +24,19 @@ namespace GreenBox.I18n.Development
         /// </summary>
         public I18nKey Missing = new I18nKey(3857602839270400377);
 
-        /// <summary>
-        /// Catalog used by the runtime smoke test.
-        /// </summary>
-        public I18nCatalogAsset Catalog;
-
         private void Awake()
         {
-            global::I18n.Initialize(Catalog, "en");
-
             var str = global::I18n.Text(3857404068572302532);
             var unknown = global::I18n.Text(3857535036959804040);
             var unknown2 = global::I18n.Text(3857535036959804040);
         }
 
         /// <summary>
-        /// Initializes the runtime and logs the existing key in English and Russian.
+        /// Logs the existing key in English and Russian.
         /// </summary>
         [ContextMenu("Log Runtime Text")]
         private void LogRuntimeText()
         {
-            global::I18n.Initialize(Catalog, "en");
             Debug.Log(global::I18n.Text(Existing), this);
 
             global::I18n.SetLocale("ru");
