@@ -12,50 +12,57 @@ using UnityEngine;
 namespace GreenBox.I18n.Unity.Editor.Setup
 {
     /// <summary>
-    /// Creates or adopts the single project catalog used by GreenBox I18n tooling.
+    /// Creates and repairs the source-controlled project files and generated runtime catalog.
     /// </summary>
     internal static class I18nProjectSetup
     {
+        internal static bool IsHealthy()
+        {
+            I18nProjectSettings settings = I18nProjectSettings.instance;
+            TextAsset? sourceCatalog = settings.SourceCatalog;
+            I18nCatalogAsset? projectCatalog = settings.ProjectCatalog;
+            if (!settings.IsSetupComplete ||
+                !sourceCatalog ||
+                !projectCatalog ||
+                projectCatalog.SourceCatalog != sourceCatalog)
+            {
+                return false;
+            }
+
+            string sourceFolder = GetParentPath(AssetDatabase.GetAssetPath(sourceCatalog));
+            return
+                File.Exists(GetAbsoluteProjectPath(sourceFolder + "/readme.md")) &&
+                File.Exists(GetAbsoluteProjectPath(sourceFolder + "/.gitignore")) &&
+                File.Exists(GetAbsoluteProjectPath(sourceFolder + "/.gitattributes")) &&
+                AssetDatabase.IsValidFolder(
+                    I18nProjectLayout.GetResourcesFolderPath(
+                        AssetDatabase.GetAssetPath(sourceCatalog)));
+        }
+
         internal static bool TryRepair(out string error)
         {
             try
             {
                 I18nProjectSettings settings = I18nProjectSettings.instance;
-                I18nCatalogAsset? activeCatalog = settings.ActiveCatalog;
-                if (activeCatalog && activeCatalog.SourceCatalog)
+                TextAsset? sourceCatalog = settings.SourceCatalog ?? FindExistingSourceCatalog();
+                if (!sourceCatalog)
                 {
-                    activeCatalog = EnsureRuntimeCatalogLocation(activeCatalog);
-                    settings.ConfigureActiveCatalog(activeCatalog);
-                    I18nCatalogAutoCompiler.Queue(activeCatalog);
-                    error = string.Empty;
-                    return true;
-                }
-
-                List<I18nCatalogAsset> existingCatalogs = FindProjectCatalogs();
-                if (existingCatalogs.Count > 1)
-                {
-                    error =
-                        "Multiple GreenBox I18n catalog assets were found. " +
-                        "Keep a single project catalog before continuing.";
-                    return false;
-                }
-
-                I18nCatalogAsset catalogAsset;
-                if (existingCatalogs.Count == 1)
-                {
-                    catalogAsset = EnsureRuntimeCatalogLocation(existingCatalogs[0]);
-                    if (!catalogAsset.SourceCatalog)
+                    if (settings.IsSetupComplete ||
+                        !string.IsNullOrEmpty(settings.SourceCatalogPath))
                     {
-                        TextAsset sourceCatalog = EnsureDefaultSourceFiles();
-                        AssignSourceCatalog(catalogAsset, sourceCatalog);
+                        error =
+                            "The localization source JSON is missing. Restore localization.json " +
+                            "from version control before continuing.";
+                        return false;
                     }
-                }
-                else
-                {
-                    catalogAsset = CreateDefaultCatalogAsset();
+
+                    sourceCatalog = CreateDefaultSourceFiles();
                 }
 
-                settings.ConfigureActiveCatalog(catalogAsset);
+                EnsureManagedCompanionFiles(sourceCatalog);
+                settings.ConfigureSourceCatalog(sourceCatalog);
+
+                I18nCatalogAsset catalogAsset = EnsureGeneratedCatalog(sourceCatalog);
                 I18nCatalogAutoCompiler.Queue(catalogAsset);
                 error = string.Empty;
                 return true;
@@ -67,77 +74,102 @@ namespace GreenBox.I18n.Unity.Editor.Setup
             }
         }
 
-        private static List<I18nCatalogAsset> FindProjectCatalogs()
+        private static TextAsset? FindExistingSourceCatalog()
         {
-            string[] catalogGuids = AssetDatabase.FindAssets(
-                "t:I18nCatalogAsset",
-                new[] { "Assets" });
-            var catalogs = new List<I18nCatalogAsset>(catalogGuids.Length);
-
-            for (int catalogIndex = 0; catalogIndex < catalogGuids.Length; catalogIndex++)
+            TextAsset? defaultSource =
+                AssetDatabase.LoadAssetAtPath<TextAsset>(I18nProjectLayout.SourceCatalogPath);
+            if (defaultSource)
             {
-                string catalogPath = AssetDatabase.GUIDToAssetPath(catalogGuids[catalogIndex]);
-                I18nCatalogAsset? catalog =
-                    AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(catalogPath);
-                if (catalog)
+                return defaultSource;
+            }
+
+            string[] sourceGuids = AssetDatabase.FindAssets("localization t:TextAsset", new[] { "Assets" });
+            var matches = new List<TextAsset>();
+            for (int sourceIndex = 0; sourceIndex < sourceGuids.Length; sourceIndex++)
+            {
+                string sourcePath = AssetDatabase.GUIDToAssetPath(sourceGuids[sourceIndex]);
+                if (!sourcePath.EndsWith("/localization.json", StringComparison.OrdinalIgnoreCase))
                 {
-                    catalogs.Add(catalog);
+                    continue;
+                }
+
+                TextAsset? source = AssetDatabase.LoadAssetAtPath<TextAsset>(sourcePath);
+                if (source)
+                {
+                    matches.Add(source);
                 }
             }
 
-            return catalogs;
-        }
-
-        private static I18nCatalogAsset CreateDefaultCatalogAsset()
-        {
-            EnsureDefaultFolder();
-            UnityEngine.Object? occupiedAsset =
-                AssetDatabase.LoadMainAssetAtPath(I18nProjectLayout.CatalogAssetPath);
-            if (occupiedAsset)
+            if (matches.Count > 1)
             {
                 throw new InvalidOperationException(
-                    $"Cannot create the project catalog because '{I18nProjectLayout.CatalogAssetPath}' " +
-                    "is already occupied by another asset.");
+                    "Multiple localization.json files were found. GreenBox I18n supports one " +
+                    "project catalog per Unity project.");
             }
 
-            TextAsset sourceCatalog = EnsureDefaultSourceFiles();
-            var catalogAsset = ScriptableObject.CreateInstance<I18nCatalogAsset>();
-            catalogAsset.name = "localization";
-            AssetDatabase.CreateAsset(catalogAsset, I18nProjectLayout.CatalogAssetPath);
-            AssignSourceCatalog(catalogAsset, sourceCatalog);
-            return catalogAsset;
+            return matches.Count == 1 ? matches[0] : null;
         }
 
-        private static TextAsset EnsureDefaultSourceFiles()
+        private static TextAsset CreateDefaultSourceFiles()
         {
-            EnsureDefaultFolder();
+            EnsureFolder("Assets", "GreenBox.I18n");
             WriteFileIfMissing(
                 I18nProjectLayout.SourceCatalogPath,
                 I18nProjectLayout.CreateInitialCatalogJson());
-            WriteFileIfMissing(I18nProjectLayout.ReadmePath, I18nProjectLayout.CreateReadme());
-
             AssetDatabase.ImportAsset(
                 I18nProjectLayout.SourceCatalogPath,
                 ImportAssetOptions.ForceSynchronousImport);
-            AssetDatabase.ImportAsset(
-                I18nProjectLayout.ReadmePath,
-                ImportAssetOptions.ForceSynchronousImport);
 
-            TextAsset? sourceCatalog =
-                AssetDatabase.LoadAssetAtPath<TextAsset>(I18nProjectLayout.SourceCatalogPath);
-            if (!sourceCatalog)
-            {
-                throw new InvalidOperationException(
+            return AssetDatabase.LoadAssetAtPath<TextAsset>(I18nProjectLayout.SourceCatalogPath)
+                ?? throw new InvalidOperationException(
                     $"Unity could not import '{I18nProjectLayout.SourceCatalogPath}' as a TextAsset.");
-            }
-
-            return sourceCatalog;
         }
 
-        private static void EnsureDefaultFolder()
+        private static void EnsureManagedCompanionFiles(TextAsset sourceCatalog)
         {
-            EnsureFolder("Assets", "GreenBox.I18n");
-            EnsureFolder(I18nProjectLayout.RootFolderPath, "Resources");
+            string sourcePath = AssetDatabase.GetAssetPath(sourceCatalog);
+            string sourceFolder = GetParentPath(sourcePath);
+            string readmePath = sourceFolder + "/readme.md";
+            string gitIgnorePath = sourceFolder + "/.gitignore";
+            string gitAttributesPath = sourceFolder + "/.gitattributes";
+
+            WriteFileIfMissing(readmePath, I18nProjectLayout.CreateReadme());
+            WriteFileIfMissing(gitIgnorePath, I18nProjectLayout.CreateGitIgnore());
+            WriteFileIfMissing(
+                gitAttributesPath,
+                I18nProjectLayout.CreateGitAttributes());
+            AssetDatabase.ImportAsset(readmePath, ImportAssetOptions.ForceSynchronousImport);
+        }
+
+        private static I18nCatalogAsset EnsureGeneratedCatalog(TextAsset sourceCatalog)
+        {
+            string sourcePath = AssetDatabase.GetAssetPath(sourceCatalog);
+            string resourcesPath = I18nProjectLayout.GetResourcesFolderPath(sourcePath);
+            string catalogPath = I18nProjectLayout.GetCatalogAssetPath(sourcePath);
+            EnsureFolder(GetParentPath(resourcesPath), "Resources");
+
+            UnityEngine.Object? occupiedAsset = AssetDatabase.LoadMainAssetAtPath(catalogPath);
+            if (occupiedAsset && occupiedAsset is not I18nCatalogAsset)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot generate the runtime catalog because '{catalogPath}' is occupied " +
+                    "by another asset.");
+            }
+
+            I18nCatalogAsset? catalogAsset = occupiedAsset as I18nCatalogAsset;
+            if (!catalogAsset)
+            {
+                catalogAsset = ScriptableObject.CreateInstance<I18nCatalogAsset>();
+                catalogAsset.name = I18nCatalogAsset.ResourcesPath;
+                AssetDatabase.CreateAsset(catalogAsset, catalogPath);
+            }
+
+            if (catalogAsset.SourceCatalog != sourceCatalog)
+            {
+                AssignSourceCatalog(catalogAsset, sourceCatalog);
+            }
+
+            return catalogAsset;
         }
 
         private static void EnsureFolder(string parentPath, string folderName)
@@ -153,43 +185,6 @@ namespace GreenBox.I18n.Unity.Editor.Setup
             {
                 throw new IOException($"Could not create the folder '{folderPath}'.");
             }
-        }
-
-        private static I18nCatalogAsset EnsureRuntimeCatalogLocation(
-            I18nCatalogAsset catalogAsset)
-        {
-            string currentPath = AssetDatabase.GetAssetPath(catalogAsset);
-            if (I18nProjectLayout.IsRuntimeCatalogPath(currentPath))
-            {
-                return catalogAsset;
-            }
-
-            EnsureDefaultFolder();
-            UnityEngine.Object? occupiedAsset =
-                AssetDatabase.LoadMainAssetAtPath(I18nProjectLayout.CatalogAssetPath);
-            if (occupiedAsset && occupiedAsset != catalogAsset)
-            {
-                throw new InvalidOperationException(
-                    $"Cannot move the project catalog to '{I18nProjectLayout.CatalogAssetPath}' " +
-                    "because that path is occupied by another asset.");
-            }
-
-            string moveError = AssetDatabase.MoveAsset(
-                currentPath,
-                I18nProjectLayout.CatalogAssetPath);
-            if (!string.IsNullOrEmpty(moveError))
-            {
-                throw new InvalidOperationException(
-                    $"Could not move the project catalog to its runtime location. {moveError}");
-            }
-
-            I18nCatalogAsset? movedCatalog =
-                AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(
-                    I18nProjectLayout.CatalogAssetPath);
-            return movedCatalog
-                ? movedCatalog
-                : throw new InvalidOperationException(
-                    "Unity could not reload the project catalog after moving it.");
         }
 
         private static void WriteFileIfMissing(string assetPath, string contents)
@@ -210,13 +205,20 @@ namespace GreenBox.I18n.Unity.Editor.Setup
             return Path.GetFullPath(Path.Combine(projectRoot, assetPath));
         }
 
+        private static string GetParentPath(string assetPath)
+        {
+            string? parentPath = Path.GetDirectoryName(assetPath);
+            return string.IsNullOrEmpty(parentPath)
+                ? throw new ArgumentException("Unity asset path has no parent folder.", nameof(assetPath))
+                : parentPath.Replace('\\', '/');
+        }
+
         private static void AssignSourceCatalog(
             I18nCatalogAsset catalogAsset,
             TextAsset sourceCatalog)
         {
             var serializedCatalog = new SerializedObject(catalogAsset);
-            SerializedProperty? sourceProperty =
-                serializedCatalog.FindProperty("_sourceCatalog");
+            SerializedProperty? sourceProperty = serializedCatalog.FindProperty("_sourceCatalog");
             if (sourceProperty == null)
             {
                 throw new InvalidOperationException(

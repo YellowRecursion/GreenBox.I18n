@@ -16,7 +16,7 @@ using UnityEngine;
 namespace GreenBox.I18n.Unity.Editor.Usage
 {
     /// <summary>
-    /// Reports current project usages whose entry IDs are absent from the active catalog.
+    /// Reports current project usages whose entry IDs are absent from the project catalog.
     /// </summary>
     [InitializeOnLoad]
     internal static class I18nMissingCatalogEntryDiagnostic
@@ -28,14 +28,14 @@ namespace GreenBox.I18n.Unity.Editor.Usage
         {
             I18nUsageIndexController.IndexChanged += Evaluate;
             I18nCatalogCompilationEvents.CompilationFinished += HandleCatalogCompilationFinished;
-            I18nProjectSettings.ActiveCatalogChanged += Evaluate;
+            I18nProjectSettings.SourceCatalogChanged += Evaluate;
         }
 
         private static void HandleCatalogCompilationFinished(
             I18nCatalogAsset catalogAsset,
             I18nCatalogCompilationResult result)
         {
-            if (result.IsSuccess && catalogAsset == I18nProjectSettings.instance.ActiveCatalog)
+            if (result.IsSuccess && catalogAsset == I18nProjectSettings.instance.ProjectCatalog)
             {
                 Evaluate();
             }
@@ -86,7 +86,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             catch (Exception exception)
             {
                 I18nLog.Error(
-                    $"Failed to check usages against the active catalog: " +
+                    $"Failed to check usages against the project catalog: " +
                     $"{exception.GetType().Name}: {exception.Message}");
             }
         }
@@ -97,7 +97,7 @@ namespace GreenBox.I18n.Unity.Editor.Usage
             var builder = new StringBuilder();
             builder.Append(missingEntries.Count)
                 .Append(missingEntries.Count == 1 ? " entry ID is" : " entry IDs are")
-                .Append(" used by the project but missing from the active catalog.");
+                .Append(" used by the project but missing from the project catalog.");
 
             foreach (IGrouping<long, I18nIndexedUsage> entry in missingEntries
                          .Take(MaximumReportedEntryCount))

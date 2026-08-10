@@ -12,11 +12,11 @@ import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Resolves the active GreenBox source catalog from Unity Project Settings. */
+/** Resolves the GreenBox source catalog from Unity Project Settings. */
 final class I18nProjectCatalogLocator {
     private static final String PROJECT_SETTINGS_PATH = "ProjectSettings/GreenBox.I18n.asset";
-    private static final Pattern ACTIVE_CATALOG_PATH = Pattern.compile(
-        "(?m)^\\s*_activeCatalogPath:\\s*(.*?)\\s*$");
+    private static final Pattern SOURCE_CATALOG_PATH = Pattern.compile(
+        "(?m)^\\s*_sourceCatalogPath:\\s*(.*?)\\s*$");
 
     private I18nProjectCatalogLocator() {
     }
@@ -34,7 +34,7 @@ final class I18nProjectCatalogLocator {
         }
 
         String settings = Files.readString(settingsPath, StandardCharsets.UTF_8);
-        Matcher matcher = ACTIVE_CATALOG_PATH.matcher(settings);
+        Matcher matcher = SOURCE_CATALOG_PATH.matcher(settings);
         if (!matcher.find()) {
             return new CatalogLocation(projectRoot, settingsPath, null);
         }

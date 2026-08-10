@@ -1,111 +1,132 @@
 #nullable enable
 
 using System;
+using GreenBox.I18n.Unity.Editor.Setup;
 using UnityEditor;
+using UnityEngine;
 
 namespace GreenBox.I18n.Unity.Editor.Settings
 {
     /// <summary>
-    /// Stores project-wide editor settings for GreenBox I18n.
+    /// Stores project-wide discovery data for the single GreenBox I18n source catalog.
     /// </summary>
     [FilePath("ProjectSettings/GreenBox.I18n.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class I18nProjectSettings : ScriptableSingleton<I18nProjectSettings>
     {
-        private const int CurrentSetupVersion = 2;
+        private const int CurrentSetupVersion = 3;
 
-        internal static event Action? ActiveCatalogChanged;
+        internal static event Action? SourceCatalogChanged;
 
-        [UnityEngine.SerializeField]
+        [SerializeField]
         private int _setupVersion;
 
-        [UnityEngine.SerializeField]
-        private string _activeCatalogGuid = string.Empty;
+        [SerializeField]
+        private string _sourceCatalogGuid = string.Empty;
 
-        [UnityEngine.SerializeField]
-        private string _activeCatalogPath = string.Empty;
-
-        /// <summary>
-        /// Gets the catalog managed for this Unity project.
-        /// </summary>
-        internal I18nCatalogAsset? ActiveCatalog => ResolveActiveCatalog();
+        [SerializeField]
+        private string _sourceCatalogPath = string.Empty;
 
         /// <summary>
-        /// Gets whether automatic project setup has already completed.
+        /// Gets the editable JSON source of truth for this Unity project.
         /// </summary>
+        internal TextAsset? SourceCatalog => ResolveSourceCatalog();
+
+        /// <summary>
+        /// Gets the generated runtime asset derived from the source catalog location.
+        /// </summary>
+        internal I18nCatalogAsset? ProjectCatalog
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_sourceCatalogPath))
+                {
+                    return null;
+                }
+
+                string assetPath = I18nProjectLayout.GetCatalogAssetPath(_sourceCatalogPath);
+                return AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(assetPath);
+            }
+        }
+
         internal bool IsSetupComplete => _setupVersion >= CurrentSetupVersion;
 
         /// <summary>
-        /// Records the project catalog selected by the setup workflow.
+        /// Gets the Unity project-relative source path exposed to external tools.
         /// </summary>
-        internal void ConfigureActiveCatalog(I18nCatalogAsset activeCatalog)
+        internal string SourceCatalogPath => _sourceCatalogPath;
+
+        /// <summary>
+        /// Records the source catalog. The generated runtime asset is deliberately not persisted.
+        /// </summary>
+        internal void ConfigureSourceCatalog(TextAsset sourceCatalog)
         {
-            if (!activeCatalog)
+            if (!sourceCatalog)
             {
-                throw new ArgumentNullException(nameof(activeCatalog));
+                throw new ArgumentNullException(nameof(sourceCatalog));
             }
 
-            string assetPath = AssetDatabase.GetAssetPath(activeCatalog);
-            string activeCatalogGuid = AssetDatabase.AssetPathToGUID(assetPath);
-            if (string.IsNullOrEmpty(activeCatalogGuid))
+            string sourcePath = AssetDatabase.GetAssetPath(sourceCatalog);
+            string sourceGuid = AssetDatabase.AssetPathToGUID(sourcePath);
+            if (string.IsNullOrEmpty(sourceGuid))
             {
                 throw new ArgumentException(
-                    "The project catalog must be saved in the Unity project.",
-                    nameof(activeCatalog));
+                    "The source catalog must be saved in the Unity project.",
+                    nameof(sourceCatalog));
             }
 
-            string activeCatalogPath = GetSourceCatalogPath(activeCatalog);
             bool changed =
                 _setupVersion != CurrentSetupVersion ||
-                !string.Equals(_activeCatalogGuid, activeCatalogGuid, StringComparison.Ordinal) ||
-                !string.Equals(_activeCatalogPath, activeCatalogPath, StringComparison.Ordinal);
+                !string.Equals(_sourceCatalogGuid, sourceGuid, StringComparison.Ordinal) ||
+                !string.Equals(_sourceCatalogPath, sourcePath, StringComparison.Ordinal);
             if (!changed)
             {
                 return;
             }
 
             _setupVersion = CurrentSetupVersion;
-            _activeCatalogGuid = activeCatalogGuid;
-            _activeCatalogPath = activeCatalogPath;
+            _sourceCatalogGuid = sourceGuid;
+            _sourceCatalogPath = sourcePath;
             Save(true);
-            ActiveCatalogChanged?.Invoke();
+            SourceCatalogChanged?.Invoke();
         }
 
         /// <summary>
-        /// Gets the Unity project-relative path to the active source catalog JSON.
-        /// This serialized value is also a lightweight discovery contract for external tools.
+        /// Updates the external-tool path after Unity moves the source catalog.
         /// </summary>
-        internal string ActiveCatalogPath => _activeCatalogPath;
-
-        /// <summary>
-        /// Updates the stored source path after the active catalog or its source asset moves.
-        /// </summary>
-        internal void RefreshActiveCatalogPath()
+        internal void RefreshSourceCatalogPath()
         {
-            string activeCatalogPath = GetSourceCatalogPath(ResolveActiveCatalog());
-            if (string.Equals(_activeCatalogPath, activeCatalogPath, StringComparison.Ordinal))
+            TextAsset? sourceCatalog = ResolveSourceCatalog();
+            if (!sourceCatalog)
             {
                 return;
             }
 
-            _activeCatalogPath = activeCatalogPath;
-            Save(true);
-            ActiveCatalogChanged?.Invoke();
-        }
-
-        private I18nCatalogAsset? ResolveActiveCatalog()
-        {
-            string assetPath = AssetDatabase.GUIDToAssetPath(_activeCatalogGuid);
-            return AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(assetPath);
-        }
-
-        private static string GetSourceCatalogPath(I18nCatalogAsset? catalogAsset)
-        {
-            if (!catalogAsset || !catalogAsset.SourceCatalog)
+            string sourcePath = AssetDatabase.GetAssetPath(sourceCatalog);
+            if (string.Equals(_sourceCatalogPath, sourcePath, StringComparison.Ordinal))
             {
-                return string.Empty;
+                return;
             }
 
-            return AssetDatabase.GetAssetPath(catalogAsset.SourceCatalog);
+            _sourceCatalogPath = sourcePath;
+            Save(true);
+            SourceCatalogChanged?.Invoke();
+        }
+
+        private TextAsset? ResolveSourceCatalog()
+        {
+            if (!string.IsNullOrEmpty(_sourceCatalogGuid))
+            {
+                string guidPath = AssetDatabase.GUIDToAssetPath(_sourceCatalogGuid);
+                TextAsset? sourceByGuid = AssetDatabase.LoadAssetAtPath<TextAsset>(guidPath);
+                if (sourceByGuid)
+                {
+                    return sourceByGuid;
+                }
+            }
+
+            return string.IsNullOrEmpty(_sourceCatalogPath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<TextAsset>(_sourceCatalogPath);
         }
     }
 }

@@ -1,6 +1,6 @@
 # GreenBox I18n Rider plugin
 
-This directory contains the GreenBox I18n integration for JetBrains Rider. It reads the active
+This directory contains the GreenBox I18n integration for JetBrains Rider. It reads the project
 source catalog path from `ProjectSettings/GreenBox.I18n.asset` and renders the final path segment
 beside every known entry ID in C# source. It does not modify the source document.
 

@@ -35,16 +35,29 @@ namespace GreenBox.I18n.Unity.Editor.Tests
                 Is.True);
             Assert.That(
                 I18nProjectLayout.IsRuntimeCatalogPath(
-                    "Assets/Custom/localization.asset"),
+                    "Assets/Custom/greenbox-i18n.asset"),
                 Is.False);
+            Assert.That(
+                I18nProjectLayout.GetCatalogAssetPath(
+                    "Assets/Custom/GreenBox.I18n/localization.json"),
+                Is.EqualTo(
+                    "Assets/Custom/GreenBox.I18n/Resources/greenbox-i18n.asset"));
             Assert.That(I18nProjectLayout.ReadmePath, Does.EndWith("/readme.md"));
 
             string readme = I18nProjectLayout.CreateReadme();
             Assert.That(readme, Does.Contain("localization.json"));
             Assert.That(readme, Does.Contain("greenbox-i18n.asset"));
+            Assert.That(readme, Does.Contain("excluded from Git"));
             Assert.That(readme, Does.Contain("move this whole folder"));
             Assert.That(readme, Does.Contain("Do not rename, move, replace, or delete"));
             Assert.That(readme, Does.Contain("validates and repairs"));
+
+            Assert.That(
+                I18nProjectLayout.CreateGitIgnore(),
+                Is.EqualTo("/Resources/\n/Resources.meta\n"));
+            Assert.That(
+                I18nProjectLayout.CreateGitAttributes(),
+                Does.Contain("/localization.json text eol=lf"));
         }
     }
 }

@@ -18,7 +18,7 @@ namespace GreenBox.I18n.Unity.Editor.Settings
 
         private static void Refresh()
         {
-            I18nProjectSettings.instance.RefreshActiveCatalogPath();
+            I18nProjectSettings.instance.RefreshSourceCatalogPath();
         }
     }
 }

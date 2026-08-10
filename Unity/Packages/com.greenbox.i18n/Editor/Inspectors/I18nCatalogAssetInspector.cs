@@ -8,7 +8,7 @@ using UnityEngine;
 namespace GreenBox.I18n.Unity.Editor.Inspectors
 {
     /// <summary>
-    /// Draws source, compilation state, controls, and diagnostics for a Unity catalog asset.
+    /// Draws the read-only state and diagnostics of generated Unity runtime data.
     /// </summary>
     [CustomEditor(typeof(I18nCatalogAsset))]
     internal sealed class I18nCatalogAssetInspector : UnityEditor.Editor
@@ -49,18 +49,12 @@ namespace GreenBox.I18n.Unity.Editor.Inspectors
             }
             serializedObject.ApplyModifiedProperties();
 
-            EditorGUILayout.Space();
+            EditorGUILayout.HelpBox(
+                "This asset is generated automatically from localization.json. " +
+                "Do not edit or reference it manually.",
+                MessageType.Info);
+
             DrawCompilationState();
-            EditorGUILayout.Space();
-
-            using (new EditorGUI.DisabledScope(!CatalogAsset.SourceCatalog))
-            {
-                if (GUILayout.Button("Compile Catalog"))
-                {
-                    _lastCompilationResult = I18nCatalogCompiler.Compile(CatalogAsset);
-                }
-            }
-
             DrawDiagnostics();
         }
 

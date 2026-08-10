@@ -1,7 +1,6 @@
 #nullable enable
 
 using GreenBox.I18n.Unity.Editor.Diagnostics;
-using GreenBox.I18n.Unity.Editor.Settings;
 using UnityEditor;
 
 namespace GreenBox.I18n.Unity.Editor.Setup
@@ -12,20 +11,29 @@ namespace GreenBox.I18n.Unity.Editor.Setup
     [InitializeOnLoad]
     internal static class I18nProjectBootstrap
     {
+        private static bool _isScheduled;
+
         static I18nProjectBootstrap()
         {
+            ScheduleRepair();
+            EditorApplication.projectChanged += ScheduleRepair;
+        }
+
+        private static void ScheduleRepair()
+        {
+            if (_isScheduled)
+            {
+                return;
+            }
+
+            _isScheduled = true;
             EditorApplication.delayCall += EnsureInitialized;
         }
 
         private static void EnsureInitialized()
         {
-            I18nProjectSettings settings = I18nProjectSettings.instance;
-            I18nCatalogAsset? activeCatalog = settings.ActiveCatalog;
-            if (settings.IsSetupComplete &&
-                activeCatalog &&
-                activeCatalog.SourceCatalog &&
-                I18nProjectLayout.IsRuntimeCatalogPath(
-                    AssetDatabase.GetAssetPath(activeCatalog)))
+            _isScheduled = false;
+            if (I18nProjectSetup.IsHealthy())
             {
                 return;
             }

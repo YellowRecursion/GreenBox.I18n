@@ -47,11 +47,11 @@ namespace GreenBox.I18n.Unity.Editor.Assets
                 return false;
             }
 
-            I18nCatalogAsset? catalogAsset = I18nProjectSettings.instance.ActiveCatalog;
+            I18nCatalogAsset? catalogAsset = I18nProjectSettings.instance.ProjectCatalog;
             if (!catalogAsset)
             {
                 Reset();
-                error = "Active localization catalog is not configured.";
+                error = "Generated localization runtime data is unavailable.";
                 return false;
             }
 

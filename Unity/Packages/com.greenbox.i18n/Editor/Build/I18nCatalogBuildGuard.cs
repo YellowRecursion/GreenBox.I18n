@@ -1,47 +1,47 @@
 #nullable enable
 
 using GreenBox.I18n.Unity.Editor.Settings;
+using GreenBox.I18n.Unity.Editor.Setup;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 
 namespace GreenBox.I18n.Unity.Editor.Build
 {
     /// <summary>
-    /// Prevents player builds from using missing or stale localization runtime data.
+    /// Regenerates runtime data before a build and rejects invalid source catalogs.
     /// </summary>
     public sealed class I18nCatalogBuildGuard : IPreprocessBuildWithReport
     {
-        /// <inheritdoc />
         public int callbackOrder => 0;
 
-        /// <inheritdoc />
         public void OnPreprocessBuild(BuildReport report)
         {
-            I18nCatalogAsset? catalogAsset = I18nProjectSettings.instance.ActiveCatalog;
+            if (!I18nProjectSetup.TryRepair(out string setupError))
+            {
+                throw new BuildFailedException(
+                    "GreenBox I18n could not prepare generated runtime data. " + setupError);
+            }
+
+            I18nCatalogAsset? catalogAsset = I18nProjectSettings.instance.ProjectCatalog;
             if (!catalogAsset)
             {
                 throw new BuildFailedException(
-                    "GreenBox I18n build validation failed: Active Catalog is not configured in " +
-                    "Project Settings > GreenBox > i18n.");
+                    "GreenBox I18n generated runtime data is unavailable after project repair.");
             }
 
-            I18nCatalogCompilationState state = I18nCatalogCompiler.GetState(catalogAsset);
-            switch (state)
+            if (I18nCatalogCompiler.GetState(catalogAsset) ==
+                I18nCatalogCompilationState.UpToDate)
             {
-                case I18nCatalogCompilationState.NotCompiled:
-                    throw new BuildFailedException(
-                        $"GreenBox I18n build validation failed: catalog '{catalogAsset.name}' is not compiled. " +
-                        "Assign its source JSON and click Compile Catalog.");
-                case I18nCatalogCompilationState.OutOfDate:
-                    throw new BuildFailedException(
-                        $"GreenBox I18n build validation failed: catalog '{catalogAsset.name}' is out of date. " +
-                        "Reimport its source JSON or click Compile Catalog.");
-                case I18nCatalogCompilationState.UpToDate:
-                    return;
+                return;
             }
 
-            throw new BuildFailedException(
-                $"GreenBox I18n build validation failed: catalog '{catalogAsset.name}' has an unknown state.");
+            I18nCatalogCompilationResult result = I18nCatalogCompiler.Compile(catalogAsset);
+            if (!result.IsSuccess)
+            {
+                throw new BuildFailedException(
+                    "GreenBox I18n could not compile localization.json. " +
+                    "Open the generated runtime asset for validation details.");
+            }
         }
     }
 }

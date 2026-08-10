@@ -117,7 +117,6 @@ namespace GreenBox.I18n.Unity.Editor
 
             if (hasChanges)
             {
-                Undo.RecordObject(catalogAsset, "Compile i18n catalog");
                 catalogAsset.ReplaceCompiledData(sourceHash, bindings);
                 EditorUtility.SetDirty(catalogAsset);
                 AssetDatabase.SaveAssetIfDirty(catalogAsset);

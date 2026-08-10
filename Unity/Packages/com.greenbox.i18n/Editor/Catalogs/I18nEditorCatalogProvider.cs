@@ -12,7 +12,6 @@ namespace GreenBox.I18n.Unity.Editor.Catalogs
     /// </summary>
     internal static class I18nEditorCatalogProvider
     {
-        private static int _catalogInstanceId;
         private static int _sourceInstanceId;
         private static Hash128 _sourceHash;
         private static bool _isInitialized;
@@ -26,18 +25,15 @@ namespace GreenBox.I18n.Unity.Editor.Catalogs
         /// <returns>The current catalog, or <see langword="null"/> when it cannot be loaded.</returns>
         internal static I18nCatalog? GetCatalog(out string? error)
         {
-            I18nCatalogAsset? catalogAsset = I18nProjectSettings.instance.ActiveCatalog;
-            TextAsset? source = catalogAsset ? catalogAsset.SourceCatalog : null;
+            TextAsset? source = I18nProjectSettings.instance.SourceCatalog;
             Hash128 sourceHash = GetDependencyHash(source);
-            int catalogInstanceId = catalogAsset ? catalogAsset.GetInstanceID() : 0;
             int sourceInstanceId = source ? source.GetInstanceID() : 0;
 
             if (!_isInitialized ||
-                _catalogInstanceId != catalogInstanceId ||
                 _sourceInstanceId != sourceInstanceId ||
                 _sourceHash != sourceHash)
             {
-                Reload(catalogAsset, source, sourceHash);
+                Reload(source, sourceHash);
             }
 
             error = _error;
@@ -58,32 +54,24 @@ namespace GreenBox.I18n.Unity.Editor.Catalogs
         }
 
         private static void Reload(
-            I18nCatalogAsset? catalogAsset,
             TextAsset? source,
             Hash128 sourceHash)
         {
             _isInitialized = true;
-            _catalogInstanceId = catalogAsset ? catalogAsset.GetInstanceID() : 0;
             _sourceInstanceId = source ? source.GetInstanceID() : 0;
             _sourceHash = sourceHash;
             _catalog = null;
             _error = null;
 
-            if (!catalogAsset)
-            {
-                _error = "Active localization catalog is not configured.";
-                return;
-            }
-
             if (!source)
             {
-                _error = "Active localization catalog has no source JSON.";
+                _error = "The project localization source JSON is unavailable.";
                 return;
             }
 
             try
             {
-                _catalog = catalogAsset.Deserialize();
+                _catalog = I18nCatalogJson.Deserialize(source.text);
             }
             catch (Exception exception)
             {

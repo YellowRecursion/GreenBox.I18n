@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace GreenBox.I18n.Unity.Editor.Setup
 {
@@ -17,6 +18,8 @@ namespace GreenBox.I18n.Unity.Editor.Setup
         internal const string CatalogAssetPath =
             ResourcesFolderPath + "/" + I18nCatalogAsset.ResourcesPath + ".asset";
         internal const string ReadmePath = RootFolderPath + "/readme.md";
+        internal const string GitIgnorePath = RootFolderPath + "/.gitignore";
+        internal const string GitAttributesPath = RootFolderPath + "/.gitattributes";
 
         internal const string RuntimeCatalogPathSuffix =
             "/Resources/" + I18nCatalogAsset.ResourcesPath + ".asset";
@@ -24,6 +27,30 @@ namespace GreenBox.I18n.Unity.Editor.Setup
         internal static bool IsRuntimeCatalogPath(string assetPath)
         {
             return assetPath.EndsWith(RuntimeCatalogPathSuffix, StringComparison.Ordinal);
+        }
+
+        internal static string GetResourcesFolderPath(string sourceCatalogPath)
+        {
+            return GetSourceFolderPath(sourceCatalogPath) + "/Resources";
+        }
+
+        internal static string GetCatalogAssetPath(string sourceCatalogPath)
+        {
+            return GetResourcesFolderPath(sourceCatalogPath) +
+                   "/" + I18nCatalogAsset.ResourcesPath + ".asset";
+        }
+
+        private static string GetSourceFolderPath(string sourceCatalogPath)
+        {
+            string? folderPath = Path.GetDirectoryName(sourceCatalogPath);
+            if (string.IsNullOrEmpty(folderPath))
+            {
+                throw new ArgumentException(
+                    "The source catalog must have a Unity project-relative path.",
+                    nameof(sourceCatalogPath));
+            }
+
+            return folderPath.Replace('\\', '/');
         }
 
         internal static string CreateInitialCatalogJson()
@@ -59,8 +86,23 @@ namespace GreenBox.I18n.Unity.Editor.Setup
                 "## Files\n" +
                 "\n" +
                 "- `localization.json` is the editable source of truth. Prefer the GreenBox Web Editor or CLI.\n" +
-                "- `Resources/greenbox-i18n.asset` is generated runtime data. Do not edit or reference it manually.\n" +
+                "- `Resources/greenbox-i18n.asset` is generated runtime data and is excluded from Git. Do not edit or reference it manually.\n" +
+                "- `.gitignore` and `.gitattributes` keep generated data out of Git and normalize text files across operating systems. Commit both files to your project repository.\n" +
                 "- If you must edit `localization.json` manually, preserve existing entry IDs and validate the result afterwards.\n";
+        }
+
+        internal static string CreateGitIgnore()
+        {
+            return "/Resources/\n/Resources.meta\n";
+        }
+
+        internal static string CreateGitAttributes()
+        {
+            return
+                "/localization.json text eol=lf\n" +
+                "/readme.md text eol=lf\n" +
+                "/.gitignore text eol=lf\n" +
+                "/.gitattributes text eol=lf\n";
         }
     }
 }
