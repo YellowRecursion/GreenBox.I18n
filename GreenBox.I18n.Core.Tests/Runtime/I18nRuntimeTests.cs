@@ -96,6 +96,25 @@ public sealed class I18nRuntimeTests
     }
 
     [Fact]
+    public void Text_FallbackMessage_UsesFallbackLocaleForFormatting()
+    {
+        const string englishMessage =
+            ".input {$count :number}\n" +
+            ".match $count\n" +
+            "one {{One item}}\n" +
+            "* {{{$count} items}}";
+        I18nEntry entry = CreateEntry(
+            "3857333080842830204",
+            "Inventory.Items",
+            ("en", englishMessage, null));
+        var runtime = new I18nRuntime(CreateCatalog(entry), "ru");
+
+        string result = runtime.Text(3857333080842830204, ("count", 21));
+
+        Assert.Equal("21 items", result);
+    }
+
+    [Fact]
     public void Text_EmptyCurrentText_DoesNotFallBack()
     {
         I18nEntry entry = CreateEntry(

@@ -340,6 +340,7 @@ namespace GreenBox.I18n
                     int message = _catalog.Values[valueIndex].Message;
                     if (message != I18nCompiledCatalogFormat.MissingIndex)
                     {
+                        culture = _locales[fallbackLocale].Culture;
                         return message;
                     }
                 }

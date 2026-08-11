@@ -12,6 +12,10 @@ namespace GreenBox.I18n
         private readonly List<PendingEntry> _entries = new List<PendingEntry>();
         private readonly List<I18nCompiledMessageRecord> _messages = new List<I18nCompiledMessageRecord>();
         private readonly List<int> _messageArguments = new List<int>();
+        private readonly List<I18nCompiledMessage.NumberOptions> _numberOptions =
+            new List<I18nCompiledMessage.NumberOptions>();
+        private readonly Dictionary<I18nCompiledMessage.NumberOptions, int> _numberOptionIndexes =
+            new Dictionary<I18nCompiledMessage.NumberOptions, int>();
         private readonly List<I18nCompiledMessagePartRecord> _messageParts =
             new List<I18nCompiledMessagePartRecord>();
         private readonly List<I18nCompiledSelectorRecord> _selectors =
@@ -56,7 +60,9 @@ namespace GreenBox.I18n
                     _selectors.Add(new I18nCompiledSelectorRecord(
                         _strings.Add(selector.Name),
                         selector.Kind,
-                        selector.NumberOptions));
+                        selector.Kind == I18nCompiledMessage.MessageSelectorKind.String
+                            ? I18nCompiledCatalogFormat.MissingIndex
+                            : AddNumberOptions(selector.NumberOptions)));
                 }
 
                 for (int variantIndex = 0; variantIndex < matcher.Variants.Length; variantIndex++)
@@ -163,6 +169,7 @@ namespace GreenBox.I18n
                     values.ToArray(),
                     _messages.ToArray(),
                     _messageArguments.ToArray(),
+                    _numberOptions.ToArray(),
                     _messageParts.ToArray(),
                     _selectors.ToArray(),
                     _variants.ToArray(),
@@ -179,10 +186,25 @@ namespace GreenBox.I18n
                     part.Kind,
                     _strings.Add(part.Value),
                     part.SourcePosition,
-                    part.NumberOptions));
+                    part.Kind == I18nCompiledMessage.MessagePartKind.NumberVariable
+                        ? AddNumberOptions(part.NumberOptions)
+                        : I18nCompiledCatalogFormat.MissingIndex));
             }
 
             return first;
+        }
+
+        private int AddNumberOptions(I18nCompiledMessage.NumberOptions options)
+        {
+            if (_numberOptionIndexes.TryGetValue(options, out int index))
+            {
+                return index;
+            }
+
+            index = _numberOptions.Count;
+            _numberOptions.Add(options);
+            _numberOptionIndexes.Add(options, index);
+            return index;
         }
 
         private void AppendFallbackChain(int locale, int defaultLocale, List<int> result)

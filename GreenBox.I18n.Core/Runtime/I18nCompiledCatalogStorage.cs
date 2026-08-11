@@ -6,7 +6,7 @@ namespace GreenBox.I18n
     internal static class I18nCompiledCatalogFormat
     {
         internal const uint Magic = 0x31494247; // GBI1
-        internal const int BinaryVersion = 2;
+        internal const int BinaryVersion = 3;
         internal const int CompilerVersion = 2;
         internal const int MaximumCollectionSize = 10_000_000;
         internal const int MissingIndex = -1;
@@ -23,6 +23,7 @@ namespace GreenBox.I18n
             I18nCompiledValueRecord[] values,
             I18nCompiledMessageRecord[] messages,
             int[] messageArguments,
+            I18nCompiledMessage.NumberOptions[] numberOptions,
             I18nCompiledMessagePartRecord[] messageParts,
             I18nCompiledSelectorRecord[] selectors,
             I18nCompiledVariantRecord[] variants,
@@ -36,6 +37,7 @@ namespace GreenBox.I18n
             Values = values ?? throw new ArgumentNullException(nameof(values));
             Messages = messages ?? throw new ArgumentNullException(nameof(messages));
             MessageArguments = messageArguments ?? throw new ArgumentNullException(nameof(messageArguments));
+            NumberOptions = numberOptions ?? throw new ArgumentNullException(nameof(numberOptions));
             MessageParts = messageParts ?? throw new ArgumentNullException(nameof(messageParts));
             Selectors = selectors ?? throw new ArgumentNullException(nameof(selectors));
             Variants = variants ?? throw new ArgumentNullException(nameof(variants));
@@ -52,6 +54,7 @@ namespace GreenBox.I18n
         internal I18nCompiledValueRecord[] Values { get; }
         internal I18nCompiledMessageRecord[] Messages { get; }
         internal int[] MessageArguments { get; }
+        internal I18nCompiledMessage.NumberOptions[] NumberOptions { get; }
         internal I18nCompiledMessagePartRecord[] MessageParts { get; }
         internal I18nCompiledSelectorRecord[] Selectors { get; }
         internal I18nCompiledVariantRecord[] Variants { get; }
@@ -191,6 +194,14 @@ namespace GreenBox.I18n
                 ValidateString(MessageArguments[index]);
             }
 
+            for (int index = 0; index < NumberOptions.Length; index++)
+            {
+                if (!NumberOptions[index].IsValid)
+                {
+                    throw Invalid("number options");
+                }
+            }
+
             for (int index = 0; index < MessageParts.Length; index++)
             {
                 I18nCompiledMessagePartRecord part = MessageParts[index];
@@ -199,6 +210,15 @@ namespace GreenBox.I18n
                     (int)part.Kind > (int)I18nCompiledMessage.MessagePartKind.NumberVariable)
                 {
                     throw Invalid("message part kind");
+                }
+
+                if (part.Kind == I18nCompiledMessage.MessagePartKind.NumberVariable)
+                {
+                    ValidateIndex(part.NumberOptions, NumberOptions.Length, "part number options");
+                }
+                else if (part.NumberOptions != I18nCompiledCatalogFormat.MissingIndex)
+                {
+                    throw Invalid("part number options");
                 }
             }
 
@@ -210,6 +230,21 @@ namespace GreenBox.I18n
                     (int)selector.Kind > (int)I18nCompiledMessage.MessageSelectorKind.String)
                 {
                     throw Invalid("selector kind");
+                }
+
+                if (selector.Kind == I18nCompiledMessage.MessageSelectorKind.String)
+                {
+                    if (selector.NumberOptions != I18nCompiledCatalogFormat.MissingIndex)
+                    {
+                        throw Invalid("selector number options");
+                    }
+                }
+                else
+                {
+                    ValidateIndex(
+                        selector.NumberOptions,
+                        NumberOptions.Length,
+                        "selector number options");
                 }
             }
 
@@ -449,7 +484,7 @@ namespace GreenBox.I18n
             I18nCompiledMessage.MessagePartKind kind,
             int value,
             int sourcePosition,
-            I18nCompiledMessage.NumberOptions numberOptions)
+            int numberOptions)
         {
             Kind = kind;
             Value = value;
@@ -460,7 +495,7 @@ namespace GreenBox.I18n
         internal I18nCompiledMessage.MessagePartKind Kind { get; }
         internal int Value { get; }
         internal int SourcePosition { get; }
-        internal I18nCompiledMessage.NumberOptions NumberOptions { get; }
+        internal int NumberOptions { get; }
     }
 
     internal readonly struct I18nCompiledSelectorRecord
@@ -468,7 +503,7 @@ namespace GreenBox.I18n
         internal I18nCompiledSelectorRecord(
             int name,
             I18nCompiledMessage.MessageSelectorKind kind,
-            I18nCompiledMessage.NumberOptions numberOptions)
+            int numberOptions)
         {
             Name = name;
             Kind = kind;
@@ -477,7 +512,7 @@ namespace GreenBox.I18n
 
         internal int Name { get; }
         internal I18nCompiledMessage.MessageSelectorKind Kind { get; }
-        internal I18nCompiledMessage.NumberOptions NumberOptions { get; }
+        internal int NumberOptions { get; }
     }
 
     internal readonly struct I18nCompiledVariantRecord

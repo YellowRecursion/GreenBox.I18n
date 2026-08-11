@@ -511,7 +511,9 @@ namespace GreenBox.I18n
                 Kind = part.Kind;
                 Value = storage.GetString(part.Value);
                 SourcePosition = part.SourcePosition;
-                NumberOptions = part.NumberOptions;
+                NumberOptions = part.NumberOptions == I18nCompiledCatalogFormat.MissingIndex
+                    ? default
+                    : storage.NumberOptions[part.NumberOptions];
             }
 
             internal MessagePartKind Kind { get; }
@@ -533,7 +535,9 @@ namespace GreenBox.I18n
             {
                 Name = storage.GetString(selector.Name);
                 Kind = selector.Kind;
-                NumberOptions = selector.NumberOptions;
+                NumberOptions = selector.NumberOptions == I18nCompiledCatalogFormat.MissingIndex
+                    ? default
+                    : storage.NumberOptions[selector.NumberOptions];
             }
 
             internal string Name { get; }

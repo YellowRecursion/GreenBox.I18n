@@ -87,6 +87,12 @@ namespace GreenBox.I18n
 
                 WriteIntegers(writer, storage.MessageArguments);
 
+                writer.Write(storage.NumberOptions.Length);
+                for (int index = 0; index < storage.NumberOptions.Length; index++)
+                {
+                    I18nCompiledMessage.WriteNumberOptions(writer, storage.NumberOptions[index]);
+                }
+
                 writer.Write(storage.MessageParts.Length);
                 for (int index = 0; index < storage.MessageParts.Length; index++)
                 {
@@ -94,7 +100,7 @@ namespace GreenBox.I18n
                     writer.Write((byte)part.Kind);
                     writer.Write(part.Value);
                     writer.Write(part.SourcePosition);
-                    I18nCompiledMessage.WriteNumberOptions(writer, part.NumberOptions);
+                    writer.Write(part.NumberOptions);
                 }
 
                 writer.Write(storage.Selectors.Length);
@@ -103,7 +109,7 @@ namespace GreenBox.I18n
                     I18nCompiledSelectorRecord selector = storage.Selectors[index];
                     writer.Write(selector.Name);
                     writer.Write((byte)selector.Kind);
-                    I18nCompiledMessage.WriteNumberOptions(writer, selector.NumberOptions);
+                    writer.Write(selector.NumberOptions);
                 }
 
                 writer.Write(storage.Variants.Length);
@@ -219,6 +225,12 @@ namespace GreenBox.I18n
 
                 int[] messageArguments = ReadIntegers(reader);
 
+                var numberOptions = new I18nCompiledMessage.NumberOptions[ReadCount(reader)];
+                for (int index = 0; index < numberOptions.Length; index++)
+                {
+                    numberOptions[index] = I18nCompiledMessage.ReadNumberOptions(reader);
+                }
+
                 var messageParts = new I18nCompiledMessagePartRecord[ReadCount(reader)];
                 for (int index = 0; index < messageParts.Length; index++)
                 {
@@ -226,7 +238,7 @@ namespace GreenBox.I18n
                         (I18nCompiledMessage.MessagePartKind)reader.ReadByte(),
                         reader.ReadInt32(),
                         reader.ReadInt32(),
-                        I18nCompiledMessage.ReadNumberOptions(reader));
+                        reader.ReadInt32());
                 }
 
                 var selectors = new I18nCompiledSelectorRecord[ReadCount(reader)];
@@ -235,7 +247,7 @@ namespace GreenBox.I18n
                     selectors[index] = new I18nCompiledSelectorRecord(
                         reader.ReadInt32(),
                         (I18nCompiledMessage.MessageSelectorKind)reader.ReadByte(),
-                        I18nCompiledMessage.ReadNumberOptions(reader));
+                        reader.ReadInt32());
                 }
 
                 var variants = new I18nCompiledVariantRecord[ReadCount(reader)];
@@ -272,6 +284,7 @@ namespace GreenBox.I18n
                         values,
                         messages,
                         messageArguments,
+                        numberOptions,
                         messageParts,
                         selectors,
                         variants,

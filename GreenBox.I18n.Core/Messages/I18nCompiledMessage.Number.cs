@@ -6,7 +6,7 @@ namespace GreenBox.I18n
 {
     public sealed partial class I18nCompiledMessage
     {
-        internal readonly struct NumberOptions
+        internal readonly struct NumberOptions : IEquatable<NumberOptions>
         {
             private readonly string? _ungroupedPattern;
             private readonly string? _groupedPattern;
@@ -91,6 +91,102 @@ namespace GreenBox.I18n
             public NumberRoundingPriority RoundingPriority { get; }
             public NumberStyle Style { get; }
             public decimal Offset { get; }
+
+            internal bool IsValid => AreValid(
+                MinimumFractionDigits,
+                MaximumFractionDigits,
+                MinimumSignificantDigits,
+                MaximumSignificantDigits,
+                MinimumIntegerDigits,
+                RoundingIncrement,
+                Grouping,
+                SignDisplay,
+                TrailingZeroDisplay,
+                RoundingMode,
+                RoundingPriority,
+                Style);
+
+            internal static bool AreValid(
+                int minimumFractionDigits,
+                int maximumFractionDigits,
+                int minimumSignificantDigits,
+                int maximumSignificantDigits,
+                int minimumIntegerDigits,
+                int roundingIncrement,
+                NumberGrouping grouping,
+                NumberSignDisplay signDisplay,
+                TrailingZeroDisplay trailingZeroDisplay,
+                NumberRoundingMode roundingMode,
+                NumberRoundingPriority roundingPriority,
+                NumberStyle style)
+            {
+                return IsOptionalDigitSize(minimumFractionDigits, false) &&
+                       IsOptionalDigitSize(maximumFractionDigits, false) &&
+                       IsOptionalDigitSize(minimumSignificantDigits, true) &&
+                       IsOptionalDigitSize(maximumSignificantDigits, true) &&
+                       minimumIntegerDigits >= 1 && minimumIntegerDigits <= 28 &&
+                       IsSupportedRoundingIncrement(roundingIncrement) &&
+                       (minimumFractionDigits < 0 || maximumFractionDigits < 0 ||
+                        minimumFractionDigits <= maximumFractionDigits) &&
+                       (minimumSignificantDigits < 0 ||
+                        maximumSignificantDigits >= minimumSignificantDigits) &&
+                       (roundingIncrement == 1 ||
+                        (minimumFractionDigits >= 0 &&
+                         minimumFractionDigits == maximumFractionDigits &&
+                         maximumSignificantDigits < 0)) &&
+                       grouping >= NumberGrouping.Auto && grouping <= NumberGrouping.Min2 &&
+                       signDisplay >= NumberSignDisplay.Auto &&
+                       signDisplay <= NumberSignDisplay.Never &&
+                       trailingZeroDisplay >= TrailingZeroDisplay.Auto &&
+                       trailingZeroDisplay <= TrailingZeroDisplay.StripIfInteger &&
+                       roundingMode >= NumberRoundingMode.Ceil &&
+                       roundingMode <= NumberRoundingMode.HalfEven &&
+                       roundingPriority >= NumberRoundingPriority.Auto &&
+                       roundingPriority <= NumberRoundingPriority.LessPrecision &&
+                       style >= NumberStyle.Decimal && style <= NumberStyle.Percent;
+            }
+
+            public bool Equals(NumberOptions other)
+            {
+                return MinimumFractionDigits == other.MinimumFractionDigits &&
+                       MaximumFractionDigits == other.MaximumFractionDigits &&
+                       MinimumSignificantDigits == other.MinimumSignificantDigits &&
+                       MaximumSignificantDigits == other.MaximumSignificantDigits &&
+                       MinimumIntegerDigits == other.MinimumIntegerDigits &&
+                       RoundingIncrement == other.RoundingIncrement &&
+                       Grouping == other.Grouping &&
+                       SignDisplay == other.SignDisplay &&
+                       TrailingZeroDisplay == other.TrailingZeroDisplay &&
+                       RoundingMode == other.RoundingMode &&
+                       RoundingPriority == other.RoundingPriority &&
+                       Style == other.Style &&
+                       Offset == other.Offset;
+            }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is NumberOptions other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hash = MinimumFractionDigits;
+                    hash = (hash * 397) ^ MaximumFractionDigits;
+                    hash = (hash * 397) ^ MinimumSignificantDigits;
+                    hash = (hash * 397) ^ MaximumSignificantDigits;
+                    hash = (hash * 397) ^ MinimumIntegerDigits;
+                    hash = (hash * 397) ^ RoundingIncrement;
+                    hash = (hash * 397) ^ (int)Grouping;
+                    hash = (hash * 397) ^ (int)SignDisplay;
+                    hash = (hash * 397) ^ (int)TrailingZeroDisplay;
+                    hash = (hash * 397) ^ (int)RoundingMode;
+                    hash = (hash * 397) ^ (int)RoundingPriority;
+                    hash = (hash * 397) ^ (int)Style;
+                    return (hash * 397) ^ Offset.GetHashCode();
+                }
+            }
 
             public NumberOptions WithOffset(decimal offset)
             {
@@ -583,6 +679,20 @@ namespace GreenBox.I18n
                 }
 
                 return result;
+            }
+
+            private static bool IsOptionalDigitSize(int value, bool positive)
+            {
+                return value == -1 ||
+                       (value >= (positive ? 1 : 0) && value <= 28);
+            }
+
+            private static bool IsSupportedRoundingIncrement(int value)
+            {
+                return value == 1 || value == 2 || value == 5 || value == 10 ||
+                       value == 20 || value == 25 || value == 50 || value == 100 ||
+                       value == 200 || value == 250 || value == 500 || value == 1000 ||
+                       value == 2000 || value == 2500 || value == 5000;
             }
 
             private static int IntegerDigitCount(decimal value)

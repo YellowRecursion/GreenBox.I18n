@@ -56,4 +56,26 @@ public sealed class I18nMessageMultipleMatcherTests
             I18nMessageDiagnosticCodes.VariantKeyMismatch,
             Assert.Single(compilation.Diagnostics).Code);
     }
+
+    [Fact]
+    public void Compile_MultipleQuotedKeys_DoesNotConfuseEmbeddedSeparatorCharacters()
+    {
+        const string source =
+            ".input {$left :string}\n" +
+            ".input {$right :string}\n" +
+            ".match $left $right\n" +
+            "|a\u001fb| c {{First}}\n" +
+            "a |b\u001fc| {{Second}}\n" +
+            "* * {{Fallback}}";
+
+        I18nMessageCompilation compilation = I18nMessageCompiler.Compile(source);
+
+        Assert.True(compilation.IsSuccess);
+        Assert.Equal(
+            "First",
+            compilation.Message!.Format(("left", "a\u001fb"), ("right", "c")).Text);
+        Assert.Equal(
+            "Second",
+            compilation.Message.Format(("left", "a"), ("right", "b\u001fc")).Text);
+    }
 }

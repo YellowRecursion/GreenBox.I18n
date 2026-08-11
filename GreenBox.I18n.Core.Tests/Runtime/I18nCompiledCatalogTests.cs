@@ -108,6 +108,23 @@ public sealed class I18nCompiledCatalogTests
     }
 
     [Fact]
+    public void Compile_NumberOptions_AreSharedAcrossLocalizedMessages()
+    {
+        I18nCatalog source = CreateCatalog();
+        source.Entries[0].Locales["en"].Text =
+            ".input {$count :number maximumFractionDigits=2}\n{{Count: {$count}}}";
+        source.Entries[0].Locales["ru"].Text =
+            ".input {$count :number maximumFractionDigits=2}\n{{Количество: {$count}}}";
+
+        I18nCompiledCatalog compiled = I18nCompiledCatalogCompiler.Compile(source).Catalog!;
+        I18nCompiledCatalog loaded = I18nCompiledCatalogBinary.Deserialize(
+            I18nCompiledCatalogBinary.Serialize(compiled));
+
+        Assert.Single(compiled.Storage.NumberOptions);
+        Assert.Single(loaded.Storage.NumberOptions);
+    }
+
+    [Fact]
     public void Compile_UnpopulatedLocale_DoesNotParticipateInArgumentValidation()
     {
         I18nCatalog source = CreateCatalog();
@@ -173,6 +190,7 @@ public sealed class I18nCompiledCatalogTests
         Assert.Equal(10_000, loaded.Storage.Entries.Length);
         Assert.Equal(20_000, loaded.Storage.Values.Length);
         Assert.Equal(10_000, loaded.Storage.Messages.Length);
+        Assert.Empty(loaded.Storage.NumberOptions);
         Assert.Equal(10_000, loaded.Storage.MessageParts.Length);
     }
 
@@ -193,6 +211,7 @@ public sealed class I18nCompiledCatalogTests
             values,
             source.Messages,
             source.MessageArguments,
+            source.NumberOptions,
             source.MessageParts,
             source.Selectors,
             source.Variants,

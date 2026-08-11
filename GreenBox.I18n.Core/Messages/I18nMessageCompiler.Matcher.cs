@@ -123,12 +123,11 @@ namespace GreenBox.I18n
 
                     keys[selectorIndex] = compiledKey;
                     allWildcard &= compiledKey.Kind == I18nCompiledMessage.MessageVariantKeyKind.Wildcard;
-                    if (selectorIndex > 0)
-                    {
-                        keyIdentity.Append('\u001f');
-                    }
-
-                    keyIdentity.Append(compiledKey.Value);
+                    keyIdentity
+                        .Append((char)compiledKey.Kind)
+                        .Append(compiledKey.Value.Length)
+                        .Append(':')
+                        .Append(compiledKey.Value);
                 }
 
                 if (!variantKeys.Add(keyIdentity.ToString()))

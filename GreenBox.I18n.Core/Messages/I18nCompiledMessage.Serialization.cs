@@ -23,12 +23,51 @@ namespace GreenBox.I18n
 
         internal static NumberOptions ReadNumberOptions(BinaryReader reader)
         {
+            int minimumFractionDigits = reader.ReadInt32();
+            int maximumFractionDigits = reader.ReadInt32();
+            int minimumSignificantDigits = reader.ReadInt32();
+            int maximumSignificantDigits = reader.ReadInt32();
+            int minimumIntegerDigits = reader.ReadInt32();
+            int roundingIncrement = reader.ReadInt32();
+            var grouping = (NumberGrouping)reader.ReadByte();
+            var signDisplay = (NumberSignDisplay)reader.ReadByte();
+            var trailingZeroDisplay = (TrailingZeroDisplay)reader.ReadByte();
+            var roundingMode = (NumberRoundingMode)reader.ReadByte();
+            var roundingPriority = (NumberRoundingPriority)reader.ReadByte();
+            var style = (NumberStyle)reader.ReadByte();
+            decimal offset = ReadDecimal(reader);
+            if (!NumberOptions.AreValid(
+                    minimumFractionDigits,
+                    maximumFractionDigits,
+                    minimumSignificantDigits,
+                    maximumSignificantDigits,
+                    minimumIntegerDigits,
+                    roundingIncrement,
+                    grouping,
+                    signDisplay,
+                    trailingZeroDisplay,
+                    roundingMode,
+                    roundingPriority,
+                    style))
+            {
+                throw new InvalidDataException(
+                    "Compiled localization data contains invalid number options.");
+            }
+
             return new NumberOptions(
-                reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(),
-                reader.ReadInt32(), reader.ReadInt32(), (NumberGrouping)reader.ReadByte(),
-                (NumberSignDisplay)reader.ReadByte(), (TrailingZeroDisplay)reader.ReadByte(),
-                (NumberRoundingMode)reader.ReadByte(), (NumberRoundingPriority)reader.ReadByte(),
-                (NumberStyle)reader.ReadByte(), ReadDecimal(reader));
+                minimumFractionDigits,
+                maximumFractionDigits,
+                minimumSignificantDigits,
+                maximumSignificantDigits,
+                minimumIntegerDigits,
+                roundingIncrement,
+                grouping,
+                signDisplay,
+                trailingZeroDisplay,
+                roundingMode,
+                roundingPriority,
+                style,
+                offset);
         }
 
         internal static void WriteDecimal(BinaryWriter writer, decimal value)

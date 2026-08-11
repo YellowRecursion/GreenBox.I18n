@@ -39,6 +39,7 @@ than it is created.
 - An entry owns one contiguous, locale-sorted range of values.
 - Locale fallback chains are prepared by the builder and contain the default locale.
 - Strings are stored once in the catalog string table; records contain string indexes.
+- Number-format options are interned once; numeric parts and selectors contain option indexes.
 - Missing optional values use `I18nCompiledCatalogFormat.MissingIndex`.
 - Runtime code must not mutate storage or retain the editable source model.
 - The binary reader validates data before an `I18nCompiledCatalog` becomes observable.
