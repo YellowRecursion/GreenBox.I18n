@@ -42,7 +42,7 @@ I18n.LocaleChanged += locale => RefreshUi(locale.Id);
 ```
 
 The `GreenBox.I18n` folder may be moved as a whole inside `Assets`. Keep its name and managed internal structure unchanged.
-The `Resources` folder contains generated runtime data and is intentionally excluded from Git.
+The `Resources` folder contains generated binary runtime data and is intentionally excluded from Git. The player does not read `localization.json` or parse MessageFormat at startup.
 
 ## Safe Git merges
 

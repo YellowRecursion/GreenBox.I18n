@@ -17,6 +17,14 @@ namespace GreenBox.I18n
             _icon = CloneAsset(definition.Icon);
         }
 
+        internal I18nRuntimeLocale(I18nCompiledCatalog.CompiledLocale locale)
+        {
+            Id = locale.Id;
+            DisplayName = locale.DisplayName;
+            Culture = CultureInfo.GetCultureInfo(locale.CultureName);
+            _icon = CloneAsset(locale.Icon);
+        }
+
         /// <summary>
         /// Gets the stable locale identifier.
         /// </summary>

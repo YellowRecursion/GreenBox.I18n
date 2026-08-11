@@ -4,6 +4,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3DFAE914-2ED
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B978230F-F778-46C6-85E0-785078459038}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{E6E97D8A-9DED-42DB-BC27-2A8DDE352E46}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Core", "GreenBox.I18n.Core\GreenBox.I18n.Core.csproj", "{BE6117E5-CA50-4F73-BAE4-F512CA408371}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Cli", "GreenBox.I18n.Cli\GreenBox.I18n.Cli.csproj", "{C4D61E85-553D-48B1-84CE-74BFDBEDD872}"
@@ -15,6 +17,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Editor.Host", "GreenBox.I18n.Editor.Host\GreenBox.I18n.Editor.Host.csproj", "{DA570A81-DAAD-4F16-8F8A-D752F2C12E15}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Editor.Host.Tests", "GreenBox.I18n.Editor.Host.Tests\GreenBox.I18n.Editor.Host.Tests.csproj", "{B4D8A751-AB75-40E0-A567-7D6C21D501B2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.CldrGenerator", "Tools\GreenBox.I18n.CldrGenerator\GreenBox.I18n.CldrGenerator.csproj", "{6C3B5C72-D8AF-43BD-AF86-81D0F12FD1D7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -28,6 +32,7 @@ Global
 		{E487417A-017A-436F-B708-47CA3ABDEAEF} = {B978230F-F778-46C6-85E0-785078459038}
 		{DA570A81-DAAD-4F16-8F8A-D752F2C12E15} = {3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}
 		{B4D8A751-AB75-40E0-A567-7D6C21D501B2} = {B978230F-F778-46C6-85E0-785078459038}
+		{6C3B5C72-D8AF-43BD-AF86-81D0F12FD1D7} = {E6E97D8A-9DED-42DB-BC27-2A8DDE352E46}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BE6117E5-CA50-4F73-BAE4-F512CA408371}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -54,5 +59,9 @@ Global
 		{B4D8A751-AB75-40E0-A567-7D6C21D501B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B4D8A751-AB75-40E0-A567-7D6C21D501B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B4D8A751-AB75-40E0-A567-7D6C21D501B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C3B5C72-D8AF-43BD-AF86-81D0F12FD1D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C3B5C72-D8AF-43BD-AF86-81D0F12FD1D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C3B5C72-D8AF-43BD-AF86-81D0F12FD1D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C3B5C72-D8AF-43BD-AF86-81D0F12FD1D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

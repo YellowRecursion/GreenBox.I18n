@@ -86,7 +86,7 @@ namespace GreenBox.I18n.Unity.Editor.Setup
                 "## Files\n" +
                 "\n" +
                 "- `localization.json` is the editable source of truth. Prefer the GreenBox Web Editor or CLI.\n" +
-                "- `Resources/greenbox-i18n.asset` is generated runtime data and is excluded from Git. Do not edit or reference it manually.\n" +
+                "- `Resources/greenbox-i18n.asset` is generated binary runtime data and is excluded from Git. The player does not parse JSON or MessageFormat. Do not edit or reference it manually.\n" +
                 "- `.gitignore` and `.gitattributes` keep generated data out of Git and normalize text files across operating systems. Commit both files to your project repository.\n" +
                 "- To enable structural Git merges, install GreenBox Desktop Tools and follow Preferences > GreenBox > i18n.\n" +
                 "- If you must edit `localization.json` manually, preserve existing entry IDs and validate the result afterwards.\n";

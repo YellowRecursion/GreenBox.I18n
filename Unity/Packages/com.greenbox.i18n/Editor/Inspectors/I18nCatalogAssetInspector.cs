@@ -13,16 +13,12 @@ namespace GreenBox.I18n.Unity.Editor.Inspectors
     [CustomEditor(typeof(I18nCatalogAsset))]
     internal sealed class I18nCatalogAssetInspector : UnityEditor.Editor
     {
-        private const string SourceCatalogPropertyName = "_sourceCatalog";
-
-        private SerializedProperty? _sourceCatalogProperty;
         private I18nCatalogCompilationResult? _lastCompilationResult;
 
         private I18nCatalogAsset CatalogAsset => (I18nCatalogAsset)target;
 
         private void OnEnable()
         {
-            _sourceCatalogProperty = serializedObject.FindProperty(SourceCatalogPropertyName);
             I18nCatalogCompilationEvents.CompilationFinished += OnCompilationFinished;
             I18nCatalogCompilationEvents.TryGetLastResult(
                 CatalogAsset,
@@ -37,18 +33,6 @@ namespace GreenBox.I18n.Unity.Editor.Inspectors
         /// <inheritdoc />
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
-
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.PropertyField(
-                    _sourceCatalogProperty,
-                    new GUIContent(
-                        "Source Catalog",
-                        "Managed automatically by GreenBox I18n."));
-            }
-            serializedObject.ApplyModifiedProperties();
-
             EditorGUILayout.HelpBox(
                 "This asset is generated automatically from localization.json. " +
                 "Do not edit or reference it manually.",
@@ -77,7 +61,7 @@ namespace GreenBox.I18n.Unity.Editor.Inspectors
                     break;
                 case I18nCatalogCompilationState.UpToDate:
                     EditorGUILayout.HelpBox(
-                        $"Catalog is up to date. Compiled asset bindings: {CatalogAsset.AssetBindings.Count}.",
+                        $"Catalog is up to date. Compiled Unity asset bindings: {CatalogAsset.AssetBindings.Count}.",
                         MessageType.Info);
                     break;
             }

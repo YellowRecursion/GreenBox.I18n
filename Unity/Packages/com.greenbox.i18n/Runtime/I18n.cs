@@ -114,13 +114,14 @@ public static class I18n
                     "Open the Unity project once to let GreenBox I18n repair its project files.");
             }
 
-            if (!catalogAsset.SourceCatalog)
+            if (!catalogAsset.HasCompiledCatalog)
             {
                 throw new InvalidOperationException(
-                    $"Localization catalog asset '{catalogAsset.name}' has no source JSON.");
+                    $"Localization catalog asset '{catalogAsset.name}' has not been compiled. " +
+                    "Open the Unity project once to regenerate it.");
             }
 
-            I18nCatalog catalog = catalogAsset.Deserialize();
+            I18nCompiledCatalog catalog = catalogAsset.DeserializeCompiledCatalog();
             var runtime = new I18nRuntime(catalog);
             ApplyInitialLocale(runtime);
             var assetResolver = new I18nUnityAssetResolver(catalogAsset.AssetBindings);
@@ -156,6 +157,156 @@ public static class I18n
         }
 
         return Runtime.Text(id);
+    }
+
+    /// <summary>Gets and formats localized text with one named argument.</summary>
+    public static string Text<T1>(long id, (string Name, T1 Value) argument1)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, argument1);
+    }
+
+    /// <summary>Gets and formats localized text with two named arguments.</summary>
+    public static string Text<T1, T2>(
+        long id,
+        (string Name, T1 Value) argument1,
+        (string Name, T2 Value) argument2)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, argument1, argument2);
+    }
+
+    /// <summary>Gets and formats localized text with 3 named arguments.</summary>
+    public static string Text<T1, T2, T3>(
+        long id,
+        (string Name, T1 Value) argument1,
+        (string Name, T2 Value) argument2,
+        (string Name, T3 Value) argument3)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, argument1, argument2, argument3);
+    }
+
+    /// <summary>Gets and formats localized text with 4 named arguments.</summary>
+    public static string Text<T1, T2, T3, T4>(
+        long id,
+        (string Name, T1 Value) argument1,
+        (string Name, T2 Value) argument2,
+        (string Name, T3 Value) argument3,
+        (string Name, T4 Value) argument4)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, argument1, argument2, argument3, argument4);
+    }
+
+    /// <summary>Gets and formats localized text with 5 named arguments.</summary>
+    public static string Text<T1, T2, T3, T4, T5>(
+        long id,
+        (string Name, T1 Value) argument1,
+        (string Name, T2 Value) argument2,
+        (string Name, T3 Value) argument3,
+        (string Name, T4 Value) argument4,
+        (string Name, T5 Value) argument5)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, argument1, argument2, argument3, argument4, argument5);
+    }
+
+    /// <summary>Gets and formats localized text with 6 named arguments.</summary>
+    public static string Text<T1, T2, T3, T4, T5, T6>(
+        long id,
+        (string Name, T1 Value) argument1,
+        (string Name, T2 Value) argument2,
+        (string Name, T3 Value) argument3,
+        (string Name, T4 Value) argument4,
+        (string Name, T5 Value) argument5,
+        (string Name, T6 Value) argument6)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, argument1, argument2, argument3, argument4, argument5, argument6);
+    }
+
+    /// <summary>Gets and formats localized text with 7 named arguments.</summary>
+    public static string Text<T1, T2, T3, T4, T5, T6, T7>(
+        long id,
+        (string Name, T1 Value) argument1,
+        (string Name, T2 Value) argument2,
+        (string Name, T3 Value) argument3,
+        (string Name, T4 Value) argument4,
+        (string Name, T5 Value) argument5,
+        (string Name, T6 Value) argument6,
+        (string Name, T7 Value) argument7)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, argument1, argument2, argument3, argument4, argument5, argument6, argument7);
+    }
+
+    /// <summary>Gets and formats localized text with 8 named arguments.</summary>
+    public static string Text<T1, T2, T3, T4, T5, T6, T7, T8>(
+        long id,
+        (string Name, T1 Value) argument1,
+        (string Name, T2 Value) argument2,
+        (string Name, T3 Value) argument3,
+        (string Name, T4 Value) argument4,
+        (string Name, T5 Value) argument5,
+        (string Name, T6 Value) argument6,
+        (string Name, T7 Value) argument7,
+        (string Name, T8 Value) argument8)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, argument1, argument2, argument3, argument4, argument5, argument6, argument7, argument8);
+    }
+
+    /// <summary>Gets and formats localized text with an uncommon number of named arguments.</summary>
+    public static string Text(long id, params (string Name, object? Value)[] arguments)
+    {
+        if (id == 0)
+        {
+            WarnAboutNone();
+            return NonePlaceholder;
+        }
+
+        return Runtime.Text(id, arguments);
     }
 
     /// <summary>

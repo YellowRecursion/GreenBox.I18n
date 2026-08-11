@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using GreenBox.I18n.Unity.Editor.Diagnostics;
+using GreenBox.I18n.Unity.Editor.Settings;
 using UnityEditor;
 using UnityEngine;
 
@@ -72,7 +73,6 @@ namespace GreenBox.I18n.Unity.Editor.Compilation
                 I18nCatalogAsset? importedCatalog =
                     AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(assetPath);
                 if (importedCatalog &&
-                    importedCatalog.SourceCatalog &&
                     I18nCatalogCompiler.GetState(importedCatalog) !=
                     I18nCatalogCompilationState.UpToDate)
                 {
@@ -85,22 +85,24 @@ namespace GreenBox.I18n.Unity.Editor.Compilation
                 return;
             }
 
+            TextAsset? sourceCatalog = I18nProjectSettings.instance.SourceCatalog;
+            if (!sourceCatalog || !importedJsonPaths.Contains(AssetDatabase.GetAssetPath(sourceCatalog)))
+            {
+                return;
+            }
+
             string[] catalogGuids = AssetDatabase.FindAssets("t:I18nCatalogAsset");
             for (int catalogIndex = 0; catalogIndex < catalogGuids.Length; catalogIndex++)
             {
                 string catalogPath = AssetDatabase.GUIDToAssetPath(catalogGuids[catalogIndex]);
                 I18nCatalogAsset? catalogAsset =
                     AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(catalogPath);
-                if (!catalogAsset || !catalogAsset.SourceCatalog)
+                if (!catalogAsset)
                 {
                     continue;
                 }
 
-                string sourcePath = AssetDatabase.GetAssetPath(catalogAsset.SourceCatalog);
-                if (importedJsonPaths.Contains(sourcePath))
-                {
-                    Queue(catalogAsset);
-                }
+                Queue(catalogAsset);
             }
         }
 
@@ -113,7 +115,6 @@ namespace GreenBox.I18n.Unity.Editor.Compilation
                 I18nCatalogAsset? catalogAsset =
                     AssetDatabase.LoadAssetAtPath<I18nCatalogAsset>(catalogPath);
                 if (catalogAsset &&
-                    catalogAsset.SourceCatalog &&
                     I18nCatalogCompiler.GetState(catalogAsset) !=
                     I18nCatalogCompilationState.UpToDate)
                 {

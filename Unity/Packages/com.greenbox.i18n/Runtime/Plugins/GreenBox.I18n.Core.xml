@@ -246,6 +246,150 @@
             Gets the human-readable conflict description.
             </summary>
         </member>
+        <member name="T:GreenBox.I18n.I18nCompiledMessage">
+            <summary>
+            Represents a message that has already been parsed and can be formatted repeatedly.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCompiledMessage.ArgumentNames">
+            <summary>Gets distinct argument names in their first source occurrence order.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format">
+            <summary>Formats a message that has no external arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``1(System.ValueTuple{System.String,``0})">
+            <summary>Formats a message with one named argument.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``2(System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1})">
+            <summary>Formats a message with two named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``1(System.Globalization.CultureInfo,System.ValueTuple{System.String,``0})">
+            <summary>Formats a locale-aware message with one named argument.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``2(System.Globalization.CultureInfo,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1})">
+            <summary>Formats a locale-aware message with two named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``3(System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2})">
+            <summary>Formats a message with three named arguments without allocating an argument array.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``3(System.Globalization.CultureInfo,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2})">
+            <summary>Formats a locale-aware message with three named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``4(System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3})">
+            <summary>Formats a message with four named arguments without allocating an argument array.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``4(System.Globalization.CultureInfo,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3})">
+            <summary>Formats a locale-aware message with four named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``5(System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4})">
+            <summary>Formats a message with five named arguments without allocating an argument array.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``5(System.Globalization.CultureInfo,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4})">
+            <summary>Formats a locale-aware message with five named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``6(System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5})">
+            <summary>Formats a message with six named arguments without allocating an argument array.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``6(System.Globalization.CultureInfo,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5})">
+            <summary>Formats a locale-aware message with six named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``7(System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6})">
+            <summary>Formats a message with seven named arguments without allocating an argument array.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``7(System.Globalization.CultureInfo,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6})">
+            <summary>Formats a locale-aware message with seven named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``8(System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6},System.ValueTuple{System.String,``7})">
+            <summary>Formats a message with eight named arguments without allocating an argument array.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format``8(System.Globalization.CultureInfo,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6},System.ValueTuple{System.String,``7})">
+            <summary>Formats a locale-aware message with eight named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format(System.ValueTuple{System.String,System.Object}[])">
+            <summary>Formats a message with an uncommon number of named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledMessage.Format(System.Globalization.CultureInfo,System.ValueTuple{System.String,System.Object}[])">
+            <summary>Formats a locale-aware message with an uncommon number of named arguments.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nMessageCompilation">
+            <summary>
+            Contains a prepared message or the problems that prevented it from being prepared.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageCompilation.Message">
+            <summary>Gets the prepared message, or null when compilation failed.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageCompilation.Diagnostics">
+            <summary>Gets all compilation diagnostics in source order.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageCompilation.IsSuccess">
+            <summary>Gets whether the message was compiled successfully.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nMessageFormatResult">
+            <summary>
+            Contains formatted text and non-throwing runtime diagnostics.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageFormatResult.Text">
+            <summary>Gets the formatted text, including readable placeholders for missing values.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageFormatResult.Diagnostics">
+            <summary>Gets all formatting diagnostics.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageFormatResult.IsSuccess">
+            <summary>Gets whether formatting completed without diagnostics.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nMessageCompiler">
+            <summary>
+            Parses the supported Unicode MessageFormat 2 syntax into reusable messages.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nMessageCompiler.Compile(System.String)">
+            <summary>Compiles message source without throwing for invalid message syntax.</summary>
+            <param name="source">The MessageFormat 2 source.</param>
+            <returns>A prepared message or syntax diagnostics.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+        </member>
+        <member name="T:GreenBox.I18n.I18nMessageDiagnosticCodes">
+            <summary>
+            Contains stable machine-readable codes produced while compiling or formatting messages.
+            </summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageDiagnosticCodes.InvalidSyntax">
+            <summary>Indicates that a message does not follow the supported syntax.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageDiagnosticCodes.MissingArgument">
+            <summary>Indicates that a value required by a message was not supplied.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageDiagnosticCodes.MissingFallbackVariant">
+            <summary>Indicates that a matcher has no mandatory catch-all variant.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageDiagnosticCodes.VariantKeyMismatch">
+            <summary>Indicates that a matcher variant does not have one key per selector.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageDiagnosticCodes.InvalidEscape">
+            <summary>Indicates that a backslash is followed by a character that cannot be escaped.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageDiagnosticCodes.UnsupportedOperation">
+            <summary>Indicates that a valid operation cannot be represented by the runtime numeric type.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nMessageDiagnostic">
+            <summary>
+            Describes a problem found while compiling or formatting a localized message.
+            </summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageDiagnostic.Code">
+            <summary>Gets the stable machine-readable diagnostic code.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageDiagnostic.Message">
+            <summary>Gets the human-readable explanation.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageDiagnostic.Position">
+            <summary>Gets the zero-based source position, or -1 when no source position applies.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nMessageDiagnostic.ArgumentName">
+            <summary>Gets the affected argument name, when the diagnostic belongs to an argument.</summary>
+        </member>
         <member name="T:GreenBox.I18n.I18nCatalog">
             <summary>
             Represents the complete source localization catalog stored in a single file.
@@ -408,6 +552,53 @@
             <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
             <exception cref="T:System.ArgumentException">Thrown when <paramref name="query"/> is empty or whitespace.</exception>
         </member>
+        <member name="T:GreenBox.I18n.I18nCompiledCatalog">
+            <summary>
+            Immutable catalog prepared for runtime use without JSON or MessageFormat parsing.
+            </summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCatalogMessageDiagnostic">
+            <summary>Describes a source message that could not be compiled.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMessageDiagnostic.EntryId">
+            <summary>Gets the stable entry ID.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMessageDiagnostic.EntryPath">
+            <summary>Gets the human-readable entry path.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMessageDiagnostic.LocaleId">
+            <summary>Gets the locale containing the invalid message.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCatalogMessageDiagnostic.Diagnostic">
+            <summary>Gets the underlying MessageFormat diagnostic.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCompiledCatalogCompilation">
+            <summary>Result of preparing a source catalog for runtime use.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCompiledCatalogCompilation.Catalog">
+            <summary>Gets the prepared catalog, or null when compilation failed.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCompiledCatalogCompilation.Diagnostics">
+            <summary>Gets source message diagnostics in deterministic order.</summary>
+        </member>
+        <member name="P:GreenBox.I18n.I18nCompiledCatalogCompilation.IsSuccess">
+            <summary>Gets whether the complete catalog was compiled successfully.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCompiledCatalogCompiler">
+            <summary>Compiles validated source catalogs into runtime catalogs.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledCatalogCompiler.Compile(GreenBox.I18n.I18nCatalog)">
+            <summary>Validates and compiles the complete source catalog.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nCompiledCatalogBinary">
+            <summary>Reads and writes the versioned runtime catalog format.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledCatalogBinary.Serialize(GreenBox.I18n.I18nCompiledCatalog)">
+            <summary>Serializes a prepared catalog into the versioned binary runtime format.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCompiledCatalogBinary.Deserialize(System.Byte[])">
+            <summary>Deserializes a catalog produced by <see cref="M:GreenBox.I18n.I18nCompiledCatalogBinary.Serialize(GreenBox.I18n.I18nCompiledCatalog)"/>.</summary>
+        </member>
         <member name="T:GreenBox.I18n.I18nInvalidCatalogException">
             <summary>
             Represents an attempt to create a runtime from an invalid source catalog.
@@ -462,6 +653,12 @@
             <exception cref="T:System.ArgumentException">Thrown when <paramref name="localeId"/> is not declared by the catalog.</exception>
             <exception cref="T:GreenBox.I18n.I18nInvalidCatalogException">Thrown when the catalog contains validation errors.</exception>
         </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.#ctor(GreenBox.I18n.I18nCompiledCatalog)">
+            <summary>Initializes a runtime from data prepared by <see cref="T:GreenBox.I18n.I18nCompiledCatalogCompiler"/>.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.#ctor(GreenBox.I18n.I18nCompiledCatalog,System.String)">
+            <summary>Initializes a runtime from prepared data using the specified locale.</summary>
+        </member>
         <member name="E:GreenBox.I18n.I18nRuntime.LocaleChanged">
             <summary>
             Occurs after the current locale changes.
@@ -503,6 +700,33 @@
             <param name="id">The self-identifying stable entry ID.</param>
             <returns>The resolved text, entry path, or numeric ID.</returns>
             <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``1(System.Int64,System.ValueTuple{System.String,``0})">
+            <summary>Formats localized text with one named argument.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``2(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1})">
+            <summary>Formats localized text with two named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``3(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2})">
+            <summary>Formats localized text with 3 named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``4(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3})">
+            <summary>Formats localized text with 4 named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``5(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4})">
+            <summary>Formats localized text with 5 named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``6(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5})">
+            <summary>Formats localized text with 6 named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``7(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6})">
+            <summary>Formats localized text with 7 named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``8(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6},System.ValueTuple{System.String,``7})">
+            <summary>Formats localized text with 8 named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text(System.Int64,System.ValueTuple{System.String,System.Object}[])">
+            <summary>Formats localized text with an uncommon number of named arguments.</summary>
         </member>
         <member name="M:GreenBox.I18n.I18nRuntime.TryGetText(System.Int64,System.String@)">
             <summary>

@@ -23,8 +23,7 @@ namespace GreenBox.I18n.Unity.Editor.Setup
             I18nCatalogAsset? projectCatalog = settings.ProjectCatalog;
             if (!settings.IsSetupComplete ||
                 !sourceCatalog ||
-                !projectCatalog ||
-                projectCatalog.SourceCatalog != sourceCatalog)
+                !projectCatalog)
             {
                 return false;
             }
@@ -164,11 +163,6 @@ namespace GreenBox.I18n.Unity.Editor.Setup
                 AssetDatabase.CreateAsset(catalogAsset, catalogPath);
             }
 
-            if (catalogAsset.SourceCatalog != sourceCatalog)
-            {
-                AssignSourceCatalog(catalogAsset, sourceCatalog);
-            }
-
             return catalogAsset;
         }
 
@@ -213,22 +207,5 @@ namespace GreenBox.I18n.Unity.Editor.Setup
                 : parentPath.Replace('\\', '/');
         }
 
-        private static void AssignSourceCatalog(
-            I18nCatalogAsset catalogAsset,
-            TextAsset sourceCatalog)
-        {
-            var serializedCatalog = new SerializedObject(catalogAsset);
-            SerializedProperty? sourceProperty = serializedCatalog.FindProperty("_sourceCatalog");
-            if (sourceProperty == null)
-            {
-                throw new InvalidOperationException(
-                    "The GreenBox I18n catalog source property could not be found.");
-            }
-
-            sourceProperty.objectReferenceValue = sourceCatalog;
-            serializedCatalog.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(catalogAsset);
-            AssetDatabase.SaveAssetIfDirty(catalogAsset);
-        }
     }
 }

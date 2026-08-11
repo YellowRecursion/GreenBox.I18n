@@ -40,6 +40,18 @@ namespace GreenBox.I18n
         {
         }
 
+        /// <summary>Initializes a runtime from data prepared by <see cref="I18nCompiledCatalogCompiler"/>.</summary>
+        public I18nRuntime(I18nCompiledCatalog catalog)
+            : this(catalog, null, true)
+        {
+        }
+
+        /// <summary>Initializes a runtime from prepared data using the specified locale.</summary>
+        public I18nRuntime(I18nCompiledCatalog catalog, string localeId)
+            : this(catalog, localeId ?? throw new ArgumentNullException(nameof(localeId)), false)
+        {
+        }
+
         private I18nRuntime(I18nCatalog catalog, string? localeId, bool useDefaultLocale)
         {
             if (catalog == null)
@@ -55,6 +67,28 @@ namespace GreenBox.I18n
 
             _defaultLocaleId = catalog.DefaultLocale;
             _localesById = BuildLocales(catalog.Locales, catalog.DefaultLocale, out _locales);
+            _entriesById = BuildEntries(catalog.Entries);
+
+            string initialLocaleId = useDefaultLocale ? _defaultLocaleId : localeId!;
+            if (!_localesById.TryGetValue(initialLocaleId, out RuntimeLocale? initialLocale))
+            {
+                throw new ArgumentException(
+                    $"Locale '{initialLocaleId}' is not declared by the catalog.",
+                    nameof(localeId));
+            }
+
+            _currentLocale = initialLocale;
+        }
+
+        private I18nRuntime(I18nCompiledCatalog catalog, string? localeId, bool useDefaultLocale)
+        {
+            if (catalog == null)
+            {
+                throw new ArgumentNullException(nameof(catalog));
+            }
+
+            _defaultLocaleId = catalog.DefaultLocaleId;
+            _localesById = BuildLocales(catalog.Locales, catalog.DefaultLocaleId, out _locales);
             _entriesById = BuildEntries(catalog.Entries);
 
             string initialLocaleId = useDefaultLocale ? _defaultLocaleId : localeId!;
@@ -137,14 +171,140 @@ namespace GreenBox.I18n
         {
             EnsureValidId(id);
 
-            if (TryGetText(id, out string? text))
+            if (TryResolveMessage(id, out I18nCompiledMessage? message))
             {
-                return text!;
+                return message!.Format(_currentLocale.PublicLocale.Culture).Text;
             }
 
-            return _entriesById.TryGetValue(id, out RuntimeEntry? entry)
-                ? entry.Path
-                : id.ToString(CultureInfo.InvariantCulture);
+            return GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with one named argument.</summary>
+        public string Text<T1>(long id, (string Name, T1 Value) argument1)
+        {
+            EnsureValidId(id);
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, argument1).Text
+                : GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with two named arguments.</summary>
+        public string Text<T1, T2>(
+            long id,
+            (string Name, T1 Value) argument1,
+            (string Name, T2 Value) argument2)
+        {
+            EnsureValidId(id);
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, argument1, argument2).Text
+                : GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with 3 named arguments.</summary>
+        public string Text<T1, T2, T3>(
+            long id,
+            (string Name, T1 Value) argument1,
+            (string Name, T2 Value) argument2,
+            (string Name, T3 Value) argument3)
+        {
+            EnsureValidId(id);
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, argument1, argument2, argument3).Text
+                : GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with 4 named arguments.</summary>
+        public string Text<T1, T2, T3, T4>(
+            long id,
+            (string Name, T1 Value) argument1,
+            (string Name, T2 Value) argument2,
+            (string Name, T3 Value) argument3,
+            (string Name, T4 Value) argument4)
+        {
+            EnsureValidId(id);
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, argument1, argument2, argument3, argument4).Text
+                : GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with 5 named arguments.</summary>
+        public string Text<T1, T2, T3, T4, T5>(
+            long id,
+            (string Name, T1 Value) argument1,
+            (string Name, T2 Value) argument2,
+            (string Name, T3 Value) argument3,
+            (string Name, T4 Value) argument4,
+            (string Name, T5 Value) argument5)
+        {
+            EnsureValidId(id);
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, argument1, argument2, argument3, argument4, argument5).Text
+                : GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with 6 named arguments.</summary>
+        public string Text<T1, T2, T3, T4, T5, T6>(
+            long id,
+            (string Name, T1 Value) argument1,
+            (string Name, T2 Value) argument2,
+            (string Name, T3 Value) argument3,
+            (string Name, T4 Value) argument4,
+            (string Name, T5 Value) argument5,
+            (string Name, T6 Value) argument6)
+        {
+            EnsureValidId(id);
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, argument1, argument2, argument3, argument4, argument5, argument6).Text
+                : GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with 7 named arguments.</summary>
+        public string Text<T1, T2, T3, T4, T5, T6, T7>(
+            long id,
+            (string Name, T1 Value) argument1,
+            (string Name, T2 Value) argument2,
+            (string Name, T3 Value) argument3,
+            (string Name, T4 Value) argument4,
+            (string Name, T5 Value) argument5,
+            (string Name, T6 Value) argument6,
+            (string Name, T7 Value) argument7)
+        {
+            EnsureValidId(id);
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, argument1, argument2, argument3, argument4, argument5, argument6, argument7).Text
+                : GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with 8 named arguments.</summary>
+        public string Text<T1, T2, T3, T4, T5, T6, T7, T8>(
+            long id,
+            (string Name, T1 Value) argument1,
+            (string Name, T2 Value) argument2,
+            (string Name, T3 Value) argument3,
+            (string Name, T4 Value) argument4,
+            (string Name, T5 Value) argument5,
+            (string Name, T6 Value) argument6,
+            (string Name, T7 Value) argument7,
+            (string Name, T8 Value) argument8)
+        {
+            EnsureValidId(id);
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, argument1, argument2, argument3, argument4, argument5, argument6, argument7, argument8).Text
+                : GetMissingTextFallback(id);
+        }
+
+        /// <summary>Formats localized text with an uncommon number of named arguments.</summary>
+        public string Text(long id, params (string Name, object? Value)[] arguments)
+        {
+            EnsureValidId(id);
+            if (arguments == null)
+            {
+                throw new ArgumentNullException(nameof(arguments));
+            }
+
+            return TryResolveMessage(id, out I18nCompiledMessage? message)
+                ? message!.Format(_currentLocale.PublicLocale.Culture, arguments).Text
+                : GetMissingTextFallback(id);
         }
 
         /// <summary>
@@ -159,6 +319,19 @@ namespace GreenBox.I18n
             EnsureValidId(id);
             text = null;
 
+            if (!TryResolveMessage(id, out I18nCompiledMessage? message))
+            {
+                return false;
+            }
+
+            text = message!.Format(_currentLocale.PublicLocale.Culture).Text;
+            return true;
+        }
+
+        private bool TryResolveMessage(long id, out I18nCompiledMessage? message)
+        {
+            message = null;
+
             if (!_entriesById.TryGetValue(id, out RuntimeEntry? entry))
             {
                 return false;
@@ -168,14 +341,21 @@ namespace GreenBox.I18n
             for (int localeIndex = 0; localeIndex < fallbackChain.Count; localeIndex++)
             {
                 if (entry.ValuesByLocale.TryGetValue(fallbackChain[localeIndex], out RuntimeValue? value) &&
-                    value.Text != null)
+                    value.Message != null)
                 {
-                    text = value.Text;
+                    message = value.Message;
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private string GetMissingTextFallback(long id)
+        {
+            return _entriesById.TryGetValue(id, out RuntimeEntry? entry)
+                ? entry.Path
+                : id.ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -243,6 +423,56 @@ namespace GreenBox.I18n
             return new ReadOnlyDictionary<string, RuntimeLocale>(mutableLocales);
         }
 
+        private static IReadOnlyDictionary<string, RuntimeLocale> BuildLocales(
+            IReadOnlyList<I18nCompiledCatalog.CompiledLocale> definitions,
+            string defaultLocaleId,
+            out IReadOnlyList<I18nRuntimeLocale> publicLocales)
+        {
+            var mutableLocales = new Dictionary<string, RuntimeLocale>(StringComparer.Ordinal);
+            var mutablePublicLocales = new List<I18nRuntimeLocale>(definitions.Count);
+            for (int index = 0; index < definitions.Count; index++)
+            {
+                I18nCompiledCatalog.CompiledLocale definition = definitions[index];
+                var publicLocale = new I18nRuntimeLocale(definition);
+                mutableLocales.Add(
+                    definition.Id,
+                    new RuntimeLocale(
+                        publicLocale,
+                        BuildFallbackChain(definition, definitions, defaultLocaleId)));
+                mutablePublicLocales.Add(publicLocale);
+            }
+
+            publicLocales = mutablePublicLocales.AsReadOnly();
+            return new ReadOnlyDictionary<string, RuntimeLocale>(mutableLocales);
+        }
+
+        private static IReadOnlyList<string> BuildFallbackChain(
+            I18nCompiledCatalog.CompiledLocale definition,
+            IReadOnlyList<I18nCompiledCatalog.CompiledLocale> definitions,
+            string defaultLocaleId)
+        {
+            var definitionsById = new Dictionary<string, I18nCompiledCatalog.CompiledLocale>(StringComparer.Ordinal);
+            for (int index = 0; index < definitions.Count; index++)
+            {
+                definitionsById.Add(definitions[index].Id, definitions[index]);
+            }
+
+            var chain = new List<string> { definition.Id };
+            I18nCompiledCatalog.CompiledLocale current = definition;
+            while (current.FallbackId != null)
+            {
+                chain.Add(current.FallbackId);
+                current = definitionsById[current.FallbackId];
+            }
+
+            if (!chain.Contains(defaultLocaleId))
+            {
+                chain.Add(defaultLocaleId);
+            }
+
+            return chain.AsReadOnly();
+        }
+
         private static IReadOnlyList<string> BuildFallbackChain(
             I18nLocaleDefinition definition,
             IReadOnlyList<I18nLocaleDefinition> definitions,
@@ -282,12 +512,39 @@ namespace GreenBox.I18n
 
                 foreach (KeyValuePair<string, I18nLocaleValue> pair in sourceEntry.Locales)
                 {
-                    values.Add(pair.Key, new RuntimeValue(pair.Value.Text, CloneAsset(pair.Value.Asset)));
+                    I18nCompiledMessage? message = pair.Value.Text == null
+                        ? null
+                        : I18nMessageCompiler.Compile(pair.Value.Text).Message;
+                    values.Add(pair.Key, new RuntimeValue(message, CloneAsset(pair.Value.Asset)));
                 }
 
                 long id = long.Parse(sourceEntry.Id, NumberStyles.None, CultureInfo.InvariantCulture);
                 result.Add(
                     id,
+                    new RuntimeEntry(
+                        sourceEntry.Path,
+                        new ReadOnlyDictionary<string, RuntimeValue>(values)));
+            }
+
+            return new ReadOnlyDictionary<long, RuntimeEntry>(result);
+        }
+
+        private static IReadOnlyDictionary<long, RuntimeEntry> BuildEntries(
+            IReadOnlyList<I18nCompiledCatalog.CompiledEntry> entries)
+        {
+            var result = new Dictionary<long, RuntimeEntry>();
+            for (int entryIndex = 0; entryIndex < entries.Count; entryIndex++)
+            {
+                I18nCompiledCatalog.CompiledEntry sourceEntry = entries[entryIndex];
+                var values = new Dictionary<string, RuntimeValue>(StringComparer.Ordinal);
+                for (int valueIndex = 0; valueIndex < sourceEntry.Values.Count; valueIndex++)
+                {
+                    I18nCompiledCatalog.CompiledValue value = sourceEntry.Values[valueIndex];
+                    values.Add(value.LocaleId, new RuntimeValue(value.Message, CloneAsset(value.Asset)));
+                }
+
+                result.Add(
+                    sourceEntry.Id,
                     new RuntimeEntry(
                         sourceEntry.Path,
                         new ReadOnlyDictionary<string, RuntimeValue>(values)));
@@ -346,13 +603,13 @@ namespace GreenBox.I18n
 
         private sealed class RuntimeValue
         {
-            public RuntimeValue(string? text, I18nAssetReference? asset)
+            public RuntimeValue(I18nCompiledMessage? message, I18nAssetReference? asset)
             {
-                Text = text;
+                Message = message;
                 Asset = asset;
             }
 
-            public string? Text { get; }
+            public I18nCompiledMessage? Message { get; }
 
             public I18nAssetReference? Asset { get; }
         }

@@ -38,6 +38,9 @@ namespace GreenBox.I18n.Unity.Editor
         /// <summary>Indicates that the source JSON cannot be deserialized.</summary>
         public const string InvalidJson = "invalid_json";
 
+        /// <summary>Indicates that localized text contains invalid or inconsistent MessageFormat.</summary>
+        public const string InvalidMessage = "invalid_message";
+
         /// <summary>Indicates that a Unity asset GUID cannot be resolved.</summary>
         public const string AssetNotFound = "asset_not_found";
 

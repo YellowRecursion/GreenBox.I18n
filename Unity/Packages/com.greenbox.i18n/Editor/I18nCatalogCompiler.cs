@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using GreenBox.I18n.Unity.Editor.Compilation;
+using GreenBox.I18n.Unity.Editor.Settings;
 using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
@@ -30,12 +31,15 @@ namespace GreenBox.I18n.Unity.Editor
                 throw new ArgumentNullException(nameof(catalogAsset));
             }
 
-            if (!catalogAsset.SourceCatalog || string.IsNullOrEmpty(catalogAsset.SourceHash))
+            TextAsset? sourceCatalog = I18nProjectSettings.instance.SourceCatalog;
+            if (!sourceCatalog ||
+                !catalogAsset.HasCompiledCatalog ||
+                string.IsNullOrEmpty(catalogAsset.SourceHash))
             {
                 return I18nCatalogCompilationState.NotCompiled;
             }
 
-            string sourceHash = ComputeSourceHash(catalogAsset.SourceCatalog.bytes);
+            string sourceHash = ComputeSourceHash(sourceCatalog.bytes);
             if (!string.Equals(sourceHash, catalogAsset.SourceHash, StringComparison.Ordinal))
             {
                 return I18nCatalogCompilationState.OutOfDate;
@@ -66,12 +70,13 @@ namespace GreenBox.I18n.Unity.Editor
             }
 
             var errors = new List<I18nCatalogCompilationError>();
-            if (!catalogAsset.SourceCatalog)
+            TextAsset? sourceCatalog = I18nProjectSettings.instance.SourceCatalog;
+            if (!sourceCatalog)
             {
                 errors.Add(new I18nCatalogCompilationError(
                     I18nCatalogCompilationCodes.MissingSourceCatalog,
                     "$",
-                    "A source JSON TextAsset must be assigned before compilation."));
+                    "The project source localization.json could not be found."));
                 return Finish(
                     catalogAsset,
                     new I18nCatalogCompilationResult(null, errors, false, 0));
@@ -80,7 +85,7 @@ namespace GreenBox.I18n.Unity.Editor
             I18nCatalog catalog;
             try
             {
-                catalog = catalogAsset.Deserialize();
+                catalog = I18nCatalogJson.Deserialize(sourceCatalog.text);
             }
             catch (JsonException exception)
             {
@@ -101,6 +106,31 @@ namespace GreenBox.I18n.Unity.Editor
                     new I18nCatalogCompilationResult(validationResult, errors, false, 0));
             }
 
+
+            I18nCompiledCatalogCompilation runtimeCompilation =
+                I18nCompiledCatalogCompiler.Compile(catalog);
+            if (!runtimeCompilation.IsSuccess)
+            {
+                for (int diagnosticIndex = 0;
+                     diagnosticIndex < runtimeCompilation.Diagnostics.Count;
+                     diagnosticIndex++)
+                {
+                    I18nCatalogMessageDiagnostic diagnostic =
+                        runtimeCompilation.Diagnostics[diagnosticIndex];
+                    errors.Add(new I18nCatalogCompilationError(
+                        I18nCatalogCompilationCodes.InvalidMessage,
+                        $"entry:{diagnostic.EntryId}/locale:{diagnostic.LocaleId}",
+                        diagnostic.Diagnostic.Message));
+                }
+
+                return Finish(
+                    catalogAsset,
+                    new I18nCatalogCompilationResult(validationResult, errors, false, 0));
+            }
+
+            byte[] compiledCatalog =
+                I18nCompiledCatalogBinary.Serialize(runtimeCompilation.Catalog!);
+
             List<SourceAssetReference> sourceReferences = CollectAssetReferences(catalog);
             List<I18nAssetBinding> bindings = ResolveAssetBindings(sourceReferences, errors);
             if (errors.Count > 0)
@@ -110,14 +140,15 @@ namespace GreenBox.I18n.Unity.Editor
                     new I18nCatalogCompilationResult(validationResult, errors, false, 0));
             }
 
-            string sourceHash = ComputeSourceHash(catalogAsset.SourceCatalog.bytes);
+            string sourceHash = ComputeSourceHash(sourceCatalog.bytes);
             bool hasChanges =
                 !string.Equals(sourceHash, catalogAsset.SourceHash, StringComparison.Ordinal) ||
+                !catalogAsset.HasCompiledCatalog ||
                 !BindingsEqual(catalogAsset.AssetBindings, bindings);
 
             if (hasChanges)
             {
-                catalogAsset.ReplaceCompiledData(sourceHash, bindings);
+                catalogAsset.ReplaceCompiledData(sourceHash, compiledCatalog, bindings);
                 EditorUtility.SetDirty(catalogAsset);
                 AssetDatabase.SaveAssetIfDirty(catalogAsset);
             }
@@ -281,7 +312,7 @@ namespace GreenBox.I18n.Unity.Editor
                 result.Append(hash[byteIndex].ToString("x2", CultureInfo.InvariantCulture));
             }
 
-            return result.ToString();
+            return "v1:" + result;
         }
 
         private static bool BindingsEqual(

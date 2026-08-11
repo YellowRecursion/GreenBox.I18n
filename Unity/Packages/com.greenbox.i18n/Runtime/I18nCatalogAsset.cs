@@ -4,7 +4,7 @@ using UnityEngine;
 namespace GreenBox.I18n.Unity
 {
     /// <summary>
-    /// Stores a source catalog and the Unity objects compiled from its asset references.
+    /// Stores generated runtime data and Unity objects compiled from the source catalog.
     /// </summary>
     public sealed class I18nCatalogAsset : ScriptableObject
     {
@@ -13,19 +13,19 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         internal const string ResourcesPath = "greenbox-i18n";
 
-        [SerializeField]
-        private TextAsset _sourceCatalog;
-
         [SerializeField, HideInInspector]
         private string _sourceHash = string.Empty;
+
+        [SerializeField, HideInInspector]
+        private byte[] _compiledCatalog = System.Array.Empty<byte>();
 
         [SerializeField, HideInInspector]
         private List<I18nAssetBinding> _assetBindings = new();
 
         /// <summary>
-        /// Gets the JSON source catalog represented by this asset.
+        /// Gets whether this asset contains a compiled runtime catalog.
         /// </summary>
-        public TextAsset SourceCatalog => _sourceCatalog;
+        internal bool HasCompiledCatalog => _compiledCatalog.Length > 0;
 
         /// <summary>
         /// Gets the hash of the source used to produce the compiled asset bindings.
@@ -38,12 +38,12 @@ namespace GreenBox.I18n.Unity
         internal IReadOnlyList<I18nAssetBinding> AssetBindings => _assetBindings;
 
         /// <summary>
-        /// Deserializes the current JSON source without modifying it.
+        /// Loads the prepared runtime catalog without parsing source JSON or MessageFormat.
         /// </summary>
         /// <returns>The deserialized engine-independent catalog.</returns>
-        internal I18nCatalog Deserialize()
+        internal I18nCompiledCatalog DeserializeCompiledCatalog()
         {
-            return I18nCatalogJson.Deserialize(_sourceCatalog.text);
+            return I18nCompiledCatalogBinary.Deserialize(_compiledCatalog);
         }
 
         /// <summary>
@@ -51,9 +51,11 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         internal void ReplaceCompiledData(
             string sourceHash,
+            byte[] compiledCatalog,
             List<I18nAssetBinding> assetBindings)
         {
             _sourceHash = sourceHash;
+            _compiledCatalog = compiledCatalog;
             _assetBindings = assetBindings;
         }
     }
