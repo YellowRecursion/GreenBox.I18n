@@ -10,73 +10,12 @@ namespace GreenBox.I18n
     /// </summary>
     public sealed class I18nCompiledCatalog
     {
-        internal I18nCompiledCatalog(
-            string defaultLocaleId,
-            List<CompiledLocale> locales,
-            List<CompiledEntry> entries)
+        internal I18nCompiledCatalog(I18nCompiledCatalogStorage storage)
         {
-            DefaultLocaleId = defaultLocaleId;
-            Locales = locales.AsReadOnly();
-            Entries = entries.AsReadOnly();
+            Storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
-        internal string DefaultLocaleId { get; }
-        internal IReadOnlyList<CompiledLocale> Locales { get; }
-        internal IReadOnlyList<CompiledEntry> Entries { get; }
-
-        internal sealed class CompiledLocale
-        {
-            public CompiledLocale(
-                string id,
-                string displayName,
-                string cultureName,
-                string? fallbackId,
-                I18nAssetReference? icon)
-            {
-                Id = id;
-                DisplayName = displayName;
-                CultureName = cultureName;
-                FallbackId = fallbackId;
-                Icon = icon;
-            }
-
-            public string Id { get; }
-            public string DisplayName { get; }
-            public string CultureName { get; }
-            public string? FallbackId { get; }
-            public I18nAssetReference? Icon { get; }
-        }
-
-        internal sealed class CompiledEntry
-        {
-            public CompiledEntry(long id, string path, List<CompiledValue> values)
-            {
-                Id = id;
-                Path = path;
-                Values = values.AsReadOnly();
-            }
-
-            public long Id { get; }
-            public string Path { get; }
-            public IReadOnlyList<CompiledValue> Values { get; }
-        }
-
-        internal sealed class CompiledValue
-        {
-            public CompiledValue(
-                string localeId,
-                I18nCompiledMessage? message,
-                I18nAssetReference? asset)
-            {
-                LocaleId = localeId;
-                Message = message;
-                Asset = asset;
-            }
-
-            public string LocaleId { get; }
-            public I18nCompiledMessage? Message { get; }
-            public I18nAssetReference? Asset { get; }
-        }
+        internal I18nCompiledCatalogStorage Storage { get; }
     }
 
     /// <summary>Describes a source message that could not be compiled.</summary>
@@ -143,25 +82,13 @@ namespace GreenBox.I18n
             }
 
             var diagnostics = new List<I18nCatalogMessageDiagnostic>();
-            var locales = new List<I18nCompiledCatalog.CompiledLocale>(catalog.Locales.Count);
-            for (int index = 0; index < catalog.Locales.Count; index++)
-            {
-                I18nLocaleDefinition locale = catalog.Locales[index];
-                locales.Add(new I18nCompiledCatalog.CompiledLocale(
-                    locale.Id,
-                    locale.DisplayName,
-                    locale.Culture,
-                    locale.Fallback,
-                    CloneAsset(locale.Icon)));
-            }
-
-            var entries = new List<I18nCompiledCatalog.CompiledEntry>(catalog.Entries.Count);
+            var builder = new I18nCompiledCatalogBuilder(catalog.Locales, catalog.DefaultLocale);
             for (int entryIndex = 0; entryIndex < catalog.Entries.Count; entryIndex++)
             {
                 I18nEntry entry = catalog.Entries[entryIndex];
                 long entryId = long.Parse(entry.Id, NumberStyles.None, CultureInfo.InvariantCulture);
-                var values = new List<I18nCompiledCatalog.CompiledValue>(entry.Locales.Count);
-                HashSet<string>? expectedArguments = null;
+                var values = new List<I18nCompiledCatalogBuilder.PendingValue>(entry.Locales.Count);
+                Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind>? expectedArguments = null;
 
                 var localeIds = new List<string>(entry.Locales.Keys);
                 localeIds.Sort(StringComparer.Ordinal);
@@ -169,7 +96,7 @@ namespace GreenBox.I18n
                 {
                     string localeId = localeIds[localeIndex];
                     I18nLocaleValue value = entry.Locales[localeId];
-                    I18nCompiledMessage? message = null;
+                    int message = I18nCompiledCatalogFormat.MissingIndex;
                     if (value.Text != null)
                     {
                         I18nMessageCompilation messageCompilation =
@@ -189,13 +116,15 @@ namespace GreenBox.I18n
                         }
                         else
                         {
-                            message = messageCompilation.Message!;
-                            var arguments = new HashSet<string>(message.ArgumentNames, StringComparer.Ordinal);
+                            I18nCompiledMessage compiledMessage = messageCompilation.Message!;
+                            message = builder.AddMessage(compiledMessage);
+                            Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind> arguments =
+                                BuildArgumentContract(compiledMessage);
                             if (expectedArguments == null)
                             {
                                 expectedArguments = arguments;
                             }
-                            else if (!expectedArguments.SetEquals(arguments))
+                            else if (!ArgumentContractsEqual(expectedArguments, arguments))
                             {
                                 diagnostics.Add(new I18nCatalogMessageDiagnostic(
                                     entryId,
@@ -203,37 +132,61 @@ namespace GreenBox.I18n
                                     localeId,
                                     new I18nMessageDiagnostic(
                                         "inconsistent_arguments",
-                                        "All populated locales of an entry must use the same argument names.",
+                                        "All populated locales of an entry must use the same argument names and types.",
                                         0,
                                         string.Empty)));
                             }
                         }
                     }
 
-                    values.Add(new I18nCompiledCatalog.CompiledValue(
+                    values.Add(builder.CreateValue(
                         localeId,
                         message,
-                        CloneAsset(value.Asset)));
+                        value.Asset));
                 }
 
-                entries.Add(new I18nCompiledCatalog.CompiledEntry(entryId, entry.Path, values));
+                builder.AddEntry(entryId, entry.Path, values);
             }
 
             return diagnostics.Count == 0
                 ? new I18nCompiledCatalogCompilation(
-                    new I18nCompiledCatalog(catalog.DefaultLocale, locales, entries), diagnostics)
+                    builder.Build(), diagnostics)
                 : new I18nCompiledCatalogCompilation(null, diagnostics);
         }
 
-        private static I18nAssetReference? CloneAsset(I18nAssetReference? source)
+        private static Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind>
+            BuildArgumentContract(I18nCompiledMessage message)
         {
-            return source == null
-                ? null
-                : new I18nAssetReference
+            var result = new Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind>(
+                message.ArgumentNames.Count,
+                StringComparer.Ordinal);
+            for (int index = 0; index < message.ArgumentNames.Count; index++)
+            {
+                result.Add(message.ArgumentNames[index], message.ArgumentKinds[index]);
+            }
+
+            return result;
+        }
+
+        private static bool ArgumentContractsEqual(
+            Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind> left,
+            Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind> right)
+        {
+            if (left.Count != right.Count)
+            {
+                return false;
+            }
+
+            foreach (KeyValuePair<string, I18nCompiledMessage.I18nMessageArgumentKind> pair in left)
+            {
+                if (!right.TryGetValue(pair.Key, out I18nCompiledMessage.I18nMessageArgumentKind kind) ||
+                    kind != pair.Value)
                 {
-                    AssetGuid = source.AssetGuid,
-                    LocalFileId = source.LocalFileId,
-                };
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

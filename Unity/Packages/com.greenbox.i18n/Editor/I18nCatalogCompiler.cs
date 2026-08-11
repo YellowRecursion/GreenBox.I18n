@@ -312,7 +312,7 @@ namespace GreenBox.I18n.Unity.Editor
                 result.Append(hash[byteIndex].ToString("x2", CultureInfo.InvariantCulture));
             }
 
-            return "v1:" + result;
+            return I18nCompiledCatalogBinary.CompilerFingerprint + ":" + result;
         }
 
         private static bool BindingsEqual(

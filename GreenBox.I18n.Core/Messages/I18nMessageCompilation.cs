@@ -39,6 +39,11 @@ namespace GreenBox.I18n
             _diagnostics = diagnostics;
         }
 
+        internal static I18nMessageFormatResult Success(string text)
+        {
+            return new I18nMessageFormatResult(text, Array.Empty<I18nMessageDiagnostic>());
+        }
+
         /// <summary>Gets the formatted text, including readable placeholders for missing values.</summary>
         public string Text { get; }
 

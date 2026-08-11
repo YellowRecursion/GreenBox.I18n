@@ -211,6 +211,21 @@ public sealed class I18nMessageNumberFormattingTests
         Assert.Equal(expected, result);
     }
 
+    [Fact]
+    public void Format_MinimumSignificantDigits_HandlesSmallestDecimalWithoutThrowing()
+    {
+        I18nCompiledMessage message = I18nMessageCompiler.Compile(
+            ".input {$value :number minimumSignificantDigits=28 useGrouping=never}\n{{{$value}}}")
+            .Message!;
+
+        I18nMessageFormatResult result = message.Format(
+            CultureInfo.GetCultureInfo("en"),
+            ("value", 0.0000000000000000000000000001m));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("0." + new string('0', 27) + "1" + new string('0', 27), result.Text);
+    }
+
     [Theory]
     [InlineData("morePrecision", "4.32")]
     [InlineData("lessPrecision", "4.3")]

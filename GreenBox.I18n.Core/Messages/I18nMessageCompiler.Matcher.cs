@@ -19,11 +19,17 @@ namespace GreenBox.I18n
                 return Failed("Matcher must contain at least one variant.", position);
             }
 
-            var selectors = new List<I18nCompiledMessage.MessageSelector>();
-            while (position < matchLineEnd)
+            int matchContentEnd = matchLineEnd;
+            if (matchContentEnd > position && source[matchContentEnd - 1] == '\r')
             {
-                SkipHorizontalWhitespace(source, ref position, matchLineEnd);
-                if (position >= matchLineEnd)
+                matchContentEnd--;
+            }
+
+            var selectors = new List<I18nCompiledMessage.MessageSelector>();
+            while (position < matchContentEnd)
+            {
+                SkipHorizontalWhitespace(source, ref position, matchContentEnd);
+                if (position >= matchContentEnd)
                 {
                     break;
                 }
@@ -34,13 +40,18 @@ namespace GreenBox.I18n
                 }
 
                 int selectorStart = ++position;
-                while (position < matchLineEnd && IsNameCharacter(source[position]))
+                while (position < matchContentEnd && !char.IsWhiteSpace(source[position]))
                 {
                     position++;
                 }
 
                 string selectorName = I18nUnicode.NormalizeNfc(
                     source.Substring(selectorStart, position - selectorStart));
+                if (!IsSupportedName(selectorName))
+                {
+                    return Failed("Matcher selector name is invalid.", selectorStart);
+                }
+
                 InputDeclaration? declaration = FindDeclaration(declarations, selectorName);
                 if (declaration == null || declaration.Value.Type == InputType.Unspecified)
                 {
@@ -164,7 +175,8 @@ namespace GreenBox.I18n
                 new I18nCompiledMessage(
                     Array.Empty<I18nCompiledMessage.MessagePart>(),
                     new I18nCompiledMessage.MessageMatcher(selectors.ToArray(), variants.ToArray()),
-                    argumentNames),
+                    argumentNames,
+                    BuildArgumentKinds(argumentNames, declarations)),
                 Array.Empty<I18nMessageDiagnostic>());
         }
 

@@ -271,7 +271,8 @@ namespace GreenBox.I18n
             public static PluralNumber FromDecimal(decimal value)
             {
                 decimal n = Math.Abs(value);
-                int scale = (decimal.GetBits(n)[3] >> 16) & 0x7F;
+                int[] bits = decimal.GetBits(n);
+                int scale = (bits[3] >> 16) & 0x7F;
                 return FromParts(n, scale, 0, 0);
             }
 

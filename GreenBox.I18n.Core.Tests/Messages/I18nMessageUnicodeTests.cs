@@ -60,4 +60,32 @@ public sealed class I18nMessageUnicodeTests
 
         Assert.False(compilation.IsSuccess);
     }
+
+    [Fact]
+    public void Compile_DecomposedSelectorName_IsNormalizedBeforeValidation()
+    {
+        const string source =
+            ".input {$caf\u00e9 :string}\n" +
+            ".match $cafe\u0301\n" +
+            "yes {{Matched}}\n" +
+            "* {{Other}}";
+
+        I18nCompiledMessage message = I18nMessageCompiler.Compile(source).Message!;
+
+        Assert.Equal("Matched", message.Format(("caf\u00e9", "yes")).Text);
+    }
+
+    [Fact]
+    public void Compile_Matcher_AcceptsWindowsLineEndings()
+    {
+        const string source =
+            ".input {$value :string}\r\n" +
+            ".match $value\r\n" +
+            "yes {{Matched}}\r\n" +
+            "* {{Other}}";
+
+        I18nCompiledMessage message = I18nMessageCompiler.Compile(source).Message!;
+
+        Assert.Equal("Matched", message.Format(("value", "yes")).Text);
+    }
 }

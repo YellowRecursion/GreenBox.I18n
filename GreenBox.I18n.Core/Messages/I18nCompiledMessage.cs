@@ -17,19 +17,26 @@ namespace GreenBox.I18n
         private readonly MessagePart[] _parts;
         private readonly MessageMatcher? _matcher;
         private readonly ReadOnlyCollection<string> _argumentNames;
+        private readonly ReadOnlyCollection<I18nMessageArgumentKind> _argumentKinds;
 
         internal I18nCompiledMessage(
             MessagePart[] parts,
             MessageMatcher? matcher,
-            List<string> argumentNames)
+            List<string> argumentNames,
+            List<I18nMessageArgumentKind> argumentKinds)
         {
             _parts = parts;
             _matcher = matcher;
             _argumentNames = argumentNames.AsReadOnly();
+            _argumentKinds = argumentKinds.AsReadOnly();
         }
 
         /// <summary>Gets distinct argument names in their first source occurrence order.</summary>
         public IReadOnlyList<string> ArgumentNames => _argumentNames;
+
+        internal MessagePart[] Parts => _parts;
+        internal MessageMatcher? Matcher => _matcher;
+        internal IReadOnlyList<I18nMessageArgumentKind> ArgumentKinds => _argumentKinds;
 
         /// <summary>Formats a message that has no external arguments.</summary>
         public I18nMessageFormatResult Format()
@@ -301,70 +308,7 @@ namespace GreenBox.I18n
         private I18nMessageFormatResult FormatCore<TArguments>(CultureInfo culture, TArguments arguments)
             where TArguments : struct, IArgumentSource
         {
-            MessagePart[] parts = _parts;
-            if (_matcher != null &&
-                !_matcher.TrySelect(culture, arguments, out parts, out I18nMessageDiagnostic selectorDiagnostic))
-            {
-                return DiagnosticFallbackResult(selectorDiagnostic);
-            }
-
-            if (parts.Length == 1 && parts[0].Kind == MessagePartKind.Text)
-            {
-                return new I18nMessageFormatResult(parts[0].Value, NoDiagnostics);
-            }
-
-            var output = new StringBuilder();
-            List<I18nMessageDiagnostic>? diagnostics = null;
-
-            for (int i = 0; i < parts.Length; i++)
-            {
-                MessagePart part = parts[i];
-                if (part.Kind == MessagePartKind.Text)
-                {
-                    output.Append(part.Value);
-                    continue;
-                }
-
-                bool appended;
-                if (part.Kind == MessagePartKind.NumberVariable)
-                {
-                    appended = arguments.TryGetNumber(part.Value, out decimal number);
-                    if (appended)
-                    {
-                        if (part.NumberOptions.TryAppend(output, number, culture))
-                        {
-                            continue;
-                        }
-
-                        output.Append("{$").Append(part.Value).Append('}');
-                        diagnostics ??= new List<I18nMessageDiagnostic>();
-                        diagnostics.Add(UnsupportedNumberDiagnostic(part.Value, part.SourcePosition));
-                        continue;
-                    }
-                }
-                else
-                {
-                    appended = arguments.TryAppend(part.Value, output);
-                }
-
-                if (appended)
-                {
-                    continue;
-                }
-
-                output.Append("{$").Append(part.Value).Append('}');
-                diagnostics ??= new List<I18nMessageDiagnostic>();
-                diagnostics.Add(
-                    new I18nMessageDiagnostic(
-                        I18nMessageDiagnosticCodes.MissingArgument,
-                        $"Argument '{part.Value}' was not supplied.",
-                        part.SourcePosition,
-                        part.Value));
-            }
-
-            return new I18nMessageFormatResult(
-                output.ToString(),
-                diagnostics == null ? NoDiagnostics : diagnostics.AsReadOnly());
+            return FormatProgram(new ObjectProgramView(this), culture, arguments);
         }
 
         private static I18nMessageFormatResult DiagnosticFallbackResult(I18nMessageDiagnostic diagnostic)

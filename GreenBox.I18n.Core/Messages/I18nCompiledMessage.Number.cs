@@ -114,17 +114,20 @@ namespace GreenBox.I18n
             {
                 try
                 {
-                    result = Prepare(value, out _);
+                    result = Prepare(value, out _, out _);
                     return true;
                 }
-                catch (OverflowException)
+                catch (Exception exception) when (
+                    exception is OverflowException ||
+                    exception is ArgumentOutOfRangeException ||
+                    exception is InvalidOperationException)
                 {
                     result = default;
                     return false;
                 }
             }
 
-            private decimal Prepare(decimal value, out bool useSignificant)
+            private decimal Prepare(decimal value, out bool useSignificant, out int preparedScale)
             {
                 value += Offset;
                 if (Style == NumberStyle.Percent)
@@ -158,7 +161,8 @@ namespace GreenBox.I18n
                     result = fractionResult;
                     useSignificant = false;
                 }
-                int currentScale = (decimal.GetBits(result)[3] >> 16) & 0x7F;
+                int[] bits = decimal.GetBits(result);
+                int currentScale = (bits[3] >> 16) & 0x7F;
                 int requiredScale = currentScale;
                 if (useSignificant && MinimumSignificantDigits >= 0)
                 {
@@ -176,21 +180,24 @@ namespace GreenBox.I18n
                     requiredScale = Math.Min(requiredScale, MaximumFractionDigits);
                 }
 
-                decimal prepared = WithScale(result, requiredScale);
-                return TrailingZeroDisplay == TrailingZeroDisplay.StripIfInteger &&
-                       prepared == decimal.Truncate(prepared)
-                    ? decimal.Truncate(prepared)
-                    : prepared;
+                preparedScale = Math.Min(requiredScale, 28);
+                decimal prepared = WithScale(bits, currentScale, preparedScale);
+                if (TrailingZeroDisplay == TrailingZeroDisplay.StripIfInteger &&
+                    prepared == decimal.Truncate(prepared))
+                {
+                    preparedScale = 0;
+                    return decimal.Truncate(prepared);
+                }
+
+                return prepared;
             }
 
-            private static decimal WithScale(decimal value, int targetScale)
+            private static decimal WithScale(int[] bits, int scale, int targetScale)
             {
-                int[] bits = decimal.GetBits(value);
                 uint low = unchecked((uint)bits[0]);
                 uint middle = unchecked((uint)bits[1]);
                 uint high = unchecked((uint)bits[2]);
                 bool negative = (bits[3] & int.MinValue) != 0;
-                int scale = (bits[3] >> 16) & 0x7F;
 
                 while (scale < targetScale)
                 {
@@ -275,7 +282,10 @@ namespace GreenBox.I18n
                     Append(output, value, culture);
                     return true;
                 }
-                catch (OverflowException)
+                catch (Exception exception) when (
+                    exception is OverflowException ||
+                    exception is ArgumentOutOfRangeException ||
+                    exception is InvalidOperationException)
                 {
                     return false;
                 }
@@ -289,10 +299,9 @@ namespace GreenBox.I18n
                     transformedSource *= 100m;
                 }
 
-                bool sourceIsNegative = (decimal.GetBits(transformedSource)[3] & int.MinValue) != 0;
-                decimal prepared = Prepare(value, out bool useSignificant);
+                bool sourceIsNegative = IsNegative(transformedSource);
+                decimal prepared = Prepare(value, out bool useSignificant, out int scale);
                 decimal absolute = Math.Abs(prepared);
-                int scale = (decimal.GetBits(prepared)[3] >> 16) & 0x7F;
                 int minimum = MinimumFractionDigits >= 0 ? MinimumFractionDigits : scale;
                 int maximum = MaximumFractionDigits >= 0 ? MaximumFractionDigits : Math.Max(scale, minimum);
                 if (MaximumSignificantDigits >= 0 &&
@@ -516,7 +525,7 @@ namespace GreenBox.I18n
                     return Round(value / unit, 0, mode) * unit;
                 }
 
-                int currentScale = (decimal.GetBits(value)[3] >> 16) & 0x7F;
+                int currentScale = GetScale(value);
                 if (currentScale <= digits)
                 {
                     return value;
@@ -598,6 +607,18 @@ namespace GreenBox.I18n
                 }
 
                 return 1 - leadingFractionZeros;
+            }
+
+            private static int GetScale(decimal value)
+            {
+                int[] bits = decimal.GetBits(value);
+                return (bits[3] >> 16) & 0x7F;
+            }
+
+            private static bool IsNegative(decimal value)
+            {
+                int[] bits = decimal.GetBits(value);
+                return (bits[3] & int.MinValue) != 0;
             }
         }
 

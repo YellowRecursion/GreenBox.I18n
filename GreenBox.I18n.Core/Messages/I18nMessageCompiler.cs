@@ -90,8 +90,52 @@ namespace GreenBox.I18n
             }
 
             return new I18nMessageCompilation(
-                new I18nCompiledMessage(parts, null, argumentNames),
+                new I18nCompiledMessage(
+                    parts,
+                    null,
+                    argumentNames,
+                    BuildArgumentKinds(argumentNames, declarations, parts)),
                 Array.Empty<I18nMessageDiagnostic>());
+        }
+
+        private static List<I18nCompiledMessage.I18nMessageArgumentKind> BuildArgumentKinds(
+            List<string> argumentNames,
+            List<InputDeclaration>? declarations,
+            I18nCompiledMessage.MessagePart[]? parts = null)
+        {
+            var result = new List<I18nCompiledMessage.I18nMessageArgumentKind>(argumentNames.Count);
+            for (int index = 0; index < argumentNames.Count; index++)
+            {
+                InputDeclaration? declaration = declarations == null
+                    ? null
+                    : FindDeclaration(declarations, argumentNames[index]);
+                I18nCompiledMessage.I18nMessageArgumentKind kind = declaration?.Type switch
+                {
+                    InputType.String => I18nCompiledMessage.I18nMessageArgumentKind.String,
+                    InputType.Number or
+                    InputType.OrdinalNumber or
+                    InputType.ExactNumber or
+                    InputType.Percent => I18nCompiledMessage.I18nMessageArgumentKind.Number,
+                    _ => I18nCompiledMessage.I18nMessageArgumentKind.Unspecified,
+                };
+
+                if (kind == I18nCompiledMessage.I18nMessageArgumentKind.Unspecified && parts != null)
+                {
+                    for (int partIndex = 0; partIndex < parts.Length; partIndex++)
+                    {
+                        if (parts[partIndex].Kind == I18nCompiledMessage.MessagePartKind.NumberVariable &&
+                            string.Equals(parts[partIndex].Value, argumentNames[index], StringComparison.Ordinal))
+                        {
+                            kind = I18nCompiledMessage.I18nMessageArgumentKind.Number;
+                            break;
+                        }
+                    }
+                }
+
+                result.Add(kind);
+            }
+
+            return result;
         }
 
         private static bool TryParseDeclarations(

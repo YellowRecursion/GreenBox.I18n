@@ -593,6 +593,11 @@
         <member name="T:GreenBox.I18n.I18nCompiledCatalogBinary">
             <summary>Reads and writes the versioned runtime catalog format.</summary>
         </member>
+        <member name="P:GreenBox.I18n.I18nCompiledCatalogBinary.CompilerFingerprint">
+            <summary>
+            Gets a stable fingerprint that consumers must include in generated-catalog caches.
+            </summary>
+        </member>
         <member name="M:GreenBox.I18n.I18nCompiledCatalogBinary.Serialize(GreenBox.I18n.I18nCompiledCatalog)">
             <summary>Serializes a prepared catalog into the versioned binary runtime format.</summary>
         </member>
@@ -693,7 +698,7 @@
             <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="localeId"/> is null.</exception>
             <exception cref="T:System.ArgumentException">Thrown when the locale is not declared by the catalog.</exception>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text(System.Int64)">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format(System.Int64)">
             <summary>
             Gets localized text, falling back to the entry path or numeric ID when no text exists.
             </summary>
@@ -701,31 +706,31 @@
             <returns>The resolved text, entry path, or numeric ID.</returns>
             <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text``1(System.Int64,System.ValueTuple{System.String,``0})">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format``1(System.Int64,System.ValueTuple{System.String,``0})">
             <summary>Formats localized text with one named argument.</summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text``2(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1})">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format``2(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1})">
             <summary>Formats localized text with two named arguments.</summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text``3(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2})">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format``3(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2})">
             <summary>Formats localized text with 3 named arguments.</summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text``4(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3})">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format``4(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3})">
             <summary>Formats localized text with 4 named arguments.</summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text``5(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4})">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format``5(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4})">
             <summary>Formats localized text with 5 named arguments.</summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text``6(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5})">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format``6(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5})">
             <summary>Formats localized text with 6 named arguments.</summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text``7(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6})">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format``7(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6})">
             <summary>Formats localized text with 7 named arguments.</summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text``8(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6},System.ValueTuple{System.String,``7})">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format``8(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6},System.ValueTuple{System.String,``7})">
             <summary>Formats localized text with 8 named arguments.</summary>
         </member>
-        <member name="M:GreenBox.I18n.I18nRuntime.Text(System.Int64,System.ValueTuple{System.String,System.Object}[])">
+        <member name="M:GreenBox.I18n.I18nRuntime.Format(System.Int64,System.ValueTuple{System.String,System.Object}[])">
             <summary>Formats localized text with an uncommon number of named arguments.</summary>
         </member>
         <member name="M:GreenBox.I18n.I18nRuntime.TryGetText(System.Int64,System.String@)">
@@ -753,6 +758,36 @@
             <param name="asset">The resolved asset reference when one exists.</param>
             <returns><see langword="true"/> when an asset was found; otherwise, <see langword="false"/>.</returns>
             <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> has an invalid format.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text(System.Int64)">
+            <summary>Gets localized text and discards non-throwing formatting diagnostics.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``1(System.Int64,System.ValueTuple{System.String,``0})">
+            <summary>Gets localized text with one named argument.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``2(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1})">
+            <summary>Gets localized text with two named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``3(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2})">
+            <summary>Gets localized text with three named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``4(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3})">
+            <summary>Gets localized text with four named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``5(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4})">
+            <summary>Gets localized text with five named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``6(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5})">
+            <summary>Gets localized text with six named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``7(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6})">
+            <summary>Gets localized text with seven named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text``8(System.Int64,System.ValueTuple{System.String,``0},System.ValueTuple{System.String,``1},System.ValueTuple{System.String,``2},System.ValueTuple{System.String,``3},System.ValueTuple{System.String,``4},System.ValueTuple{System.String,``5},System.ValueTuple{System.String,``6},System.ValueTuple{System.String,``7})">
+            <summary>Gets localized text with eight named arguments.</summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nRuntime.Text(System.Int64,System.ValueTuple{System.String,System.Object}[])">
+            <summary>Gets localized text with an uncommon number of named arguments.</summary>
         </member>
         <member name="T:GreenBox.I18n.I18nRuntimeLocale">
             <summary>

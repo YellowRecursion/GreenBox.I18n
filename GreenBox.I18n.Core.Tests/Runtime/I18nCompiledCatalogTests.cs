@@ -52,6 +52,21 @@ public sealed class I18nCompiledCatalogTests
     }
 
     [Fact]
+    public void Compile_DifferentArgumentTypesAcrossPopulatedLocales_Fails()
+    {
+        I18nCatalog source = CreateCatalog();
+        source.Entries[0].Locales["en"].Text =
+            ".input {$value :number}\n{{{$value}}}";
+        source.Entries[0].Locales["ru"].Text =
+            ".input {$value :string}\n{{{$value}}}";
+
+        I18nCompiledCatalogCompilation result = I18nCompiledCatalogCompiler.Compile(source);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("inconsistent_arguments", Assert.Single(result.Diagnostics).Diagnostic.Code);
+    }
+
+    [Fact]
     public void BinaryRoundTrip_PreservesMultipleSelectorsAndNumberOptions()
     {
         I18nCatalog source = CreateCatalog();
@@ -138,10 +153,50 @@ public sealed class I18nCompiledCatalogTests
 
         I18nCompiledCatalog compiled = I18nCompiledCatalogCompiler.Compile(source).Catalog!;
         byte[] data = I18nCompiledCatalogBinary.Serialize(compiled);
-        var runtime = new I18nRuntime(I18nCompiledCatalogBinary.Deserialize(data));
+        long deserializeAllocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        I18nCompiledCatalog loaded = I18nCompiledCatalogBinary.Deserialize(data);
+        long deserializeAllocation = GC.GetAllocatedBytesForCurrentThread() - deserializeAllocatedBefore;
+
+        _ = new I18nRuntime(I18nCompiledCatalogCompiler.Compile(CreateCatalog()).Catalog!);
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var runtime = new I18nRuntime(loaded);
+        long runtimeAllocation = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
 
         Assert.Equal("Value 9999", runtime.Text(I18nEntryId.Create(9999)));
         Assert.True(data.Length < 2_000_000);
+        Assert.True(
+            deserializeAllocation < 20_000_000,
+            $"Deserialization allocated {deserializeAllocation:N0} bytes for a 10,000-entry catalog.");
+        Assert.True(
+            runtimeAllocation < 250_000,
+            $"Runtime construction allocated {runtimeAllocation:N0} bytes for a 10,000-entry catalog.");
+        Assert.Equal(10_000, loaded.Storage.Entries.Length);
+        Assert.Equal(20_000, loaded.Storage.Values.Length);
+        Assert.Equal(10_000, loaded.Storage.Messages.Length);
+        Assert.Equal(10_000, loaded.Storage.MessageParts.Length);
+    }
+
+    [Fact]
+    public void Storage_InvalidMessageReference_IsRejectedAtLoadBoundary()
+    {
+        I18nCompiledCatalogStorage source =
+            I18nCompiledCatalogCompiler.Compile(CreateCatalog()).Catalog!.Storage;
+        I18nCompiledValueRecord[] values = source.Values.ToArray();
+        values[0] = new I18nCompiledValueRecord(values[0].Locale, 999, values[0].Asset);
+
+        Assert.Throws<InvalidDataException>(() => new I18nCompiledCatalogStorage(
+            source.DefaultLocale,
+            source.Strings,
+            source.Locales,
+            source.FallbackLocales,
+            source.Entries,
+            values,
+            source.Messages,
+            source.MessageArguments,
+            source.MessageParts,
+            source.Selectors,
+            source.Variants,
+            source.VariantKeys));
     }
 
     private static I18nCatalog CreateCatalog()

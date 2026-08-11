@@ -129,6 +129,7 @@ public static class I18n
             _runtime = runtime;
             _assetResolver = assetResolver;
             _hasWarnedAboutNone = false;
+            I18nRuntimeDiagnosticReporter.Clear();
         }
         catch (Exception exception)
         {
@@ -156,7 +157,8 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(id, runtime.CurrentLocale.Id, runtime.Format(id));
     }
 
     /// <summary>Gets and formats localized text with one named argument.</summary>
@@ -168,7 +170,9 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, argument1);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id, runtime.Format(id, argument1));
     }
 
     /// <summary>Gets and formats localized text with two named arguments.</summary>
@@ -183,7 +187,9 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, argument1, argument2);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id, runtime.Format(id, argument1, argument2));
     }
 
     /// <summary>Gets and formats localized text with 3 named arguments.</summary>
@@ -199,7 +205,9 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, argument1, argument2, argument3);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id, runtime.Format(id, argument1, argument2, argument3));
     }
 
     /// <summary>Gets and formats localized text with 4 named arguments.</summary>
@@ -216,7 +224,10 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, argument1, argument2, argument3, argument4);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id,
+            runtime.Format(id, argument1, argument2, argument3, argument4));
     }
 
     /// <summary>Gets and formats localized text with 5 named arguments.</summary>
@@ -234,7 +245,10 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, argument1, argument2, argument3, argument4, argument5);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id,
+            runtime.Format(id, argument1, argument2, argument3, argument4, argument5));
     }
 
     /// <summary>Gets and formats localized text with 6 named arguments.</summary>
@@ -253,7 +267,10 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, argument1, argument2, argument3, argument4, argument5, argument6);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id,
+            runtime.Format(id, argument1, argument2, argument3, argument4, argument5, argument6));
     }
 
     /// <summary>Gets and formats localized text with 7 named arguments.</summary>
@@ -273,7 +290,10 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, argument1, argument2, argument3, argument4, argument5, argument6, argument7);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id,
+            runtime.Format(id, argument1, argument2, argument3, argument4, argument5, argument6, argument7));
     }
 
     /// <summary>Gets and formats localized text with 8 named arguments.</summary>
@@ -294,7 +314,12 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, argument1, argument2, argument3, argument4, argument5, argument6, argument7, argument8);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id,
+            runtime.Format(
+                id, argument1, argument2, argument3, argument4,
+                argument5, argument6, argument7, argument8));
     }
 
     /// <summary>Gets and formats localized text with an uncommon number of named arguments.</summary>
@@ -306,7 +331,9 @@ public static class I18n
             return NonePlaceholder;
         }
 
-        return Runtime.Text(id, arguments);
+        I18nRuntime runtime = Runtime;
+        return I18nRuntimeDiagnosticReporter.Report(
+            id, runtime.CurrentLocale.Id, runtime.Format(id, arguments));
     }
 
     /// <summary>
@@ -436,6 +463,7 @@ public static class I18n
         _loadException = null;
         _isLoading = false;
         _hasWarnedAboutNone = false;
+        I18nRuntimeDiagnosticReporter.Clear();
         LocaleChanged = null;
     }
 

@@ -15,7 +15,7 @@ namespace GreenBox.I18n
             bool TryGetString(string name, out string value);
         }
 
-        private readonly struct NoArguments : IArgumentSource
+        internal readonly struct NoArguments : IArgumentSource
         {
             public bool TryAppend(string name, StringBuilder output) => false;
 
@@ -32,7 +32,7 @@ namespace GreenBox.I18n
             }
         }
 
-        private readonly struct OneArgument<T1> : IArgumentSource
+        internal readonly struct OneArgument<T1> : IArgumentSource
         {
             private readonly string _name1;
             private readonly T1 _value1;
@@ -78,7 +78,7 @@ namespace GreenBox.I18n
             }
         }
 
-        private readonly struct TwoArguments<T1, T2> : IArgumentSource
+        internal readonly struct TwoArguments<T1, T2> : IArgumentSource
         {
             private readonly string _name1;
             private readonly T1 _value1;
@@ -145,7 +145,7 @@ namespace GreenBox.I18n
             }
         }
 
-        private readonly struct CombinedArguments<TLeft, TRight> : IArgumentSource
+        internal readonly struct CombinedArguments<TLeft, TRight> : IArgumentSource
             where TLeft : struct, IArgumentSource
             where TRight : struct, IArgumentSource
         {
@@ -174,7 +174,7 @@ namespace GreenBox.I18n
             }
         }
 
-        private readonly struct ManyArguments : IArgumentSource
+        internal readonly struct ManyArguments : IArgumentSource
         {
             private readonly (string Name, object? Value)[] _arguments;
 

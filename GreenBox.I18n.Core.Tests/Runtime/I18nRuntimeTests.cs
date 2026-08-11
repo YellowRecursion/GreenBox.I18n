@@ -133,6 +133,22 @@ public sealed class I18nRuntimeTests
     }
 
     [Fact]
+    public void Format_MissingArgument_ReturnsFallbackAndDiagnosticWithoutThrowing()
+    {
+        I18nEntry entry = CreateEntry(
+            "3857333080842830204",
+            "Menu.Greeting",
+            ("en", "Hello {$name}", null));
+        var runtime = new I18nRuntime(CreateCatalog(entry));
+
+        I18nMessageFormatResult result = runtime.Format(3857333080842830204);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Hello {$name}", result.Text);
+        Assert.Equal(I18nMessageDiagnosticCodes.MissingArgument, Assert.Single(result.Diagnostics).Code);
+    }
+
+    [Fact]
     public void Text_NonPositiveId_Throws()
     {
         var runtime = new I18nRuntime(CreateCatalog());

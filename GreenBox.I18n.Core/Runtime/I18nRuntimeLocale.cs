@@ -17,12 +17,14 @@ namespace GreenBox.I18n
             _icon = CloneAsset(definition.Icon);
         }
 
-        internal I18nRuntimeLocale(I18nCompiledCatalog.CompiledLocale locale)
+        internal I18nRuntimeLocale(
+            I18nCompiledCatalogStorage catalog,
+            I18nCompiledLocaleRecord locale)
         {
-            Id = locale.Id;
-            DisplayName = locale.DisplayName;
-            Culture = CultureInfo.GetCultureInfo(locale.CultureName);
-            _icon = CloneAsset(locale.Icon);
+            Id = catalog.GetString(locale.Id);
+            DisplayName = catalog.GetString(locale.DisplayName);
+            Culture = CultureInfo.GetCultureInfo(catalog.GetString(locale.CultureName));
+            _icon = catalog.CreateAsset(locale.Icon);
         }
 
         /// <summary>

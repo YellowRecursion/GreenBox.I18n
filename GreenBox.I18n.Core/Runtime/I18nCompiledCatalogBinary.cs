@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -8,9 +7,12 @@ namespace GreenBox.I18n
     /// <summary>Reads and writes the versioned runtime catalog format.</summary>
     public static class I18nCompiledCatalogBinary
     {
-        private const uint Magic = 0x31494247; // GBI1
-        private const int CurrentVersion = 1;
-        private const int MaximumCollectionSize = 10_000_000;
+        /// <summary>
+        /// Gets a stable fingerprint that consumers must include in generated-catalog caches.
+        /// </summary>
+        public static string CompilerFingerprint =>
+            I18nCompiledCatalogFormat.BinaryVersion + "." +
+            I18nCompiledCatalogFormat.CompilerVersion;
 
         /// <summary>Serializes a prepared catalog into the versioned binary runtime format.</summary>
         public static byte[] Serialize(I18nCompiledCatalog catalog)
@@ -20,38 +22,107 @@ namespace GreenBox.I18n
                 throw new ArgumentNullException(nameof(catalog));
             }
 
+            I18nCompiledCatalogStorage storage = catalog.Storage;
             using var stream = new MemoryStream();
             using (var writer = new BinaryWriter(stream, new UTF8Encoding(false), true))
             {
-                writer.Write(Magic);
-                writer.Write(CurrentVersion);
-                writer.Write(catalog.DefaultLocaleId);
-                writer.Write(catalog.Locales.Count);
-                for (int index = 0; index < catalog.Locales.Count; index++)
+                writer.Write(I18nCompiledCatalogFormat.Magic);
+                writer.Write(I18nCompiledCatalogFormat.BinaryVersion);
+                writer.Write(I18nCompiledCatalogFormat.CompilerVersion);
+                writer.Write(storage.DefaultLocale);
+
+                writer.Write(storage.Strings.Length);
+                for (int index = 0; index < storage.Strings.Length; index++)
                 {
-                    I18nCompiledCatalog.CompiledLocale locale = catalog.Locales[index];
+                    writer.Write(storage.Strings[index]);
+                }
+
+                writer.Write(storage.Locales.Length);
+                for (int index = 0; index < storage.Locales.Length; index++)
+                {
+                    I18nCompiledLocaleRecord locale = storage.Locales[index];
                     writer.Write(locale.Id);
                     writer.Write(locale.DisplayName);
                     writer.Write(locale.CultureName);
-                    WriteNullableString(writer, locale.FallbackId);
+                    writer.Write(locale.FallbackLocale);
+                    writer.Write(locale.FirstFallback);
+                    writer.Write(locale.FallbackCount);
                     WriteAsset(writer, locale.Icon);
                 }
 
-                writer.Write(catalog.Entries.Count);
-                for (int entryIndex = 0; entryIndex < catalog.Entries.Count; entryIndex++)
+                WriteIntegers(writer, storage.FallbackLocales);
+
+                writer.Write(storage.Entries.Length);
+                for (int index = 0; index < storage.Entries.Length; index++)
                 {
-                    I18nCompiledCatalog.CompiledEntry entry = catalog.Entries[entryIndex];
+                    I18nCompiledEntryRecord entry = storage.Entries[index];
                     writer.Write(entry.Id);
                     writer.Write(entry.Path);
-                    writer.Write(entry.Values.Count);
-                    for (int valueIndex = 0; valueIndex < entry.Values.Count; valueIndex++)
-                    {
-                        I18nCompiledCatalog.CompiledValue value = entry.Values[valueIndex];
-                        writer.Write(value.LocaleId);
-                        writer.Write(value.Message != null);
-                        value.Message?.WriteTo(writer);
-                        WriteAsset(writer, value.Asset);
-                    }
+                    writer.Write(entry.FirstValue);
+                    writer.Write(entry.ValueCount);
+                }
+
+                writer.Write(storage.Values.Length);
+                for (int index = 0; index < storage.Values.Length; index++)
+                {
+                    I18nCompiledValueRecord value = storage.Values[index];
+                    writer.Write(value.Locale);
+                    writer.Write(value.Message);
+                    WriteAsset(writer, value.Asset);
+                }
+
+                writer.Write(storage.Messages.Length);
+                for (int index = 0; index < storage.Messages.Length; index++)
+                {
+                    I18nCompiledMessageRecord message = storage.Messages[index];
+                    writer.Write(message.FirstArgument);
+                    writer.Write(message.ArgumentCount);
+                    writer.Write(message.FirstPart);
+                    writer.Write(message.PartCount);
+                    writer.Write(message.FirstSelector);
+                    writer.Write(message.SelectorCount);
+                    writer.Write(message.FirstVariant);
+                    writer.Write(message.VariantCount);
+                }
+
+                WriteIntegers(writer, storage.MessageArguments);
+
+                writer.Write(storage.MessageParts.Length);
+                for (int index = 0; index < storage.MessageParts.Length; index++)
+                {
+                    I18nCompiledMessagePartRecord part = storage.MessageParts[index];
+                    writer.Write((byte)part.Kind);
+                    writer.Write(part.Value);
+                    writer.Write(part.SourcePosition);
+                    I18nCompiledMessage.WriteNumberOptions(writer, part.NumberOptions);
+                }
+
+                writer.Write(storage.Selectors.Length);
+                for (int index = 0; index < storage.Selectors.Length; index++)
+                {
+                    I18nCompiledSelectorRecord selector = storage.Selectors[index];
+                    writer.Write(selector.Name);
+                    writer.Write((byte)selector.Kind);
+                    I18nCompiledMessage.WriteNumberOptions(writer, selector.NumberOptions);
+                }
+
+                writer.Write(storage.Variants.Length);
+                for (int index = 0; index < storage.Variants.Length; index++)
+                {
+                    I18nCompiledVariantRecord variant = storage.Variants[index];
+                    writer.Write(variant.FirstKey);
+                    writer.Write(variant.KeyCount);
+                    writer.Write(variant.FirstPart);
+                    writer.Write(variant.PartCount);
+                }
+
+                writer.Write(storage.VariantKeys.Length);
+                for (int index = 0; index < storage.VariantKeys.Length; index++)
+                {
+                    I18nCompiledVariantKeyRecord key = storage.VariantKeys[index];
+                    writer.Write((byte)key.Kind);
+                    writer.Write(key.Value);
+                    I18nCompiledMessage.WriteDecimal(writer, key.ExactNumber);
                 }
             }
 
@@ -70,52 +141,120 @@ namespace GreenBox.I18n
             {
                 using var stream = new MemoryStream(data, false);
                 using var reader = new BinaryReader(stream, Encoding.UTF8, false);
-                if (reader.ReadUInt32() != Magic)
+                if (reader.ReadUInt32() != I18nCompiledCatalogFormat.Magic)
                 {
                     throw new InvalidDataException("The compiled localization catalog header is invalid.");
                 }
 
-                int version = reader.ReadInt32();
-                if (version != CurrentVersion)
+                int binaryVersion = reader.ReadInt32();
+                if (binaryVersion != I18nCompiledCatalogFormat.BinaryVersion)
                 {
                     throw new InvalidDataException(
-                        $"Compiled localization catalog version {version} is unsupported; expected {CurrentVersion}. Regenerate the Unity asset.");
+                        $"Compiled localization catalog version {binaryVersion} is unsupported; " +
+                        $"expected {I18nCompiledCatalogFormat.BinaryVersion}. Regenerate the Unity asset.");
                 }
 
-                string defaultLocaleId = reader.ReadString();
-                int localeCount = ReadCount(reader);
-                var locales = new List<I18nCompiledCatalog.CompiledLocale>(localeCount);
-                for (int index = 0; index < localeCount; index++)
+                int compilerVersion = reader.ReadInt32();
+                if (compilerVersion != I18nCompiledCatalogFormat.CompilerVersion)
                 {
-                    locales.Add(new I18nCompiledCatalog.CompiledLocale(
-                        reader.ReadString(),
-                        reader.ReadString(),
-                        reader.ReadString(),
-                        ReadNullableString(reader),
-                        ReadAsset(reader)));
+                    throw new InvalidDataException(
+                        $"Compiled localization catalog compiler version {compilerVersion} is unsupported; " +
+                        $"expected {I18nCompiledCatalogFormat.CompilerVersion}. Regenerate the Unity asset.");
                 }
 
-                int entryCount = ReadCount(reader);
-                var entries = new List<I18nCompiledCatalog.CompiledEntry>(entryCount);
-                for (int entryIndex = 0; entryIndex < entryCount; entryIndex++)
+                int defaultLocale = reader.ReadInt32();
+                var strings = new string[ReadCount(reader)];
+                for (int index = 0; index < strings.Length; index++)
                 {
-                    long id = reader.ReadInt64();
-                    string path = reader.ReadString();
-                    int valueCount = ReadCount(reader);
-                    var values = new List<I18nCompiledCatalog.CompiledValue>(valueCount);
-                    for (int valueIndex = 0; valueIndex < valueCount; valueIndex++)
-                    {
-                        string localeId = reader.ReadString();
-                        I18nCompiledMessage? message = reader.ReadBoolean()
-                            ? I18nCompiledMessage.ReadFrom(reader)
-                            : null;
-                        values.Add(new I18nCompiledCatalog.CompiledValue(
-                            localeId,
-                            message,
-                            ReadAsset(reader)));
-                    }
+                    strings[index] = reader.ReadString();
+                }
 
-                    entries.Add(new I18nCompiledCatalog.CompiledEntry(id, path, values));
+                var locales = new I18nCompiledLocaleRecord[ReadCount(reader)];
+                for (int index = 0; index < locales.Length; index++)
+                {
+                    locales[index] = new I18nCompiledLocaleRecord(
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        ReadAsset(reader));
+                }
+
+                int[] fallbacks = ReadIntegers(reader);
+
+                var entries = new I18nCompiledEntryRecord[ReadCount(reader)];
+                for (int index = 0; index < entries.Length; index++)
+                {
+                    entries[index] = new I18nCompiledEntryRecord(
+                        reader.ReadInt64(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32());
+                }
+
+                var values = new I18nCompiledValueRecord[ReadCount(reader)];
+                for (int index = 0; index < values.Length; index++)
+                {
+                    values[index] = new I18nCompiledValueRecord(
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        ReadAsset(reader));
+                }
+
+                var messages = new I18nCompiledMessageRecord[ReadCount(reader)];
+                for (int index = 0; index < messages.Length; index++)
+                {
+                    messages[index] = new I18nCompiledMessageRecord(
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32());
+                }
+
+                int[] messageArguments = ReadIntegers(reader);
+
+                var messageParts = new I18nCompiledMessagePartRecord[ReadCount(reader)];
+                for (int index = 0; index < messageParts.Length; index++)
+                {
+                    messageParts[index] = new I18nCompiledMessagePartRecord(
+                        (I18nCompiledMessage.MessagePartKind)reader.ReadByte(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        I18nCompiledMessage.ReadNumberOptions(reader));
+                }
+
+                var selectors = new I18nCompiledSelectorRecord[ReadCount(reader)];
+                for (int index = 0; index < selectors.Length; index++)
+                {
+                    selectors[index] = new I18nCompiledSelectorRecord(
+                        reader.ReadInt32(),
+                        (I18nCompiledMessage.MessageSelectorKind)reader.ReadByte(),
+                        I18nCompiledMessage.ReadNumberOptions(reader));
+                }
+
+                var variants = new I18nCompiledVariantRecord[ReadCount(reader)];
+                for (int index = 0; index < variants.Length; index++)
+                {
+                    variants[index] = new I18nCompiledVariantRecord(
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32(),
+                        reader.ReadInt32());
+                }
+
+                var variantKeys = new I18nCompiledVariantKeyRecord[ReadCount(reader)];
+                for (int index = 0; index < variantKeys.Length; index++)
+                {
+                    variantKeys[index] = new I18nCompiledVariantKeyRecord(
+                        (I18nCompiledMessage.MessageVariantKeyKind)reader.ReadByte(),
+                        reader.ReadInt32(),
+                        I18nCompiledMessage.ReadDecimal(reader));
                 }
 
                 if (stream.Position != stream.Length)
@@ -123,7 +262,20 @@ namespace GreenBox.I18n
                     throw new InvalidDataException("Compiled localization catalog contains trailing data.");
                 }
 
-                return new I18nCompiledCatalog(defaultLocaleId, locales, entries);
+                return new I18nCompiledCatalog(
+                    new I18nCompiledCatalogStorage(
+                        defaultLocale,
+                        strings,
+                        locales,
+                        fallbacks,
+                        entries,
+                        values,
+                        messages,
+                        messageArguments,
+                        messageParts,
+                        selectors,
+                        variants,
+                        variantKeys));
             }
             catch (EndOfStreamException exception)
             {
@@ -131,47 +283,41 @@ namespace GreenBox.I18n
             }
         }
 
-        private static void WriteAsset(BinaryWriter writer, I18nAssetReference? asset)
+        private static void WriteAsset(BinaryWriter writer, I18nCompiledAssetRecord asset)
         {
-            writer.Write(asset != null);
-            if (asset == null)
-            {
-                return;
-            }
-
             writer.Write(asset.AssetGuid);
-            WriteNullableString(writer, asset.LocalFileId);
+            writer.Write(asset.LocalFileId);
         }
 
-        private static I18nAssetReference? ReadAsset(BinaryReader reader)
+        private static I18nCompiledAssetRecord ReadAsset(BinaryReader reader)
         {
-            return !reader.ReadBoolean()
-                ? null
-                : new I18nAssetReference
-                {
-                    AssetGuid = reader.ReadString(),
-                    LocalFileId = ReadNullableString(reader),
-                };
+            return new I18nCompiledAssetRecord(reader.ReadInt32(), reader.ReadInt32());
         }
 
-        private static void WriteNullableString(BinaryWriter writer, string? value)
+        private static void WriteIntegers(BinaryWriter writer, int[] values)
         {
-            writer.Write(value != null);
-            if (value != null)
+            writer.Write(values.Length);
+            for (int index = 0; index < values.Length; index++)
             {
-                writer.Write(value);
+                writer.Write(values[index]);
             }
         }
 
-        private static string? ReadNullableString(BinaryReader reader)
+        private static int[] ReadIntegers(BinaryReader reader)
         {
-            return reader.ReadBoolean() ? reader.ReadString() : null;
+            var values = new int[ReadCount(reader)];
+            for (int index = 0; index < values.Length; index++)
+            {
+                values[index] = reader.ReadInt32();
+            }
+
+            return values;
         }
 
         private static int ReadCount(BinaryReader reader)
         {
             int count = reader.ReadInt32();
-            if (count < 0 || count > MaximumCollectionSize)
+            if (count < 0 || count > I18nCompiledCatalogFormat.MaximumCollectionSize)
             {
                 throw new InvalidDataException("Compiled localization data contains an invalid collection size.");
             }
