@@ -408,6 +408,30 @@ public static class I18n
         return asset;
     }
 
+    internal static Sprite? ResolveLocaleIcon(I18nRuntimeLocale locale)
+    {
+        if (locale == null)
+        {
+            throw new ArgumentNullException(nameof(locale));
+        }
+
+        I18nAssetReference? reference = locale.Icon;
+        if (reference == null)
+        {
+            return null;
+        }
+
+        UnityEngine.Object icon = AssetResolver.Resolve(reference);
+        if (icon is Sprite sprite)
+        {
+            return sprite;
+        }
+
+        throw new InvalidCastException(
+            $"Localization icon for locale '{locale.Id}' is '{icon.GetType().FullName}', " +
+            $"not '{typeof(Sprite).FullName}'.");
+    }
+
     /// <summary>
     /// Changes the active locale.
     /// </summary>
