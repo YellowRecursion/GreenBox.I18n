@@ -88,7 +88,7 @@ namespace GreenBox.I18n
                 I18nEntry entry = catalog.Entries[entryIndex];
                 long entryId = long.Parse(entry.Id, NumberStyles.None, CultureInfo.InvariantCulture);
                 var values = new List<I18nCompiledCatalogBuilder.PendingValue>(entry.Locales.Count);
-                Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind>? expectedArguments = null;
+                Dictionary<string, I18nMessageArgumentKind>? expectedArguments = null;
 
                 var localeIds = new List<string>(entry.Locales.Keys);
                 localeIds.Sort(StringComparer.Ordinal);
@@ -118,7 +118,7 @@ namespace GreenBox.I18n
                         {
                             I18nCompiledMessage compiledMessage = messageCompilation.Message!;
                             message = builder.AddMessage(compiledMessage);
-                            Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind> arguments =
+                            Dictionary<string, I18nMessageArgumentKind> arguments =
                                 BuildArgumentContract(compiledMessage);
                             if (expectedArguments == null)
                             {
@@ -154,10 +154,10 @@ namespace GreenBox.I18n
                 : new I18nCompiledCatalogCompilation(null, diagnostics);
         }
 
-        private static Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind>
+        private static Dictionary<string, I18nMessageArgumentKind>
             BuildArgumentContract(I18nCompiledMessage message)
         {
-            var result = new Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind>(
+            var result = new Dictionary<string, I18nMessageArgumentKind>(
                 message.ArgumentNames.Count,
                 StringComparer.Ordinal);
             for (int index = 0; index < message.ArgumentNames.Count; index++)
@@ -169,17 +169,17 @@ namespace GreenBox.I18n
         }
 
         private static bool ArgumentContractsEqual(
-            Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind> left,
-            Dictionary<string, I18nCompiledMessage.I18nMessageArgumentKind> right)
+            Dictionary<string, I18nMessageArgumentKind> left,
+            Dictionary<string, I18nMessageArgumentKind> right)
         {
             if (left.Count != right.Count)
             {
                 return false;
             }
 
-            foreach (KeyValuePair<string, I18nCompiledMessage.I18nMessageArgumentKind> pair in left)
+            foreach (KeyValuePair<string, I18nMessageArgumentKind> pair in left)
             {
-                if (!right.TryGetValue(pair.Key, out I18nCompiledMessage.I18nMessageArgumentKind kind) ||
+                if (!right.TryGetValue(pair.Key, out I18nMessageArgumentKind kind) ||
                     kind != pair.Value)
                 {
                     return false;

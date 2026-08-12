@@ -2,8 +2,13 @@ import { postJson } from '../../../shared/api/httpClient'
 
 export interface MessageAnalysis {
   isValid: boolean
-  arguments: string[]
+  arguments: MessageArgument[]
   diagnostics: MessageAnalysisDiagnostic[]
+}
+
+export interface MessageArgument {
+  name: string
+  kind: 'unspecified' | 'string' | 'number'
 }
 
 export interface MessageAnalysisDiagnostic {

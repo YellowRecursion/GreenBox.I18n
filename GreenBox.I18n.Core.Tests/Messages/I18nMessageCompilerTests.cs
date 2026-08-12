@@ -42,6 +42,23 @@ public sealed class I18nMessageCompilerTests
     }
 
     [Fact]
+    public void Compile_InputDeclarations_ExposeArgumentKindsForAuthoringTools()
+    {
+        const string source =
+            ".input {$label :string}\n" +
+            ".input {$count :number}\n" +
+            "{{{$label}: {$count}}}";
+
+        I18nMessageCompilation compilation = I18nMessageCompiler.Compile(source);
+
+        Assert.True(compilation.IsSuccess);
+        Assert.Equal(new[] { "label", "count" }, compilation.Message!.ArgumentNames);
+        Assert.Equal(
+            new[] { I18nMessageArgumentKind.String, I18nMessageArgumentKind.Number },
+            compilation.Message.ArgumentKinds);
+    }
+
+    [Fact]
     public void Compile_RepeatedVariable_ListsArgumentOnlyOnce()
     {
         I18nMessageCompilation compilation = I18nMessageCompiler.Compile("{$name}, {$name}!");

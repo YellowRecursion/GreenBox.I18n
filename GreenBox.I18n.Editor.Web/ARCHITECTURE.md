@@ -15,6 +15,8 @@ A lower layer must not import from a higher layer. Ant Design components are use
 
 The .NET host owns the mutable catalog working copy. The browser reads state and sends commands through `/api`; it does not independently reproduce Core mutations or validation.
 
+MF2 analysis and preview follow the same rule: the Host compiles the draft with Core and returns argument metadata, diagnostics, and formatted preview text. The Web feature renders controls from that metadata and never parses MF2 source itself.
+
 Unity project presence is an entity supplied by `/api/unity-project`. The Web editor polls it as ephemeral status and keeps the last known value across transient Host failures; it does not inspect Unity files or infer process state itself.
 
 Usage counts are shown only while Unity is online and `/api/usage-index` reports a ready index with no failed sources. An unavailable or updating index contributes no zeroes or warnings to the hierarchy. Folder warning state is derived from descendant entry counts in the catalog tree model.

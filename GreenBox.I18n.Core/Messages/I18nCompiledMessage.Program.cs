@@ -107,11 +107,5 @@ namespace GreenBox.I18n
             String,
         }
 
-        internal enum I18nMessageArgumentKind
-        {
-            Unspecified,
-            String,
-            Number,
-        }
     }
 }

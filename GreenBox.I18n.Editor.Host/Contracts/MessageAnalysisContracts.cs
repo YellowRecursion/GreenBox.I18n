@@ -14,8 +14,15 @@ public sealed record AnalyzeMessageRequest(string? Source);
 /// <param name="Diagnostics">The problems found in the source.</param>
 public sealed record MessageAnalysisResponse(
     bool IsValid,
-    IReadOnlyList<string> Arguments,
+    IReadOnlyList<MessageArgumentResponse> Arguments,
     IReadOnlyList<MessageDiagnosticResponse> Diagnostics);
+
+/// <summary>
+/// Describes one external argument required by a compiled message.
+/// </summary>
+/// <param name="Name">The argument name used by callers.</param>
+/// <param name="Kind">The stable preview value kind: unspecified, string, or number.</param>
+public sealed record MessageArgumentResponse(string Name, string Kind);
 
 /// <summary>
 /// Describes one problem in a localized message draft.

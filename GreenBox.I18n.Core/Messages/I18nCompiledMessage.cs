@@ -36,7 +36,10 @@ namespace GreenBox.I18n
 
         internal MessagePart[] Parts => _parts;
         internal MessageMatcher? Matcher => _matcher;
-        internal IReadOnlyList<I18nMessageArgumentKind> ArgumentKinds => _argumentKinds;
+        /// <summary>
+        /// Gets the expected kind for each item in <see cref="ArgumentNames"/>.
+        /// </summary>
+        public IReadOnlyList<I18nMessageArgumentKind> ArgumentKinds => _argumentKinds;
 
         /// <summary>Formats a message that has no external arguments.</summary>
         public I18nMessageFormatResult Format()

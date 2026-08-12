@@ -40,6 +40,8 @@ import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogEntry, CatalogLocale } from '../../entities/catalog/model/catalog'
 import { LocaleFlag } from '../../entities/catalog/ui/LocaleFlag'
 import { useMessageAnalysis } from '../../entities/message/model/useMessageAnalysis'
+import type { MessagePreviewValue } from '../../entities/message/api/previewMessage'
+import { MessagePreviewPanel } from '../../features/message-preview/MessagePreviewPanel'
 import type { CodeEditorDiagnostic } from '../../shared/ui/code-editor/CodeEditor'
 import type { CatalogSelectionItem } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
@@ -597,6 +599,7 @@ function EntryInspector({
   const { token } = theme.useToken()
   const [expandedLocaleId, setExpandedLocaleId] = useState<string>()
   const [activeTab, setActiveTab] = useState('text')
+  const [previewValues, setPreviewValues] = useState<Record<string, MessagePreviewValue>>({})
   const orderedLocales = [...locales].sort((left, right) =>
     Number(right.id === defaultLocale) - Number(left.id === defaultLocale))
   const textCount = locales.filter((locale) =>
@@ -608,6 +611,9 @@ function EntryInspector({
       setActiveTab('text')
     }
   }, [activeTab, usageCount])
+  useEffect(() => {
+    setPreviewValues({})
+  }, [entry.id])
 
   return (
     <InspectorSection
@@ -644,7 +650,11 @@ function EntryInspector({
                     locales={orderedLocales}
                     defaultLocale={defaultLocale}
                     isExpanded={expandedLocaleId === locale.id}
+                    previewValues={previewValues}
                     onExpandedLocaleChange={setExpandedLocaleId}
+                    onPreviewValueChange={(name, previewValue) => {
+                      setPreviewValues((current) => ({ ...current, [name]: previewValue }))
+                    }}
                     onChange={(text) => onTextChange(entry.id, locale.id, text)}
                   />
                 ))}
@@ -721,7 +731,9 @@ function EntryTextInput({
   locales,
   defaultLocale,
   isExpanded,
+  previewValues,
   onExpandedLocaleChange,
+  onPreviewValueChange,
   onChange,
 }: {
   entryPath: string
@@ -730,7 +742,9 @@ function EntryTextInput({
   locales: CatalogLocale[]
   defaultLocale: string
   isExpanded: boolean
+  previewValues: Readonly<Record<string, MessagePreviewValue>>
   onExpandedLocaleChange: (localeId: string | undefined) => void
+  onPreviewValueChange: (name: string, value: MessagePreviewValue) => void
   onChange: (text: string | null) => Promise<void>
 }) {
   const [draft, setDraft] = useState(value ?? '')
@@ -959,6 +973,19 @@ function EntryTextInput({
               }}
             />
           </Suspense>
+        )}
+        {isExpanded && (
+          <MessagePreviewPanel
+            source={draft}
+            culture={locale.culture}
+            arguments={messageAnalysis.analysis.arguments}
+            values={previewValues}
+            enabled={
+              messageAnalysis.analyzedSource === draft &&
+              messageAnalysis.analysis.isValid
+            }
+            onValueChange={onPreviewValueChange}
+          />
         )}
         {expandedEditorNotice && (
           <Alert

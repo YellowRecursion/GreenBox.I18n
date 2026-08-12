@@ -32,7 +32,13 @@ public static class MessageEndpoints
         }
 
         I18nMessageCompilation compilation = I18nMessageCompiler.Compile(request.Source);
-        IReadOnlyList<string> arguments = compilation.Message?.ArgumentNames ?? Array.Empty<string>();
+        MessageArgumentResponse[] arguments = compilation.Message == null
+            ? Array.Empty<MessageArgumentResponse>()
+            : Enumerable.Range(0, compilation.Message.ArgumentNames.Count)
+                .Select(index => new MessageArgumentResponse(
+                    compilation.Message.ArgumentNames[index],
+                    ToWireKind(compilation.Message.ArgumentKinds[index])))
+                .ToArray();
 
         return Results.Ok(new MessageAnalysisResponse(
             compilation.IsSuccess,
@@ -161,6 +167,16 @@ public static class MessageEndpoints
                 diagnostic.Position,
                 diagnostic.ArgumentName))
             .ToArray();
+    }
+
+    private static string ToWireKind(I18nMessageArgumentKind kind)
+    {
+        return kind switch
+        {
+            I18nMessageArgumentKind.String => "string",
+            I18nMessageArgumentKind.Number => "number",
+            _ => "unspecified",
+        };
     }
 
     private static IResult BadRequest(string code, string message)
