@@ -126,24 +126,55 @@ internal sealed class DesktopApplicationContext : ApplicationContext
         }
     }
 
-    private void ApplyUpdateAndRestart()
+    private async void ApplyUpdateAndRestart()
     {
-        _exiting = true;
-        _host.StopOwnedHost();
-        if (!_updates.ApplyAndRestart())
-        {
-            _exiting = false;
-        }
-    }
-
-    private void ExitApplication()
-    {
-        _exiting = true;
-        _trayIcon.Visible = false;
-        _host.StopOwnedHost();
-        if (_updates.HasPendingUpdate && _updates.ApplyAndExit())
+        if (_exiting)
         {
             return;
+        }
+
+        _exiting = true;
+        _form.Hide();
+        _trayIcon.Visible = false;
+        try
+        {
+            await _host.StopOwnedHostAsync();
+            if (_updates.ApplyAndRestart())
+            {
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            _form.AppendLog($"Could not apply the update: {exception.Message}");
+        }
+
+        _exiting = false;
+        _trayIcon.Visible = true;
+        ShowConsole();
+    }
+
+    private async void ExitApplication()
+    {
+        if (_exiting)
+        {
+            return;
+        }
+
+        _exiting = true;
+        _trayIcon.Visible = false;
+        _form.Hide();
+        try
+        {
+            await _host.StopOwnedHostAsync();
+            if (_updates.HasPendingUpdate && _updates.ApplyAndExit())
+            {
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            _form.AppendLog($"Could not apply the pending update: {exception.Message}");
         }
 
         _form.Close();

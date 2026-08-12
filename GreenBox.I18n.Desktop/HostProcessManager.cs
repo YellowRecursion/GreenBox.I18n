@@ -81,6 +81,8 @@ internal sealed class HostProcessManager : IDisposable
         DisposeOwnedHostAsync().GetAwaiter().GetResult();
     }
 
+    internal Task StopOwnedHostAsync() => DisposeOwnedHostAsync();
+
     public void Dispose()
     {
         StopOwnedHost();
@@ -99,11 +101,11 @@ internal sealed class HostProcessManager : IDisposable
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            await host.StopAsync(timeout.Token);
+            await host.StopAsync(timeout.Token).ConfigureAwait(false);
         }
         finally
         {
-            await host.DisposeAsync();
+            await host.DisposeAsync().ConfigureAwait(false);
         }
 
         Log("Host stopped.");
