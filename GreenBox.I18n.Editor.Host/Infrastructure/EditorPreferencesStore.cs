@@ -48,13 +48,19 @@ public sealed class EditorPreferencesStore
     }
 
     /// <summary>
-    /// Updates whether the last catalog should be reopened on startup.
+    /// Updates personal editor preferences as one persisted snapshot.
     /// </summary>
-    public EditorPreferencesResponse SetReopenLastCatalog(bool value)
+    public EditorPreferencesResponse Update(UpdateEditorPreferencesRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
         lock (_sync)
         {
-            EditorPreferencesData updated = _preferences with { ReopenLastCatalog = value };
+            EditorPreferencesData updated = _preferences with
+            {
+                ReopenLastCatalog = request.ReopenLastCatalog,
+                WarnUnusedEntries = request.WarnUnusedEntries,
+                WarnIncompleteEntries = request.WarnIncompleteEntries,
+            };
             Save(updated);
             _preferences = updated;
             return CreateResponse();
@@ -94,6 +100,8 @@ public sealed class EditorPreferencesStore
     {
         return new EditorPreferencesResponse(
             _preferences.ReopenLastCatalog,
+            _preferences.WarnUnusedEntries,
+            _preferences.WarnIncompleteEntries,
             _preferences.LastCatalogPath,
             _restoreError);
     }
@@ -139,7 +147,14 @@ public sealed class EditorPreferencesStore
         }
     }
 
-    private sealed record EditorPreferencesData(
-        bool ReopenLastCatalog = true,
-        string? LastCatalogPath = null);
+    private sealed record EditorPreferencesData
+    {
+        public bool ReopenLastCatalog { get; init; } = true;
+
+        public bool WarnUnusedEntries { get; init; } = true;
+
+        public bool WarnIncompleteEntries { get; init; }
+
+        public string? LastCatalogPath { get; init; }
+    }
 }

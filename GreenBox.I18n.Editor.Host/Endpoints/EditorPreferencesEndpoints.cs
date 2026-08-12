@@ -26,7 +26,7 @@ public static class EditorPreferencesEndpoints
     {
         try
         {
-            return Results.Ok(store.SetReopenLastCatalog(request.ReopenLastCatalog));
+            return Results.Ok(store.Update(request));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

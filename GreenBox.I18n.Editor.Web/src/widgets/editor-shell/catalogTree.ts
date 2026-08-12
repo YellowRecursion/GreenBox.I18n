@@ -20,9 +20,17 @@ export interface CatalogTreeNode {
   culture?: string
   isDirty?: boolean
   isTemporary?: boolean
-  hasUsageWarning?: boolean
+  hasWarning?: boolean
+  hasUnusedWarning?: boolean
+  warningMessages?: string[]
   entryId?: string
   children?: CatalogTreeNode[]
+}
+
+export interface CatalogTreeWarningOptions {
+  usageCounts?: ReadonlyMap<string, number>
+  warnUnusedEntries: boolean
+  warnIncompleteEntries: boolean
 }
 
 export type CatalogSelectionItem =
@@ -47,7 +55,7 @@ interface FolderBuilder {
 export function buildCatalogTree(
   catalog: CatalogSnapshot,
   temporaryFolderPaths: readonly string[] = [],
-  usageCounts?: ReadonlyMap<string, number>,
+  warningOptions: CatalogTreeWarningOptions,
 ): CatalogTreeModel {
   const selectionByKey = new Map<string, CatalogSelectionItem>()
   const dirtyLocaleIds = new Set(catalog.dirtyLocaleIds ?? [])
@@ -80,7 +88,14 @@ export function buildCatalogTree(
   sortFolderChildren(rootFolder)
 
   const entryNodes = rootFolder.children.map((child) =>
-    createEntryTreeNode(child, selectionByKey, dirtyEntryIds, dirtyPaths, usageCounts))
+    createEntryTreeNode(
+      child,
+      selectionByKey,
+      dirtyEntryIds,
+      dirtyPaths,
+      catalog.locales,
+      warningOptions,
+    ))
 
   return {
     nodes: [
@@ -100,7 +115,7 @@ export function buildCatalogTree(
         kind: 'entries-root',
         searchText: 'entries',
         count: catalog.entries.length,
-        hasUsageWarning: usageCounts !== undefined && entryNodes.some((node) => node.hasUsageWarning),
+        hasWarning: entryNodes.some((node) => node.hasWarning),
         path: '',
         isDirty: dirtyPaths.size > 0 || dirtyEntryIds.size > 0 || temporaryFolderPaths.length > 0,
         selectable: false,
@@ -314,12 +329,20 @@ function createEntryTreeNode(
   selectionByKey: Map<string, CatalogSelectionItem>,
   dirtyEntryIds: ReadonlySet<string>,
   dirtyPaths: ReadonlySet<string>,
-  usageCounts?: ReadonlyMap<string, number>,
+  locales: readonly CatalogLocale[],
+  warningOptions: CatalogTreeWarningOptions,
 ): CatalogTreeNode {
   if ('children' in child) {
     const key = folderKey(child.path)
     const children = child.children.map((nestedChild) =>
-      createEntryTreeNode(nestedChild, selectionByKey, dirtyEntryIds, dirtyPaths, usageCounts))
+      createEntryTreeNode(
+        nestedChild,
+        selectionByKey,
+        dirtyEntryIds,
+        dirtyPaths,
+        locales,
+        warningOptions,
+      ))
     selectionByKey.set(key, {
       kind: 'folder',
       path: child.path,
@@ -333,7 +356,7 @@ function createEntryTreeNode(
       kind: 'folder',
       searchText: child.path,
       count: child.entryCount,
-      hasUsageWarning: usageCounts !== undefined && children.some((node) => node.hasUsageWarning),
+      hasWarning: children.some((node) => node.hasWarning),
       path: child.path,
       isDirty:
         child.isTemporary ||
@@ -344,7 +367,16 @@ function createEntryTreeNode(
     }
   }
 
-  const usageCount = usageCounts?.get(child.id) ?? 0
+  const usageCount = warningOptions.usageCounts?.get(child.id) ?? 0
+  const hasUnusedWarning = warningOptions.warnUnusedEntries &&
+    warningOptions.usageCounts !== undefined &&
+    usageCount === 0
+  const warningMessages = [
+    ...(hasUnusedWarning ? ['No usages found'] : []),
+    ...(warningOptions.warnIncompleteEntries
+      ? getIncompleteLocalizationWarnings(child, locales)
+      : []),
+  ]
 
   return {
     key: entryKey(child.id),
@@ -352,8 +384,10 @@ function createEntryTreeNode(
     kind: 'entry',
     path: child.path,
     entryId: child.id,
-    count: usageCounts === undefined ? undefined : usageCount,
-    hasUsageWarning: usageCounts !== undefined && usageCount === 0,
+    count: warningOptions.usageCounts === undefined ? undefined : usageCount,
+    hasWarning: warningMessages.length > 0,
+    hasUnusedWarning,
+    warningMessages: warningMessages.length > 0 ? warningMessages : undefined,
     isDirty: dirtyEntryIds.has(child.id) || dirtyPaths.has(child.path),
     searchText: [
       child.id,
@@ -361,6 +395,46 @@ function createEntryTreeNode(
       ...Object.values(child.locales).map((value) => value.text ?? ''),
     ].join(' '),
   }
+}
+
+function getIncompleteLocalizationWarnings(
+  entry: CatalogEntry,
+  locales: readonly CatalogLocale[],
+) {
+  const usesText = locales.some((locale) => hasText(entry.locales[locale.id]?.text))
+  const usesAsset = locales.some((locale) => entry.locales[locale.id]?.asset != null)
+  if (!usesText && !usesAsset) {
+    return ['No localized content']
+  }
+
+  const warnings: string[] = []
+  if (usesText) {
+    const missingText = locales.filter((locale) => !hasText(entry.locales[locale.id]?.text))
+    if (missingText.length > 0) {
+      warnings.push(`Missing text: ${formatLocaleNames(missingText)}`)
+    }
+  }
+
+  if (usesAsset) {
+    const missingAssets = locales.filter((locale) => entry.locales[locale.id]?.asset == null)
+    if (missingAssets.length > 0) {
+      warnings.push(`Missing asset: ${formatLocaleNames(missingAssets)}`)
+    }
+  }
+
+  return warnings
+}
+
+function hasText(text: string | null | undefined) {
+  return Boolean(text?.trim())
+}
+
+function formatLocaleNames(locales: readonly CatalogLocale[]) {
+  const visible = locales.slice(0, 3).map((locale) => locale.displayName)
+  const remaining = locales.length - visible.length
+  return remaining > 0
+    ? `${visible.join(', ')}, and ${remaining} more`
+    : visible.join(', ')
 }
 
 function countDescendantFolders(folder: FolderBuilder): number {

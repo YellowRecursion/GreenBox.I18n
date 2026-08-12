@@ -54,6 +54,13 @@ import {
 
 const historyLimit = 100
 type EditorPage = 'editor' | 'missing-references' | 'settings'
+const defaultEditorPreferences: EditorPreferences = {
+  reopenLastCatalog: true,
+  warnUnusedEntries: true,
+  warnIncompleteEntries: false,
+  lastCatalogPath: null,
+  restoreError: null,
+}
 
 export function EditorShell() {
   const { token } = theme.useToken()
@@ -169,6 +176,10 @@ function CatalogWorkspace({
   const selectionHistoryRef = useRef<Key[][]>([[]])
   const selectionHistoryIndexRef = useRef(0)
   const isNavigatingSelectionRef = useRef(false)
+  const [preferences, setPreferences] = useState(defaultEditorPreferences)
+  const [preferencesError, setPreferencesError] = useState<string>()
+  const [arePreferencesLoading, setArePreferencesLoading] = useState(true)
+  const [arePreferencesSaving, setArePreferencesSaving] = useState(false)
   const unityProject = useUnityProjectStatus()
   const usageIndex = useUsageIndexSummary(Boolean(unityProject?.isEditorOnline))
   const usageCounts = useMemo(() => {
@@ -194,13 +205,56 @@ function CatalogWorkspace({
     [missingUsageEntries],
   )
   const tree = useMemo(
-    () => buildCatalogTree(catalog, temporaryFolderPaths, usageCounts),
-    [catalog, temporaryFolderPaths, usageCounts],
+    () => buildCatalogTree(catalog, temporaryFolderPaths, {
+      usageCounts,
+      warnUnusedEntries: preferences.warnUnusedEntries,
+      warnIncompleteEntries: preferences.warnIncompleteEntries,
+    }),
+    [catalog, preferences.warnIncompleteEntries, preferences.warnUnusedEntries,
+      temporaryFolderPaths, usageCounts],
   )
   const selection = selectedKeys.flatMap((key) => {
     const item = tree.selectionByKey.get(String(key))
     return item ? [item] : []
   })
+
+  useEffect(() => {
+    const abortController = new AbortController()
+    getEditorPreferences(abortController.signal)
+      .then((loadedPreferences) => {
+        setPreferences(loadedPreferences)
+        setPreferencesError(undefined)
+      })
+      .catch((reason: unknown) => {
+        if (!abortController.signal.aborted) {
+          setPreferencesError(
+            reason instanceof Error ? reason.message : 'Preferences could not be loaded.')
+        }
+      })
+      .finally(() => {
+        if (!abortController.signal.aborted) {
+          setArePreferencesLoading(false)
+        }
+      })
+    return () => abortController.abort()
+  }, [])
+
+  const savePreferences = async (next: EditorPreferences) => {
+    setArePreferencesSaving(true)
+    setPreferencesError(undefined)
+    try {
+      setPreferences(await updateEditorPreferences({
+        reopenLastCatalog: next.reopenLastCatalog,
+        warnUnusedEntries: next.warnUnusedEntries,
+        warnIncompleteEntries: next.warnIncompleteEntries,
+      }))
+    } catch (reason: unknown) {
+      setPreferencesError(
+        reason instanceof Error ? reason.message : 'Preferences could not be saved.')
+    } finally {
+      setArePreferencesSaving(false)
+    }
+  }
 
   useEffect(() => {
     if (isNavigatingSelectionRef.current) {
@@ -901,6 +955,14 @@ function CatalogWorkspace({
                 onRemoveNodes={handleRemoveNodes}
                 onMoveNodes={handleMoveNodes}
                 onRenameNode={handleRenameNode}
+                warningPreferences={preferences}
+                usageWarningsAvailable={usageCounts !== undefined}
+                preferencesError={preferencesError}
+                arePreferencesBusy={arePreferencesLoading || arePreferencesSaving}
+                onWarningPreferencesChange={(patch) => void savePreferences({
+                  ...preferences,
+                  ...patch,
+                })}
               />
             </div>
           </Splitter.Panel>
@@ -938,7 +1000,12 @@ function CatalogWorkspace({
             usageRevision={usageIndex?.updatedAtUtc ?? undefined}
           />
         ) : (
-          <SettingsPage />
+          <SettingsPage
+            preferences={preferences}
+            error={preferencesError}
+            isBusy={arePreferencesLoading || arePreferencesSaving}
+            onChange={(patch) => void savePreferences({ ...preferences, ...patch })}
+          />
         )}
       </Flex>
     </Flex>
@@ -1113,7 +1180,17 @@ function MissingReferencesPage({
   )
 }
 
-function SettingsPage() {
+function SettingsPage({
+  preferences,
+  error,
+  isBusy,
+  onChange,
+}: {
+  preferences: EditorPreferences
+  error?: string
+  isBusy: boolean
+  onChange: (patch: Partial<EditorPreferences>) => void
+}) {
   return (
     <div style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
       <Flex
@@ -1153,7 +1230,14 @@ function SettingsPage() {
             {
               key: 'preferences',
               label: 'Preferences',
-              children: <PreferencesSettingsCard />,
+              children: (
+                <PreferencesSettingsCard
+                  preferences={preferences}
+                  error={error}
+                  isBusy={isBusy}
+                  onChange={onChange}
+                />
+              ),
             },
           ]}
         />
@@ -1162,35 +1246,17 @@ function SettingsPage() {
   )
 }
 
-function PreferencesSettingsCard() {
-  const [preferences, setPreferences] = useState<EditorPreferences>()
-  const [error, setError] = useState<string>()
-  const [isSaving, setIsSaving] = useState(false)
-
-  useEffect(() => {
-    const abortController = new AbortController()
-    getEditorPreferences(abortController.signal)
-      .then(setPreferences)
-      .catch((reason: unknown) => {
-        if (!abortController.signal.aborted) {
-          setError(reason instanceof Error ? reason.message : 'Preferences could not be loaded.')
-        }
-      })
-    return () => abortController.abort()
-  }, [])
-
-  const setReopenLastCatalog = async (value: boolean) => {
-    setIsSaving(true)
-    setError(undefined)
-    try {
-      setPreferences(await updateEditorPreferences(value))
-    } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : 'Preferences could not be saved.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
+function PreferencesSettingsCard({
+  preferences,
+  error,
+  isBusy,
+  onChange,
+}: {
+  preferences: EditorPreferences
+  error?: string
+  isBusy: boolean
+  onChange: (patch: Partial<EditorPreferences>) => void
+}) {
   return (
     <Flex vertical gap={layoutTokens.spacing.xLarge}>
       <Flex vertical gap={layoutTokens.spacing.small}>
@@ -1205,7 +1271,7 @@ function PreferencesSettingsCard() {
       </Flex>
 
       {error && <Alert type="error" showIcon message={error} />}
-      {preferences?.restoreError && (
+      {preferences.restoreError && (
         <Alert
           type="warning"
           showIcon
@@ -1225,10 +1291,10 @@ function PreferencesSettingsCard() {
               </Typography.Text>
             </Flex>
             <Switch
-              checked={preferences?.reopenLastCatalog ?? false}
-              loading={!preferences || isSaving}
-              disabled={!preferences || isSaving}
-              onChange={(value) => void setReopenLastCatalog(value)}
+              checked={preferences.reopenLastCatalog}
+              loading={isBusy}
+              disabled={isBusy}
+              onChange={(reopenLastCatalog) => onChange({ reopenLastCatalog })}
             />
           </Flex>
         </Card>

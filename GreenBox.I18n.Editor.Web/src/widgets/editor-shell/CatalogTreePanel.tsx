@@ -15,6 +15,7 @@ import {
   FileAddOutlined,
   FolderAddOutlined,
   PlusOutlined,
+  SettingOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
 import {
@@ -24,7 +25,9 @@ import {
   Flex,
   Input,
   Modal,
+  Popover,
   Space,
+  Switch,
   Tooltip,
   Tree,
   Typography,
@@ -36,6 +39,7 @@ import {
 import { layoutTokens } from '../../design/layoutTokens'
 import { LocaleFlag } from '../../entities/catalog/ui/LocaleFlag'
 import type { CatalogLocale } from '../../entities/catalog/model/catalog'
+import type { EditorPreferences } from '../../entities/preferences/api/editorPreferences'
 import { filterCatalogTree, type CatalogTreeModel, type CatalogTreeNode } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 import { commonCultureOptions } from './localeCultures'
@@ -52,6 +56,13 @@ interface CatalogTreePanelProps {
   onRemoveNodes: (keys: Key[]) => Promise<void>
   onMoveNodes: (keys: Key[], targetKey: Key) => Promise<void>
   onRenameNode: (key: Key, name: string) => Promise<string>
+  warningPreferences: Pick<EditorPreferences, 'warnUnusedEntries' | 'warnIncompleteEntries'>
+  usageWarningsAvailable: boolean
+  preferencesError?: string
+  arePreferencesBusy: boolean
+  onWarningPreferencesChange: (
+    patch: Partial<Pick<EditorPreferences, 'warnUnusedEntries' | 'warnIncompleteEntries'>>,
+  ) => void
 }
 
 interface NodeNameDraft {
@@ -94,6 +105,11 @@ export function CatalogTreePanel({
   onRemoveNodes,
   onMoveNodes,
   onRenameNode,
+  warningPreferences,
+  usageWarningsAvailable,
+  preferencesError,
+  arePreferencesBusy,
+  onWarningPreferencesChange,
 }: CatalogTreePanelProps) {
   const { token } = theme.useToken()
   const [messageApi, messageContext] = message.useMessage()
@@ -437,24 +453,80 @@ export function CatalogTreePanel({
           </Flex>
         )}
       </Modal>
-      <Input.Search
-        allowClear
-        value={query}
-        placeholder="Search paths, IDs, and localized texts"
-        onChange={(event) => {
-          if (!event.target.value && query) {
-            revealCurrentSelection()
-          } else {
-            setQuery(event.target.value)
-          }
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape' && query) {
-            event.preventDefault()
-            revealCurrentSelection()
-          }
-        }}
-      />
+      <Flex gap={layoutTokens.spacing.small}>
+        <Input.Search
+          allowClear
+          value={query}
+          placeholder="Search paths, IDs, and localized texts"
+          style={{ flex: 1, minWidth: 0 }}
+          onChange={(event) => {
+            if (!event.target.value && query) {
+              revealCurrentSelection()
+            } else {
+              setQuery(event.target.value)
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && query) {
+              event.preventDefault()
+              revealCurrentSelection()
+            }
+          }}
+        />
+        <Popover
+          trigger="click"
+          placement="bottomRight"
+          title="Hierarchy warnings"
+          content={(
+            <Flex vertical gap={layoutTokens.spacing.medium} style={{ width: 300 }}>
+              <Flex align="flex-start" justify="space-between" gap={layoutTokens.spacing.large}>
+                <Flex vertical gap={layoutTokens.spacing.xSmall} style={{ minWidth: 0 }}>
+                  <Typography.Text>Unused entries</Typography.Text>
+                  <Typography.Text type="secondary">
+                    Mark entries with no indexed Unity usages.
+                  </Typography.Text>
+                  {warningPreferences.warnUnusedEntries && !usageWarningsAvailable && (
+                    <Typography.Text type="secondary">Usage data unavailable</Typography.Text>
+                  )}
+                </Flex>
+                <Switch
+                  size="small"
+                  checked={warningPreferences.warnUnusedEntries}
+                  loading={arePreferencesBusy}
+                  disabled={arePreferencesBusy}
+                  onChange={(warnUnusedEntries) =>
+                    onWarningPreferencesChange({ warnUnusedEntries })}
+                />
+              </Flex>
+              <Flex align="flex-start" justify="space-between" gap={layoutTokens.spacing.large}>
+                <Flex vertical gap={layoutTokens.spacing.xSmall} style={{ minWidth: 0 }}>
+                  <Typography.Text>Incomplete localization</Typography.Text>
+                  <Typography.Text type="secondary">
+                    Mark entries missing content in one or more locales.
+                  </Typography.Text>
+                </Flex>
+                <Switch
+                  size="small"
+                  checked={warningPreferences.warnIncompleteEntries}
+                  loading={arePreferencesBusy}
+                  disabled={arePreferencesBusy}
+                  onChange={(warnIncompleteEntries) =>
+                    onWarningPreferencesChange({ warnIncompleteEntries })}
+                />
+              </Flex>
+              {preferencesError && (
+                <Typography.Text type="danger">{preferencesError}</Typography.Text>
+              )}
+            </Flex>
+          )}
+        >
+          <Button
+            icon={<SettingOutlined />}
+            aria-label="Hierarchy warning settings"
+            style={{ width: token.controlHeight, paddingInline: 0 }}
+          />
+        </Popover>
+      </Flex>
       <div ref={treeContainerRef} style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         <Tree<CatalogTreeNode>
           blockNode
@@ -829,11 +901,43 @@ function TreeNodeTitle({
               </Tooltip>
             ))}
           </span>
-        ) : node.hasUsageWarning ? (
-          <WarningOutlined
-            aria-label={node.kind === 'entry' ? 'No usages' : 'Contains an entry with no usages'}
-            style={{ color: token.colorWarning, flex: '0 0 auto' }}
-          />
+        ) : node.hasWarning ? (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: layoutTokens.spacing.small,
+              flex: '0 0 auto',
+            }}
+          >
+            {node.kind === 'entry' && !node.hasUnusedWarning && node.count !== undefined && (
+              <Typography.Text style={{ color: token.colorInfo, fontSize: 12 }}>
+                {node.count}
+              </Typography.Text>
+            )}
+            {node.kind === 'entry' && node.warningMessages ? (
+              <Tooltip
+                mouseEnterDelay={0.35}
+                title={(
+                  <Flex vertical gap={2}>
+                    {node.warningMessages.map((warning) => (
+                      <span key={warning}>{warning}</span>
+                    ))}
+                  </Flex>
+                )}
+              >
+                <WarningOutlined
+                  aria-label={node.warningMessages.join('. ')}
+                  style={{ color: token.colorWarning }}
+                />
+              </Tooltip>
+            ) : (
+              <WarningOutlined
+                aria-label="Contains an entry with a warning"
+                style={{ color: token.colorWarning }}
+              />
+            )}
+          </span>
         ) : node.count !== undefined ? (
           <Typography.Text
             type={node.kind === 'entry' ? undefined : 'secondary'}
