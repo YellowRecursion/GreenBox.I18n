@@ -38,14 +38,14 @@ public sealed class UsageNavigationService
         if (!project.IsUnityProject || project.ProjectPath == null)
         {
             return UsageNavigationResult.Failure(
-                EditorErrorCodes.UnityProjectNotFound,
+                HostErrorCodes.UnityProjectNotFound,
                 "The open catalog is not located inside a Unity project.");
         }
 
         if (!project.IsEditorOnline)
         {
             return UsageNavigationResult.Failure(
-                EditorErrorCodes.UnityEditorOffline,
+                HostErrorCodes.UnityEditorOffline,
                 "The associated Unity project is offline.");
         }
 
@@ -56,7 +56,7 @@ public sealed class UsageNavigationService
         if (usages.Availability != UsageIndexAvailability.Available)
         {
             return UsageNavigationResult.Failure(
-                EditorErrorCodes.UsageLocationNotFound,
+                HostErrorCodes.UsageLocationNotFound,
                 "Usage locations are not currently available.");
         }
 
@@ -72,7 +72,7 @@ public sealed class UsageNavigationService
         if (command == null)
         {
             return UsageNavigationResult.Failure(
-                EditorErrorCodes.UsageLocationNotFound,
+                HostErrorCodes.UsageLocationNotFound,
                 "The usage location is no longer present in the current index.");
         }
 

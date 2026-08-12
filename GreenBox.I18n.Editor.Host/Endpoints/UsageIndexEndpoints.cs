@@ -2,6 +2,7 @@ using GreenBox.I18n;
 using GreenBox.I18n.Editor.Host.Contracts;
 using GreenBox.I18n.Editor.Host.Editor;
 using GreenBox.I18n.Editor.Host.Infrastructure;
+using GreenBox.I18n.Workspace;
 
 namespace GreenBox.I18n.Editor.Host.Endpoints;
 
@@ -24,20 +25,20 @@ public static class UsageIndexEndpoints
     }
 
     private static Task<UsageIndexSummaryResponse> ReadSummaryAsync(
-        EditorSession session,
+        CatalogWorkspace session,
         UsageIndexReader reader,
         CancellationToken cancellationToken) =>
         reader.ReadSummaryAsync(session.GetSnapshot().CatalogPath, cancellationToken);
 
     private static Task<UsageIndexStateResponse> ReadStateAsync(
-        EditorSession session,
+        CatalogWorkspace session,
         UsageIndexReader reader,
         CancellationToken cancellationToken) =>
         reader.ReadStateAsync(session.GetSnapshot().CatalogPath, cancellationToken);
 
     private static async Task<IResult> ReadEntryAsync(
         string entryId,
-        EditorSession session,
+        CatalogWorkspace session,
         UsageIndexReader reader,
         CancellationToken cancellationToken)
     {
@@ -57,7 +58,7 @@ public static class UsageIndexEndpoints
 
     private static async Task<IResult> OpenUsageAsync(
         OpenUsageRequest request,
-        EditorSession session,
+        CatalogWorkspace session,
         UsageNavigationService navigation,
         CancellationToken cancellationToken)
     {
@@ -80,10 +81,10 @@ public static class UsageIndexEndpoints
 
         int statusCode = result.Error!.Code switch
         {
-            EditorErrorCodes.UsageLocationNotFound => StatusCodes.Status404NotFound,
-            EditorErrorCodes.UnityEditorOffline or EditorErrorCodes.UnityProjectNotFound =>
+            HostErrorCodes.UsageLocationNotFound => StatusCodes.Status404NotFound,
+            HostErrorCodes.UnityEditorOffline or HostErrorCodes.UnityProjectNotFound =>
                 StatusCodes.Status409Conflict,
-            EditorErrorCodes.UnityEditorCommandTimeout => StatusCodes.Status504GatewayTimeout,
+            HostErrorCodes.UnityEditorCommandTimeout => StatusCodes.Status504GatewayTimeout,
             _ => StatusCodes.Status422UnprocessableEntity,
         };
         return Results.Json(result.Error, statusCode: statusCode);

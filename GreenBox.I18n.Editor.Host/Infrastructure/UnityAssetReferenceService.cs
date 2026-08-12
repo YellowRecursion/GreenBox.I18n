@@ -38,7 +38,7 @@ public sealed class UnityAssetReferenceService
         if (projectRoot == null)
         {
             return UnityAssetReferenceResult.Failure(
-                EditorErrorCodes.UnityProjectNotFound,
+                HostErrorCodes.UnityProjectNotFound,
                 "The open catalog is not located inside a Unity Assets directory.");
         }
 
@@ -47,7 +47,7 @@ public sealed class UnityAssetReferenceService
         if (!IsAssetGuid(assetGuid))
         {
             return UnityAssetReferenceResult.Failure(
-                EditorErrorCodes.UnityAssetNotFound,
+                HostErrorCodes.UnityAssetNotFound,
                 $"'{assetGuid}' is not a Unity asset GUID.");
         }
 
@@ -60,7 +60,7 @@ public sealed class UnityAssetReferenceService
                 if (!TryResolvePath(resolvedProjectRoot, assetGuid!, out assetPath))
                 {
                     return UnityAssetReferenceResult.Failure(
-                        EditorErrorCodes.UnityAssetNotFound,
+                        HostErrorCodes.UnityAssetNotFound,
                         $"Unity asset GUID '{assetGuid}' was not found in the current project.");
                 }
             }
@@ -81,7 +81,7 @@ public sealed class UnityAssetReferenceService
         if (projectRoot == null)
         {
             return UnityAssetReferenceResult.Failure(
-                EditorErrorCodes.UnityProjectNotFound,
+                HostErrorCodes.UnityProjectNotFound,
                 "The open catalog is not located inside a Unity Assets directory.");
         }
 
@@ -102,7 +102,7 @@ public sealed class UnityAssetReferenceService
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
         {
             return UnityAssetReferenceResult.Failure(
-                EditorErrorCodes.UnitySelectionUnavailable,
+                HostErrorCodes.UnitySelectionUnavailable,
                 "Unity has not published an active asset selection. Select the asset in Unity and try again.");
         }
 
@@ -112,7 +112,7 @@ public sealed class UnityAssetReferenceService
             !IsAssetGuid(selection.AssetGuid))
         {
             return UnityAssetReferenceResult.Failure(
-                EditorErrorCodes.UnitySelectionUnavailable,
+                HostErrorCodes.UnitySelectionUnavailable,
                 "Unity's active asset selection uses an unsupported format.");
         }
 
@@ -133,7 +133,7 @@ public sealed class UnityAssetReferenceService
         if (!pathMatches || !fileNameMatches)
         {
             return UnityAssetReferenceResult.Failure(
-                EditorErrorCodes.UnitySelectionMismatch,
+                HostErrorCodes.UnitySelectionMismatch,
                 "The dropped file does not match the asset currently selected in Unity.");
         }
 
@@ -167,7 +167,7 @@ public sealed class UnityAssetReferenceService
         }
         catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
-            return new EditorErrorResponse(EditorErrorCodes.UnityAssetOpenFailed, exception.Message);
+            return new EditorErrorResponse(HostErrorCodes.UnityAssetOpenFailed, exception.Message);
         }
     }
 

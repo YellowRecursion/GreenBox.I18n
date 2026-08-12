@@ -1,14 +1,14 @@
-using GreenBox.I18n.Editor.Host.Contracts;
+using GreenBox.I18n.Workspace.Contracts;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace GreenBox.I18n.Editor.Host.Editor;
+namespace GreenBox.I18n.Workspace;
 
 /// <summary>
-/// Owns the server-side state of the current editor session.
+/// Owns the state of the active catalog working copy.
 /// </summary>
-public sealed class EditorSession
+public sealed partial class CatalogWorkspace
 {
     private readonly Lock _lock = new();
     private I18nCatalog? _catalog;
@@ -19,12 +19,13 @@ public sealed class EditorSession
     private readonly HashSet<string> _dirtyLocaleIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _dirtyEntryIds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _dirtyPaths = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, PreparedWorkspaceChangeSet> _changeSets = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Creates an immutable snapshot of the current session state.
     /// </summary>
     /// <returns>The current session snapshot.</returns>
-    public EditorSessionResponse GetSnapshot()
+    public WorkspaceResponse GetSnapshot()
     {
         lock (_lock)
         {
@@ -57,24 +58,7 @@ public sealed class EditorSession
     {
         lock (_lock)
         {
-            if (_catalogPath == null || _baselineHash == null)
-            {
-                return new CatalogSourceStatusResponse(false, false, "No catalog is open in the editor session.");
-            }
-
-            try
-            {
-                byte[] sourceBytes = File.ReadAllBytes(_catalogPath);
-                string sourceHash = Convert.ToHexString(SHA256.HashData(sourceBytes));
-                return new CatalogSourceStatusResponse(
-                    !string.Equals(sourceHash, _baselineHash, StringComparison.Ordinal),
-                    true,
-                    null);
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            {
-                return new CatalogSourceStatusResponse(true, false, exception.Message);
-            }
+            return GetSourceStatusUnsafe();
         }
     }
 
@@ -90,8 +74,8 @@ public sealed class EditorSession
             if (_catalog == null)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogNotOpen,
-                    "No catalog is open in the editor session.");
+                    WorkspaceErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the workspace.");
             }
 
             I18nEditResult editResult = _catalog.AddEntry(path);
@@ -134,8 +118,8 @@ public sealed class EditorSession
             if (_catalog == null)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogNotOpen,
-                    "No catalog is open in the editor session.");
+                    WorkspaceErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the workspace.");
             }
 
             var uniqueIds = new HashSet<long>();
@@ -201,8 +185,8 @@ public sealed class EditorSession
             if (_catalog == null)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogNotOpen,
-                    "No catalog is open in the editor session.");
+                    WorkspaceErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the workspace.");
             }
 
             var coreMoves = new List<I18nEntryMove>(moves.Count);
@@ -254,14 +238,14 @@ public sealed class EditorSession
             if (_catalog == null)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogNotOpen,
-                    "No catalog is open in the editor session.");
+                    WorkspaceErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the workspace.");
             }
 
             if (expectedRevision != _revision)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogRevisionMismatch,
+                    WorkspaceErrorCodes.CatalogRevisionMismatch,
                     $"The entry delta expected revision {expectedRevision}, but the working copy is at revision {_revision}.");
             }
 
@@ -323,14 +307,14 @@ public sealed class EditorSession
             if (_catalog == null)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogNotOpen,
-                    "No catalog is open in the editor session.");
+                    WorkspaceErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the workspace.");
             }
 
             if (expectedRevision != _revision)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogRevisionMismatch,
+                    WorkspaceErrorCodes.CatalogRevisionMismatch,
                     $"The locale edit expected revision {expectedRevision}, but the working copy is at revision {_revision}.");
             }
 
@@ -471,7 +455,7 @@ public sealed class EditorSession
     /// <param name="catalog">The loaded and validated catalog.</param>
     /// <param name="contentHash">The SHA-256 hash of the loaded source file.</param>
     /// <returns>A snapshot of the updated session state.</returns>
-    public EditorSessionResponse Open(string catalogPath, I18nCatalog catalog, string contentHash)
+    public WorkspaceResponse Open(string catalogPath, I18nCatalog catalog, string contentHash)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(catalogPath);
         ArgumentNullException.ThrowIfNull(catalog);
@@ -483,6 +467,7 @@ public sealed class EditorSession
             _catalog = catalog;
             _baselineCatalog = CloneCatalog(catalog);
             _baselineHash = contentHash;
+            _changeSets.Clear();
             ClearDirtyState();
             _revision++;
             return CreateSnapshot();
@@ -501,15 +486,15 @@ public sealed class EditorSession
             if (_catalog == null || _catalogPath == null || _baselineHash == null)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogNotOpen,
-                    "No catalog is open in the editor session.");
+                    WorkspaceErrorCodes.CatalogNotOpen,
+                    "No catalog is open in the workspace.");
             }
 
             I18nValidationResult validation = I18nCatalogValidator.Validate(_catalog);
             if (validation.HasErrors)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.InvalidCatalog,
+                    WorkspaceErrorCodes.InvalidCatalog,
                     $"Catalog contains {validation.ErrorCount} validation " +
                     (validation.ErrorCount == 1 ? "error." : "errors."));
             }
@@ -522,7 +507,7 @@ public sealed class EditorSession
                     !string.Equals(sourceHash, _baselineHash, StringComparison.Ordinal))
                 {
                     return CatalogEditResult.Failure(
-                        EditorErrorCodes.CatalogChangedExternally,
+                        WorkspaceErrorCodes.CatalogChangedExternally,
                         "The catalog file changed on disk after it was loaded.");
                 }
 
@@ -534,7 +519,7 @@ public sealed class EditorSession
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 return CatalogEditResult.Failure(
-                    EditorErrorCodes.CatalogWriteFailed,
+                    WorkspaceErrorCodes.CatalogWriteFailed,
                     exception.Message);
             }
 
@@ -568,7 +553,7 @@ public sealed class EditorSession
             {
                 return CatalogSourceMergeResult.Failure(new[]
                 {
-                    new I18nCatalogMergeConflict("$", "No catalog is open in the editor session."),
+                    new I18nCatalogMergeConflict("$", "No catalog is open in the workspace."),
                 });
             }
 
@@ -737,9 +722,9 @@ public sealed class EditorSession
         }
     }
 
-    private EditorSessionResponse CreateSnapshot()
+    private WorkspaceResponse CreateSnapshot()
     {
-        return new EditorSessionResponse(
+        return new WorkspaceResponse(
             _catalog != null,
             _revision,
             _catalogPath,
@@ -760,9 +745,14 @@ public sealed class EditorSession
             _dirtyLocaleIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
             _dirtyEntryIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
             _dirtyPaths.OrderBy(path => path, StringComparer.Ordinal).ToArray(),
-            _baselineCatalog == null ||
-            I18nCatalogJson.Serialize(_catalog) != I18nCatalogJson.Serialize(_baselineCatalog));
+            HasChangesUnsafe());
     }
+
+    private bool HasChangesUnsafe() =>
+        _baselineCatalog == null ||
+        _dirtyLocaleIds.Count != 0 ||
+        _dirtyEntryIds.Count != 0 ||
+        _dirtyPaths.Count != 0;
 
     private static CatalogLocaleResponse CreateLocaleResponse(I18nLocaleDefinition locale)
     {

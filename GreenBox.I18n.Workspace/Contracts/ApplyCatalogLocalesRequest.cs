@@ -1,4 +1,4 @@
-namespace GreenBox.I18n.Editor.Host.Contracts;
+namespace GreenBox.I18n.Workspace.Contracts;
 
 /// <summary>
 /// Requests an atomic replacement of locale settings and the default locale.

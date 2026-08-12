@@ -1,6 +1,7 @@
 using GreenBox.I18n.Editor.Host.Contracts;
 using GreenBox.I18n.Editor.Host.Editor;
 using GreenBox.I18n.Editor.Host.Infrastructure;
+using GreenBox.I18n.Workspace;
 
 namespace GreenBox.I18n.Editor.Host.Endpoints;
 
@@ -25,7 +26,7 @@ public static class UnityAssetEndpoints
 
     private static IResult Resolve(
         string assetGuid,
-        EditorSession session,
+        CatalogWorkspace session,
         UnityAssetReferenceService service)
     {
         UnityAssetReferenceResult result = service.Resolve(session.GetSnapshot().CatalogPath, assetGuid);
@@ -34,7 +35,7 @@ public static class UnityAssetEndpoints
 
     private static IResult ResolveDrop(
         ResolveDroppedUnityAssetRequest request,
-        EditorSession session,
+        CatalogWorkspace session,
         UnityAssetReferenceService service)
     {
         UnityAssetReferenceResult result = service.ResolveDrop(
@@ -45,7 +46,7 @@ public static class UnityAssetEndpoints
 
     private static IResult Open(
         OpenUnityAssetRequest request,
-        EditorSession session,
+        CatalogWorkspace session,
         UnityAssetReferenceService service)
     {
         EditorErrorResponse? error = service.Open(session.GetSnapshot().CatalogPath, request.AssetGuid);

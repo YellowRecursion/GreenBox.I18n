@@ -1,14 +1,14 @@
-using GreenBox.I18n.Editor.Host.Contracts;
-using GreenBox.I18n.Editor.Host.Editor;
+using GreenBox.I18n.Workspace.Contracts;
+using GreenBox.I18n.Workspace;
 
-namespace GreenBox.I18n.Editor.Host.Tests.Editor;
+namespace GreenBox.I18n.Editor.Host.Tests.Workspace;
 
-public sealed class EditorSessionLocaleTests
+public sealed class CatalogWorkspaceLocaleTests
 {
     [Fact]
     public void ApplyLocales_RemovalDeletesValuesAndAllowsDefaultReplacement()
     {
-        EditorSession session = OpenSession();
+        CatalogWorkspace session = OpenSession();
         CatalogResponse before = session.GetCatalogSnapshot()!;
 
         CatalogEditResult result = session.ApplyLocales(
@@ -33,7 +33,7 @@ public sealed class EditorSessionLocaleTests
     [Fact]
     public void ApplyLocales_RenamePropagatesEveryCatalogReference()
     {
-        EditorSession session = OpenSession();
+        CatalogWorkspace session = OpenSession();
         CatalogResponse before = session.GetCatalogSnapshot()!;
 
         CatalogEditResult result = session.ApplyLocales(
@@ -76,7 +76,7 @@ public sealed class EditorSessionLocaleTests
         Assert.False(restoredEntry.Locales.ContainsKey("en-US"));
     }
 
-    private static EditorSession OpenSession()
+    private static CatalogWorkspace OpenSession()
     {
         var catalog = new I18nCatalog
         {
@@ -101,7 +101,7 @@ public sealed class EditorSessionLocaleTests
             },
         };
 
-        var session = new EditorSession();
+        var session = new CatalogWorkspace();
         session.Open("C:\\catalog.json", catalog, "CONTENT_HASH");
         return session;
     }

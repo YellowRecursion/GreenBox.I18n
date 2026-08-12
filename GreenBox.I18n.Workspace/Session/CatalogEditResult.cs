@@ -1,13 +1,13 @@
-using GreenBox.I18n.Editor.Host.Contracts;
+using GreenBox.I18n.Workspace.Contracts;
 
-namespace GreenBox.I18n.Editor.Host.Editor;
+namespace GreenBox.I18n.Workspace;
 
 /// <summary>
-/// Represents the result of an editor working-copy mutation.
+/// Represents the result of a catalog working-copy mutation.
 /// </summary>
 public sealed class CatalogEditResult
 {
-    private CatalogEditResult(CatalogResponse? catalog, EditorErrorResponse? error)
+    private CatalogEditResult(CatalogResponse? catalog, WorkspaceErrorResponse? error)
     {
         Catalog = catalog;
         Error = error;
@@ -21,7 +21,7 @@ public sealed class CatalogEditResult
     /// <summary>
     /// Gets the expected operation error after a failed operation.
     /// </summary>
-    public EditorErrorResponse? Error { get; }
+    public WorkspaceErrorResponse? Error { get; }
 
     /// <summary>
     /// Creates a successful edit result.
@@ -41,6 +41,6 @@ public sealed class CatalogEditResult
     /// <returns>A failed result.</returns>
     public static CatalogEditResult Failure(string code, string message)
     {
-        return new CatalogEditResult(null, new EditorErrorResponse(code, message));
+        return new CatalogEditResult(null, new WorkspaceErrorResponse(code, message));
     }
 }

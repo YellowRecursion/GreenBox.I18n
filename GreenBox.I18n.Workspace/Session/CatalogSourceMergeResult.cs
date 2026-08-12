@@ -1,15 +1,15 @@
-using GreenBox.I18n.Editor.Host.Contracts;
+using GreenBox.I18n.Workspace.Contracts;
 
-namespace GreenBox.I18n.Editor.Host.Editor;
+namespace GreenBox.I18n.Workspace;
 
 /// <summary>
-/// Represents the result of merging a source catalog into the editor working copy.
+/// Represents the result of merging a source catalog into the workspace working copy.
 /// </summary>
 public sealed class CatalogSourceMergeResult
 {
     private CatalogSourceMergeResult(
         CatalogResponse? catalog,
-        EditorErrorResponse? error,
+        WorkspaceErrorResponse? error,
         IReadOnlyList<I18nCatalogMergeConflict> conflicts)
     {
         Catalog = catalog;
@@ -21,7 +21,7 @@ public sealed class CatalogSourceMergeResult
     public CatalogResponse? Catalog { get; }
 
     /// <summary>Gets the operation error when the merge failed.</summary>
-    public EditorErrorResponse? Error { get; }
+    public WorkspaceErrorResponse? Error { get; }
 
     /// <summary>Gets the field-level conflicts that prevented the merge.</summary>
     public IReadOnlyList<I18nCatalogMergeConflict> Conflicts { get; }
@@ -37,8 +37,8 @@ public sealed class CatalogSourceMergeResult
     {
         return new CatalogSourceMergeResult(
             null,
-            new EditorErrorResponse(
-                EditorErrorCodes.CatalogMergeConflict,
+            new WorkspaceErrorResponse(
+                WorkspaceErrorCodes.CatalogMergeConflict,
                 $"Automatic merge found {conflicts.Count} conflicting " +
                 (conflicts.Count == 1 ? "field." : "fields.")),
             conflicts);

@@ -93,14 +93,14 @@ public sealed class UnityEditorCommandTransport
             }
 
             return UnityEditorCommandTransportResult.Failure(
-                EditorErrorCodes.UnityEditorCommandTimeout,
+                HostErrorCodes.UnityEditorCommandTimeout,
                 "Unity did not answer the navigation command in time.");
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or JsonException)
         {
             return UnityEditorCommandTransportResult.Failure(
-                EditorErrorCodes.UnityEditorCommandFailed,
+                HostErrorCodes.UnityEditorCommandFailed,
                 exception.Message);
         }
         finally

@@ -1,9 +1,9 @@
-using GreenBox.I18n.Editor.Host.Editor;
+using GreenBox.I18n.Workspace.Contracts;
 using Newtonsoft.Json;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace GreenBox.I18n.Editor.Host.Infrastructure;
+namespace GreenBox.I18n.Workspace;
 
 /// <summary>
 /// Loads and validates source catalog files from the local file system.
@@ -11,7 +11,7 @@ namespace GreenBox.I18n.Editor.Host.Infrastructure;
 public sealed class CatalogFileLoader
 {
     /// <summary>
-    /// Loads a catalog file without modifying the current editor session.
+    /// Loads a catalog file without modifying the current workspace.
     /// </summary>
     /// <param name="path">The catalog path supplied by the client.</param>
     /// <param name="cancellationToken">A token used to cancel file reading.</param>
@@ -21,7 +21,7 @@ public sealed class CatalogFileLoader
         if (string.IsNullOrWhiteSpace(path))
         {
             return CatalogLoadResult.Failure(
-                EditorErrorCodes.MissingCatalogPath,
+                WorkspaceErrorCodes.MissingCatalogPath,
                 "A catalog path is required.");
         }
 
@@ -32,13 +32,13 @@ public sealed class CatalogFileLoader
         }
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
         {
-            return CatalogLoadResult.Failure(EditorErrorCodes.InvalidCatalogPath, exception.Message);
+            return CatalogLoadResult.Failure(WorkspaceErrorCodes.InvalidCatalogPath, exception.Message);
         }
 
         if (!File.Exists(catalogPath))
         {
             return CatalogLoadResult.Failure(
-                EditorErrorCodes.CatalogNotFound,
+                WorkspaceErrorCodes.CatalogNotFound,
                 $"Catalog file was not found: {catalogPath}");
         }
 
@@ -49,7 +49,7 @@ public sealed class CatalogFileLoader
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return CatalogLoadResult.Failure(EditorErrorCodes.CatalogReadFailed, exception.Message);
+            return CatalogLoadResult.Failure(WorkspaceErrorCodes.CatalogReadFailed, exception.Message);
         }
 
         I18nCatalog catalog;
@@ -60,14 +60,14 @@ public sealed class CatalogFileLoader
         }
         catch (Exception exception) when (exception is JsonException or DecoderFallbackException)
         {
-            return CatalogLoadResult.Failure(EditorErrorCodes.InvalidCatalogJson, exception.Message);
+            return CatalogLoadResult.Failure(WorkspaceErrorCodes.InvalidCatalogJson, exception.Message);
         }
 
         I18nValidationResult validation = I18nCatalogValidator.Validate(catalog);
         if (validation.HasErrors)
         {
             return CatalogLoadResult.Failure(
-                EditorErrorCodes.InvalidCatalog,
+                WorkspaceErrorCodes.InvalidCatalog,
                 $"Catalog contains {validation.ErrorCount} validation " +
                 (validation.ErrorCount == 1 ? "error." : "errors."));
         }

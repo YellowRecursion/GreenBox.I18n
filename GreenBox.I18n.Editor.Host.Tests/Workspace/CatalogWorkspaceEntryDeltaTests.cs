@@ -1,14 +1,14 @@
-using GreenBox.I18n.Editor.Host.Contracts;
-using GreenBox.I18n.Editor.Host.Editor;
+using GreenBox.I18n.Workspace.Contracts;
+using GreenBox.I18n.Workspace;
 
-namespace GreenBox.I18n.Editor.Host.Tests.Editor;
+namespace GreenBox.I18n.Editor.Host.Tests.Workspace;
 
-public sealed class EditorSessionEntryDeltaTests
+public sealed class CatalogWorkspaceEntryDeltaTests
 {
     [Fact]
     public void ApplyEntryDelta_RestoresRemovedEntryWithSameId()
     {
-        EditorSession session = OpenSession();
+        CatalogWorkspace session = OpenSession();
         CatalogEditResult addResult = session.AddEntry("Undo.Created");
         CatalogEntryResponse created = Assert.Single(
             addResult.Catalog!.Entries,
@@ -34,7 +34,7 @@ public sealed class EditorSessionEntryDeltaTests
     [Fact]
     public void ApplyEntryDelta_InvalidResultDoesNotChangeWorkingCopy()
     {
-        EditorSession session = OpenSession();
+        CatalogWorkspace session = OpenSession();
         CatalogResponse before = session.GetCatalogSnapshot()!;
 
         CatalogEditResult result = session.ApplyEntryDelta(
@@ -63,7 +63,7 @@ public sealed class EditorSessionEntryDeltaTests
     [Fact]
     public void ApplyEntryDelta_StaleRevisionDoesNotChangeWorkingCopy()
     {
-        EditorSession session = OpenSession();
+        CatalogWorkspace session = OpenSession();
         CatalogResponse before = session.GetCatalogSnapshot()!;
         session.AddEntry("Newer.Entry");
         CatalogResponse current = session.GetCatalogSnapshot()!;
@@ -73,7 +73,7 @@ public sealed class EditorSessionEntryDeltaTests
             Array.Empty<CatalogEntryEditRequest>(),
             new[] { "3857333080842832991" });
 
-        Assert.Equal(EditorErrorCodes.CatalogRevisionMismatch, result.Error?.Code);
+        Assert.Equal(WorkspaceErrorCodes.CatalogRevisionMismatch, result.Error?.Code);
         CatalogResponse after = session.GetCatalogSnapshot()!;
         Assert.Equal(current.Revision, after.Revision);
         Assert.Contains(after.Entries, entry => entry.Id == "3857333080842832991");
@@ -83,7 +83,7 @@ public sealed class EditorSessionEntryDeltaTests
     [Fact]
     public void ApplyEntryDelta_RestoresCompleteLocalizedEntryContent()
     {
-        EditorSession session = OpenSession();
+        CatalogWorkspace session = OpenSession();
         CatalogResponse before = session.GetCatalogSnapshot()!;
         CatalogEntryResponse existing = Assert.Single(before.Entries);
         CatalogEditResult removeResult = session.RemoveEntries(new[] { existing.Id });
@@ -100,7 +100,7 @@ public sealed class EditorSessionEntryDeltaTests
         Assert.Equal("123456", restored.Locales["en"].Asset?.LocalFileId);
     }
 
-    private static EditorSession OpenSession()
+    private static CatalogWorkspace OpenSession()
     {
         var catalog = new I18nCatalog
         {
@@ -132,7 +132,7 @@ public sealed class EditorSessionEntryDeltaTests
             },
         };
 
-        var session = new EditorSession();
+        var session = new CatalogWorkspace();
         session.Open("C:\\catalog.json", catalog, "CONTENT_HASH");
         return session;
     }

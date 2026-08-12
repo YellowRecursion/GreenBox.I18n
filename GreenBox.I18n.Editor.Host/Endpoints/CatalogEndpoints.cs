@@ -1,6 +1,8 @@
 using GreenBox.I18n.Editor.Host.Contracts;
 using GreenBox.I18n.Editor.Host.Editor;
 using GreenBox.I18n.Editor.Host.Infrastructure;
+using GreenBox.I18n.Workspace;
+using GreenBox.I18n.Workspace.Contracts;
 
 namespace GreenBox.I18n.Editor.Host.Endpoints;
 
@@ -31,29 +33,29 @@ public static class CatalogEndpoints
         return endpoints;
     }
 
-    private static IResult GetSourceStatus(EditorSession session)
+    private static IResult GetSourceStatus(CatalogWorkspace session)
     {
         if (!session.GetSnapshot().HasCatalog)
         {
             return Results.NotFound(new EditorErrorResponse(
-                EditorErrorCodes.CatalogNotOpen,
+                WorkspaceErrorCodes.CatalogNotOpen,
                 "No catalog is open in the editor session."));
         }
 
         return Results.Ok(session.GetSourceStatus());
     }
 
-    private static IResult GetCatalog(EditorSession session)
+    private static IResult GetCatalog(CatalogWorkspace session)
     {
         CatalogResponse? catalog = session.GetCatalogSnapshot();
         return catalog == null
             ? Results.NotFound(new EditorErrorResponse(
-                EditorErrorCodes.CatalogNotOpen,
+                WorkspaceErrorCodes.CatalogNotOpen,
                 "No catalog is open in the editor session."))
             : Results.Ok(catalog);
     }
 
-    private static IResult AddEntry(AddCatalogEntryRequest request, EditorSession session)
+    private static IResult AddEntry(AddCatalogEntryRequest request, CatalogWorkspace session)
     {
         CatalogEditResult result = session.AddEntry(request.Path);
         return result.Error == null
@@ -61,7 +63,7 @@ public static class CatalogEndpoints
             : Results.Json(result.Error, statusCode: StatusCodes.Status422UnprocessableEntity);
     }
 
-    private static IResult RemoveEntry(long id, EditorSession session)
+    private static IResult RemoveEntry(long id, CatalogWorkspace session)
     {
         CatalogEditResult result = session.RemoveEntry(id);
         return result.Error == null
@@ -69,7 +71,7 @@ public static class CatalogEndpoints
             : Results.Json(result.Error, statusCode: StatusCodes.Status422UnprocessableEntity);
     }
 
-    private static IResult RemoveEntries(RemoveCatalogEntriesRequest request, EditorSession session)
+    private static IResult RemoveEntries(RemoveCatalogEntriesRequest request, CatalogWorkspace session)
     {
         CatalogEditResult result = session.RemoveEntries(request.Ids);
         return result.Error == null
@@ -77,7 +79,7 @@ public static class CatalogEndpoints
             : Results.Json(result.Error, statusCode: StatusCodes.Status422UnprocessableEntity);
     }
 
-    private static IResult MoveEntries(MoveCatalogEntriesRequest request, EditorSession session)
+    private static IResult MoveEntries(MoveCatalogEntriesRequest request, CatalogWorkspace session)
     {
         CatalogEditResult result = session.MoveEntries(request.Moves);
         return result.Error == null
@@ -87,7 +89,7 @@ public static class CatalogEndpoints
 
     private static IResult ApplyEntryDelta(
         ApplyCatalogEntryDeltaRequest request,
-        EditorSession session)
+        CatalogWorkspace session)
     {
         CatalogEditResult result = session.ApplyEntryDelta(
             request.ExpectedRevision,
@@ -98,7 +100,7 @@ public static class CatalogEndpoints
             return Results.Ok(result.Catalog);
         }
 
-        int statusCode = result.Error.Code == EditorErrorCodes.CatalogRevisionMismatch
+        int statusCode = result.Error.Code == WorkspaceErrorCodes.CatalogRevisionMismatch
             ? StatusCodes.Status409Conflict
             : StatusCodes.Status422UnprocessableEntity;
         return Results.Json(result.Error, statusCode: statusCode);
@@ -106,7 +108,7 @@ public static class CatalogEndpoints
 
     private static IResult ApplyLocales(
         ApplyCatalogLocalesRequest request,
-        EditorSession session)
+        CatalogWorkspace session)
     {
         CatalogEditResult result = session.ApplyLocales(
             request.ExpectedRevision,
@@ -119,13 +121,13 @@ public static class CatalogEndpoints
             return Results.Ok(result.Catalog);
         }
 
-        int statusCode = result.Error.Code == EditorErrorCodes.CatalogRevisionMismatch
+        int statusCode = result.Error.Code == WorkspaceErrorCodes.CatalogRevisionMismatch
             ? StatusCodes.Status409Conflict
             : StatusCodes.Status422UnprocessableEntity;
         return Results.Json(result.Error, statusCode: statusCode);
     }
 
-    private static IResult Save(SaveCatalogRequest request, EditorSession session)
+    private static IResult Save(SaveCatalogRequest request, CatalogWorkspace session)
     {
         CatalogEditResult result = session.Save(request.OverwriteExternalChanges);
         if (result.Error == null)
@@ -133,14 +135,14 @@ public static class CatalogEndpoints
             return Results.Ok(result.Catalog);
         }
 
-        int statusCode = result.Error.Code == EditorErrorCodes.CatalogChangedExternally
+        int statusCode = result.Error.Code == WorkspaceErrorCodes.CatalogChangedExternally
             ? StatusCodes.Status409Conflict
             : StatusCodes.Status422UnprocessableEntity;
         return Results.Json(result.Error, statusCode: statusCode);
     }
 
     private static async Task<IResult> RevertAsync(
-        EditorSession session,
+        CatalogWorkspace session,
         CatalogFileLoader loader,
         CancellationToken cancellationToken)
     {
@@ -148,7 +150,7 @@ public static class CatalogEndpoints
         if (path == null)
         {
             return Results.NotFound(new EditorErrorResponse(
-                EditorErrorCodes.CatalogNotOpen,
+                WorkspaceErrorCodes.CatalogNotOpen,
                 "No catalog is open in the editor session."));
         }
 
@@ -163,7 +165,7 @@ public static class CatalogEndpoints
     }
 
     private static async Task<IResult> MergeSourceAsync(
-        EditorSession session,
+        CatalogWorkspace session,
         CatalogFileLoader loader,
         CancellationToken cancellationToken)
     {
@@ -171,7 +173,7 @@ public static class CatalogEndpoints
         if (path == null)
         {
             return Results.NotFound(new EditorErrorResponse(
-                EditorErrorCodes.CatalogNotOpen,
+                WorkspaceErrorCodes.CatalogNotOpen,
                 "No catalog is open in the editor session."));
         }
 

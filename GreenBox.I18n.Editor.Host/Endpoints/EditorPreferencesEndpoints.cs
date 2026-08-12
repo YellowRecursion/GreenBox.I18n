@@ -31,7 +31,7 @@ public static class EditorPreferencesEndpoints
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return Results.Json(
-                new EditorErrorResponse(EditorErrorCodes.PreferencesWriteFailed, exception.Message),
+                new EditorErrorResponse(HostErrorCodes.PreferencesWriteFailed, exception.Message),
                 statusCode: StatusCodes.Status422UnprocessableEntity);
         }
     }

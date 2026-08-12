@@ -1,6 +1,6 @@
-using GreenBox.I18n.Editor.Host.Contracts;
+using GreenBox.I18n.Workspace.Contracts;
 
-namespace GreenBox.I18n.Editor.Host.Infrastructure;
+namespace GreenBox.I18n.Workspace;
 
 /// <summary>
 /// Contains either a loaded catalog and its normalized path or an operation error.
@@ -11,7 +11,7 @@ public sealed class CatalogLoadResult
         I18nCatalog? catalog,
         string? catalogPath,
         string? contentHash,
-        EditorErrorResponse? error)
+        WorkspaceErrorResponse? error)
     {
         Catalog = catalog;
         CatalogPath = catalogPath;
@@ -29,7 +29,7 @@ public sealed class CatalogLoadResult
     public string? ContentHash { get; }
 
     /// <summary>Gets the operation error when loading failed.</summary>
-    public EditorErrorResponse? Error { get; }
+    public WorkspaceErrorResponse? Error { get; }
 
     /// <summary>Gets whether the catalog was loaded successfully.</summary>
     public bool IsSuccess => Catalog != null;
@@ -43,6 +43,6 @@ public sealed class CatalogLoadResult
     /// <summary>Creates a failed catalog load result.</summary>
     public static CatalogLoadResult Failure(string code, string message)
     {
-        return new CatalogLoadResult(null, null, null, new EditorErrorResponse(code, message));
+        return new CatalogLoadResult(null, null, null, new WorkspaceErrorResponse(code, message));
     }
 }

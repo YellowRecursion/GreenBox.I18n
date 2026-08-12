@@ -1,4 +1,4 @@
-namespace GreenBox.I18n.Editor.Host.Contracts;
+namespace GreenBox.I18n.Workspace.Contracts;
 
 /// <summary>
 /// Describes the state exposed to an editor client.
@@ -9,7 +9,7 @@ namespace GreenBox.I18n.Editor.Host.Contracts;
 /// <param name="DefaultLocale">The default locale of the loaded catalog.</param>
 /// <param name="LocaleCount">The number of locales in the loaded catalog.</param>
 /// <param name="EntryCount">The number of entries in the loaded catalog.</param>
-public sealed record EditorSessionResponse(
+public sealed record WorkspaceResponse(
     bool HasCatalog,
     long Revision,
     string? CatalogPath,

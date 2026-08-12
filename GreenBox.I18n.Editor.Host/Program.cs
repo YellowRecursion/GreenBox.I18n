@@ -1,11 +1,11 @@
 using GreenBox.I18n.Editor.Host.Contracts;
-using GreenBox.I18n.Editor.Host.Editor;
 using GreenBox.I18n.Editor.Host.Endpoints;
 using GreenBox.I18n.Editor.Host.Infrastructure;
+using GreenBox.I18n.Workspace;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<EditorSession>();
+builder.Services.AddSingleton<CatalogWorkspace>();
 builder.Services.AddSingleton<CatalogFileLoader>();
 builder.Services.AddSingleton<CatalogFilePicker>();
 builder.Services.AddSingleton<UnityProjectLocator>();
@@ -29,7 +29,7 @@ if (preferenceSnapshot.ReopenLastCatalog &&
         CancellationToken.None);
     if (loadResult.IsSuccess)
     {
-        app.Services.GetRequiredService<EditorSession>().Open(
+        app.Services.GetRequiredService<CatalogWorkspace>().Open(
             loadResult.CatalogPath!,
             loadResult.Catalog!,
             loadResult.ContentHash!);
@@ -40,12 +40,13 @@ if (preferenceSnapshot.ReopenLastCatalog &&
     }
 }
 
-app.MapEditorSessionEndpoints();
+app.MapSessionEndpoints();
 app.MapCatalogEndpoints();
 app.MapMessageEndpoints();
 app.MapUnityAssetEndpoints();
 app.MapUnityProjectEndpoints();
 app.MapUsageIndexEndpoints();
 app.MapEditorPreferencesEndpoints();
+app.MapWorkspaceEndpoints();
 
 app.Run();

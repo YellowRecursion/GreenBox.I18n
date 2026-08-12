@@ -1,16 +1,16 @@
-using GreenBox.I18n.Editor.Host.Contracts;
-using GreenBox.I18n.Editor.Host.Editor;
+using GreenBox.I18n.Workspace.Contracts;
+using GreenBox.I18n.Workspace;
 
-namespace GreenBox.I18n.Editor.Host.Tests.Editor;
+namespace GreenBox.I18n.Editor.Host.Tests.Workspace;
 
-public sealed class EditorSessionMergeTests
+public sealed class CatalogWorkspaceMergeTests
 {
     [Fact]
     public void MergeSource_IndependentWebAndDiskChanges_UpdatesWorkingCopyAndBaseline()
     {
         I18nCatalog baseline = CreateCatalog();
         I18nCatalog incoming = Clone(baseline);
-        var session = new EditorSession();
+        var session = new CatalogWorkspace();
         session.Open("C:\\catalog.json", baseline, "BASE_HASH");
         session.AddEntry("Local.Entry");
         incoming.Entries[0].Locales["en"].Text = "Changed on disk";
@@ -32,7 +32,7 @@ public sealed class EditorSessionMergeTests
     {
         I18nCatalog baseline = CreateCatalog();
         I18nCatalog incoming = Clone(baseline);
-        var session = new EditorSession();
+        var session = new CatalogWorkspace();
         session.Open("C:\\catalog.json", baseline, "BASE_HASH");
         CatalogResponse opened = session.GetCatalogSnapshot()!;
         CatalogEntryResponse entry = Assert.Single(opened.Entries);

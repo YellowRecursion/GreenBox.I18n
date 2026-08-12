@@ -1,4 +1,4 @@
-namespace GreenBox.I18n.Editor.Host.Contracts;
+namespace GreenBox.I18n.Workspace.Contracts;
 
 /// <summary>
 /// Describes whether the catalog source file still matches the editor baseline.

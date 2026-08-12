@@ -1,6 +1,7 @@
 using GreenBox.I18n.Editor.Host.Contracts;
 using GreenBox.I18n.Editor.Host.Editor;
 using GreenBox.I18n.Editor.Host.Infrastructure;
+using GreenBox.I18n.Workspace;
 
 namespace GreenBox.I18n.Editor.Host.Endpoints;
 
@@ -16,7 +17,7 @@ public static class UnityProjectEndpoints
     {
         endpoints.MapGet(
             "/api/unity-project",
-            (EditorSession session, UnityProjectPresenceService presence) =>
+            (CatalogWorkspace session, UnityProjectPresenceService presence) =>
                 presence.GetStatus(session.GetSnapshot().CatalogPath));
         return endpoints;
     }

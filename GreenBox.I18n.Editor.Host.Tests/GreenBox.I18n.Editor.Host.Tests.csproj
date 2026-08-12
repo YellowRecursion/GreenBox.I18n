@@ -16,6 +16,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\GreenBox.I18n.Editor.Host\GreenBox.I18n.Editor.Host.csproj" />
+        <ProjectReference Include="..\GreenBox.I18n.Workspace\GreenBox.I18n.Workspace.csproj" />
     </ItemGroup>
 
     <ItemGroup>

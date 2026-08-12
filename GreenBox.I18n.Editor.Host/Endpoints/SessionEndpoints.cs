@@ -3,24 +3,26 @@ using System.Runtime.InteropServices;
 using GreenBox.I18n.Editor.Host.Editor;
 using GreenBox.I18n.Editor.Host.Contracts;
 using GreenBox.I18n.Editor.Host.Infrastructure;
+using GreenBox.I18n.Workspace;
+using GreenBox.I18n.Workspace.Contracts;
 
 namespace GreenBox.I18n.Editor.Host.Endpoints;
 
 /// <summary>
 /// Registers endpoints related to the editor session.
 /// </summary>
-public static class EditorSessionEndpoints
+public static class SessionEndpoints
 {
     /// <summary>
     /// Maps editor session endpoints.
     /// </summary>
     /// <param name="endpoints">The endpoint route builder.</param>
     /// <returns>The supplied endpoint route builder.</returns>
-    public static IEndpointRouteBuilder MapEditorSessionEndpoints(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapSessionEndpoints(this IEndpointRouteBuilder endpoints)
     {
         RouteGroupBuilder sessionEndpoints = endpoints.MapGroup("/api/session");
 
-        sessionEndpoints.MapGet(string.Empty, (EditorSession session) => session.GetSnapshot());
+        sessionEndpoints.MapGet(string.Empty, (CatalogWorkspace session) => session.GetSnapshot());
         sessionEndpoints.MapPost("/open", OpenCatalogAsync);
         sessionEndpoints.MapPost("/pick-file", PickCatalogFileAsync);
         sessionEndpoints.MapPost("/open-file", OpenCatalogFile);
@@ -31,21 +33,21 @@ public static class EditorSessionEndpoints
     private static async Task<IResult> OpenCatalogAsync(
         OpenCatalogRequest request,
         CatalogFileLoader loader,
-        EditorSession session,
+        CatalogWorkspace session,
         EditorPreferencesStore preferences,
         CancellationToken cancellationToken)
     {
         CatalogLoadResult loadResult = await loader.LoadAsync(request.Path, cancellationToken);
         if (!loadResult.IsSuccess)
         {
-            int statusCode = loadResult.Error!.Code == EditorErrorCodes.CatalogNotFound
+            int statusCode = loadResult.Error!.Code == WorkspaceErrorCodes.CatalogNotFound
                 ? StatusCodes.Status404NotFound
                 : StatusCodes.Status422UnprocessableEntity;
 
             return Results.Json(loadResult.Error, statusCode: statusCode);
         }
 
-        EditorSessionResponse response = session.Open(
+        WorkspaceResponse response = session.Open(
             loadResult.CatalogPath!,
             loadResult.Catalog!,
             loadResult.ContentHash!);
@@ -72,18 +74,18 @@ public static class EditorSessionEndpoints
             exception is PlatformNotSupportedException or COMException)
         {
             return Results.Json(
-                new EditorErrorResponse(EditorErrorCodes.CatalogOpenFailed, exception.Message),
+                new EditorErrorResponse(HostErrorCodes.CatalogOpenFailed, exception.Message),
                 statusCode: StatusCodes.Status501NotImplemented);
         }
     }
 
-    private static IResult OpenCatalogFile(EditorSession session)
+    private static IResult OpenCatalogFile(CatalogWorkspace session)
     {
         string? catalogPath = session.GetSnapshot().CatalogPath;
         if (string.IsNullOrWhiteSpace(catalogPath))
         {
             return Results.Json(
-                new EditorErrorResponse(EditorErrorCodes.CatalogNotOpen, "No catalog is open."),
+                new EditorErrorResponse(WorkspaceErrorCodes.CatalogNotOpen, "No catalog is open."),
                 statusCode: StatusCodes.Status409Conflict);
         }
 
@@ -96,7 +98,7 @@ public static class EditorSessionEndpoints
             exception is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             return Results.Json(
-                new EditorErrorResponse(EditorErrorCodes.CatalogOpenFailed, exception.Message),
+                new EditorErrorResponse(HostErrorCodes.CatalogOpenFailed, exception.Message),
                 statusCode: StatusCodes.Status422UnprocessableEntity);
         }
     }

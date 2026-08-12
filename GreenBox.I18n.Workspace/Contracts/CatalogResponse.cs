@@ -1,4 +1,4 @@
-namespace GreenBox.I18n.Editor.Host.Contracts;
+namespace GreenBox.I18n.Workspace.Contracts;
 
 /// <summary>
 /// Contains an immutable client-facing snapshot of the catalog working copy.

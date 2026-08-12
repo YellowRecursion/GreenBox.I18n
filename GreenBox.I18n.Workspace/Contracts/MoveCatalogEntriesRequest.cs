@@ -1,4 +1,4 @@
-namespace GreenBox.I18n.Editor.Host.Contracts;
+namespace GreenBox.I18n.Workspace.Contracts;
 
 /// <summary>
 /// Requests atomic path changes for several catalog entries.

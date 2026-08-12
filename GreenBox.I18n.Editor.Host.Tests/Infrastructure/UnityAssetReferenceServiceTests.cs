@@ -44,7 +44,7 @@ public sealed class UnityAssetReferenceServiceTests
 
         UnityAssetReferenceResult result = service.ResolveDrop(project.CatalogPath, "Defeat.mp3");
 
-        Assert.Equal(EditorErrorCodes.UnitySelectionMismatch, result.Error?.Code);
+        Assert.Equal(HostErrorCodes.UnitySelectionMismatch, result.Error?.Code);
         Assert.Null(result.Reference);
     }
 
