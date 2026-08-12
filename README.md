@@ -34,7 +34,7 @@ See [INSTALL.md](INSTALL.md) for the complete one-time setup and update behavior
 The complete local release is one command:
 
 ```powershell
-.\eng\Build-Release.ps1 -Version 0.1.0-beta.2 -UpdateSource https://github.com/OWNER/REPOSITORY -ReleaseNotes .\RELEASE_NOTES.md
+.\eng\Build-Release.ps1 -Version 0.1.0-beta.2 -UpdateSource https://github.com/YellowRecursion/GreenBox.I18n -ReleaseNotes .\RELEASE_NOTES.md
 ```
 
 See [eng/RELEASING.md](eng/RELEASING.md) before publishing a release.

@@ -24,11 +24,11 @@ application. The editor is never restarted in the middle of work without an expl
 In Unity Package Manager choose **Add package from git URL** and use:
 
 ```text
-https://github.com/OWNER/REPOSITORY.git?path=/Unity/Packages/com.greenbox.i18n#v0.1.0-beta.1
+https://github.com/YellowRecursion/GreenBox.I18n.git?path=/Unity/Packages/com.greenbox.i18n#v0.1.0-beta.1
 ```
 
-Replace `OWNER/REPOSITORY` with the published repository and the suffix with the desired release
-tag. GreenBox creates the project catalog and generated runtime asset when Unity opens.
+Change the tag suffix to the desired release. GreenBox creates the project catalog and generated
+runtime asset when Unity opens.
 
 To update, change only the tag after `#` to the newer release. Catalog data remains in the Unity
 project and is not owned by the package cache.

@@ -16,7 +16,7 @@ Prerequisites: Windows, .NET 10 SDK, Node.js/npm, PowerShell, and an installed R
 ```powershell
 .\eng\Build-Release.ps1 `
   -Version 0.1.0-beta.2 `
-  -UpdateSource https://github.com/OWNER/REPOSITORY `
+  -UpdateSource https://github.com/YellowRecursion/GreenBox.I18n `
   -ReleaseNotes .\RELEASE_NOTES.md
 ```
 
@@ -59,7 +59,7 @@ For an emergency manual publication after a successful build:
 ```powershell
 $env:GITHUB_TOKEN = '...'
 .\eng\Publish-GitHub-Beta.ps1 `
-  -RepositoryUrl https://github.com/OWNER/REPOSITORY `
+  -RepositoryUrl https://github.com/YellowRecursion/GreenBox.I18n `
   -Tag v0.1.0-beta.2
 ```
 
