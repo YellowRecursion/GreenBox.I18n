@@ -1,9 +1,10 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type ComponentRef,
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
@@ -43,6 +44,8 @@ import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVis
 import { EntryAssetInput } from './EntryAssetInput'
 import { commonCultureNames } from './localeCultures'
 import { EntryUsageLocations } from './EntryUsageLocations'
+
+const Mf2CodeEditor = lazy(() => import('../../shared/ui/code-editor/Mf2CodeEditor'))
 
 interface CatalogInspectorProps {
   selection: CatalogSelectionItem[]
@@ -732,7 +735,6 @@ function EntryTextInput({
   const [error, setError] = useState<string>()
   const [isSaving, setIsSaving] = useState(false)
   const skipCompactBlurRef = useRef(false)
-  const focusEditorRef = useRef<ComponentRef<typeof Input.TextArea>>(null)
 
   useEffect(() => {
     setDraft(value ?? '')
@@ -910,30 +912,27 @@ function EntryTextInput({
         afterOpenChange={(open) => {
           if (open) {
             skipCompactBlurRef.current = false
-            focusEditorRef.current?.focus({ cursor: 'end' })
           }
         }}
         onCancel={() => void closeExpanded()}
       >
-        <Input.TextArea
-          ref={focusEditorRef}
-          aria-label={`${locale.displayName} focus editor`}
-          placeholder="No translation"
-          value={draft}
-          disabled={isSaving}
-          status={error ? 'error' : undefined}
-          style={{
-            flex: 1,
-            minHeight: 0,
-            resize: 'none',
-            overflow: 'auto',
-            background: 'transparent',
-          }}
-          onChange={(event) => {
-            setDraft(event.target.value)
-            setError(undefined)
-          }}
-        />
+        {isExpanded && (
+          <Suspense fallback={<div style={{ flex: 1, minHeight: 0 }} />}>
+            <Mf2CodeEditor
+              ariaLabel={`${locale.displayName} focus editor`}
+              placeholder="No translation"
+              value={draft}
+              disabled={isSaving}
+              status={error ? 'error' : undefined}
+              autoFocus
+              onEscape={() => void closeExpanded()}
+              onChange={(text) => {
+                setDraft(text)
+                setError(undefined)
+              }}
+            />
+          </Suspense>
+        )}
         {error && (
           <Typography.Text type="danger" style={{ marginTop: layoutTokens.spacing.xSmall }}>
             {error}
