@@ -42,6 +42,7 @@ if (preferenceSnapshot.ReopenLastCatalog &&
 
 app.MapEditorSessionEndpoints();
 app.MapCatalogEndpoints();
+app.MapMessageEndpoints();
 app.MapUnityAssetEndpoints();
 app.MapUnityProjectEndpoints();
 app.MapUsageIndexEndpoints();

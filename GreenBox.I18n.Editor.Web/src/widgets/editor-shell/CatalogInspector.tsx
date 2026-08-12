@@ -39,6 +39,8 @@ import {
 import { layoutTokens } from '../../design/layoutTokens'
 import type { CatalogAssetReference, CatalogEntry, CatalogLocale } from '../../entities/catalog/model/catalog'
 import { LocaleFlag } from '../../entities/catalog/ui/LocaleFlag'
+import { useMessageAnalysis } from '../../entities/message/model/useMessageAnalysis'
+import type { CodeEditorDiagnostic } from '../../shared/ui/code-editor/CodeEditor'
 import type { CatalogSelectionItem } from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 import { EntryAssetInput } from './EntryAssetInput'
@@ -735,6 +737,30 @@ function EntryTextInput({
   const [error, setError] = useState<string>()
   const [isSaving, setIsSaving] = useState(false)
   const skipCompactBlurRef = useRef(false)
+  const messageAnalysis = useMessageAnalysis(draft, isExpanded)
+  const messageDiagnostics = messageAnalysis.analysis.diagnostics.map<CodeEditorDiagnostic>((diagnostic) => {
+    const position = diagnostic.position < 0 ? 0 : diagnostic.position
+    const from = draft.length > 0 && position >= draft.length ? draft.length - 1 : position
+    const to = draft.length === 0 ? 0 : Math.min(from + 1, draft.length)
+    return {
+      from,
+      to,
+      severity: 'error',
+      source: 'MF2',
+      message: diagnostic.message,
+    }
+  })
+  const expandedEditorNotice = error
+    ? { type: 'error' as const, label: 'Save', message: error }
+    : messageAnalysis.error
+      ? { type: 'warning' as const, label: 'Analysis', message: messageAnalysis.error }
+      : messageAnalysis.analysis.diagnostics[0]
+        ? {
+            type: 'error' as const,
+            label: 'MF2',
+            message: messageAnalysis.analysis.diagnostics[0].message,
+          }
+        : undefined
 
   useEffect(() => {
     setDraft(value ?? '')
@@ -924,6 +950,7 @@ function EntryTextInput({
               value={draft}
               disabled={isSaving}
               status={error ? 'error' : undefined}
+              diagnostics={messageDiagnostics}
               autoFocus
               onEscape={() => void closeExpanded()}
               onChange={(text) => {
@@ -933,10 +960,21 @@ function EntryTextInput({
             />
           </Suspense>
         )}
-        {error && (
-          <Typography.Text type="danger" style={{ marginTop: layoutTokens.spacing.xSmall }}>
-            {error}
-          </Typography.Text>
+        {expandedEditorNotice && (
+          <Alert
+            showIcon
+            type={expandedEditorNotice.type}
+            message={(
+              <Flex align="baseline" gap={layoutTokens.spacing.small}>
+                <Typography.Text strong>{expandedEditorNotice.label}</Typography.Text>
+                <Typography.Text>{expandedEditorNotice.message}</Typography.Text>
+              </Flex>
+            )}
+            style={{
+              marginTop: layoutTokens.spacing.xSmall,
+              padding: `${layoutTokens.spacing.xSmall}px ${layoutTokens.spacing.small}px`,
+            }}
+          />
         )}
       </Modal>
     </Flex>

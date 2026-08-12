@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { bracketMatching, syntaxHighlighting } from '@codemirror/language'
+import { setDiagnostics, type Diagnostic } from '@codemirror/lint'
 import { closeSearchPanel, searchKeymap, searchPanelOpen } from '@codemirror/search'
 import { EditorState, type Extension } from '@codemirror/state'
 import {
@@ -26,9 +27,18 @@ export interface CodeEditorProps {
   disabled?: boolean
   status?: 'error'
   autoFocus?: boolean
+  diagnostics?: readonly CodeEditorDiagnostic[]
   extensions?: Extension
   onChange: (value: string) => void
   onEscape?: () => void
+}
+
+export interface CodeEditorDiagnostic {
+  from: number
+  to: number
+  message: string
+  severity: 'error' | 'warning' | 'info'
+  source?: string
 }
 
 export default function CodeEditor({
@@ -38,6 +48,7 @@ export default function CodeEditor({
   disabled = false,
   status,
   autoFocus = false,
+  diagnostics = [],
   extensions = [],
   onChange,
   onEscape,
@@ -49,10 +60,12 @@ export default function CodeEditor({
   const onEscapeRef = useRef(onEscape)
   const synchronizingRef = useRef(false)
   const valueRef = useRef(value)
+  const diagnosticsRef = useRef(diagnostics)
 
   onChangeRef.current = onChange
   onEscapeRef.current = onEscape
   valueRef.current = value
+  diagnosticsRef.current = diagnostics
 
   const editorTheme = useMemo(() => EditorView.theme({
     '&': {
@@ -253,6 +266,7 @@ export default function CodeEditor({
       closeSearchPanel(view)
     }
     parent.addEventListener('keydown', closeSearchBeforeModal, true)
+    view.dispatch(setDiagnostics(view.state, normalizeDiagnostics(diagnosticsRef.current, view.state.doc.length)))
 
     if (autoFocus) {
       requestAnimationFrame(() => {
@@ -293,5 +307,32 @@ export default function CodeEditor({
     }
   }, [value])
 
+  useEffect(() => {
+    const view = viewRef.current
+    if (view === null) {
+      return
+    }
+
+    view.dispatch(setDiagnostics(
+      view.state,
+      normalizeDiagnostics(diagnostics, view.state.doc.length),
+    ))
+  }, [diagnostics])
+
   return <div ref={parentRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }} />
+}
+
+function normalizeDiagnostics(
+  diagnostics: readonly CodeEditorDiagnostic[],
+  documentLength: number,
+): Diagnostic[] {
+  return diagnostics.map((diagnostic) => {
+    const from = Math.max(0, Math.min(diagnostic.from, documentLength))
+    const to = Math.max(from, Math.min(diagnostic.to, documentLength))
+    return {
+      ...diagnostic,
+      from,
+      to,
+    }
+  })
 }

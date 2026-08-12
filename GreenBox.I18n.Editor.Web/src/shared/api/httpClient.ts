@@ -2,11 +2,16 @@ export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T>
   return requestJson<T>(path, { signal })
 }
 
-export async function postJson<TResponse>(path: string, body: unknown): Promise<TResponse> {
+export async function postJson<TResponse>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<TResponse> {
   return requestJson<TResponse>(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal,
   })
 }
 
