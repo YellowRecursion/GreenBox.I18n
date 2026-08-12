@@ -1,6 +1,6 @@
 {
   "name": "com.greenbox.i18n",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "displayName": "GreenBox I18n",
   "description": "Localization tools and runtime for Unity.",
   "unity": "6000.0",

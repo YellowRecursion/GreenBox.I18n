@@ -24,7 +24,14 @@ function ConvertTo-LfLineEndings([string] $path) {
         [System.Text.UTF8Encoding]::new($false))
 }
 
-dotnet build $coreProject --configuration Release --nologo
+dotnet build $coreProject `
+    --configuration Release `
+    --nologo `
+    --no-incremental `
+    -p:ContinuousIntegrationBuild=true `
+    -p:Deterministic=true `
+    -p:DebugType=None `
+    -p:DebugSymbols=false
 if ($LASTEXITCODE -ne 0) {
     throw "The GreenBox.I18n.Core Release build failed with exit code $LASTEXITCODE."
 }
