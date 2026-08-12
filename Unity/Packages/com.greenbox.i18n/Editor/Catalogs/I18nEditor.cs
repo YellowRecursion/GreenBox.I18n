@@ -7,10 +7,10 @@ using UnityEngine;
 namespace GreenBox.I18n.Unity.Editor
 {
     /// <summary>
-    /// Provides atomic, project-wide edits of the active localization catalog.
+    /// Provides cached localization previews and atomic project-wide catalog edits.
     /// This API must be called from the Unity Editor main thread.
     /// </summary>
-    public static class I18nEditor
+    public static partial class I18nEditor
     {
         private static bool _isEditing;
 
