@@ -1,6 +1,7 @@
 import { StreamLanguage, type StreamParser } from '@codemirror/language'
 import type { Extension } from '@codemirror/state'
 import CodeEditor, { type CodeEditorProps } from './CodeEditor'
+import { mf2Autocompletion } from './mf2Autocompletion'
 
 interface Mf2TokenizerState {}
 
@@ -42,5 +43,5 @@ const mf2Tokenizer: StreamParser<Mf2TokenizerState> = {
 const mf2Language: Extension = StreamLanguage.define(mf2Tokenizer)
 
 export default function Mf2CodeEditor(props: Omit<CodeEditorProps, 'extensions'>) {
-  return <CodeEditor {...props} extensions={mf2Language} />
+  return <CodeEditor {...props} extensions={[mf2Language, mf2Autocompletion]} />
 }

@@ -13,6 +13,7 @@ import {
   CloseOutlined,
   CopyOutlined,
   ExpandOutlined,
+  ExportOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
 import {
@@ -925,13 +926,25 @@ function EntryTextInput({
                 ]}
               />
             </div>
-            <Button
-              type="text"
-              aria-label="Close focus editor"
-              icon={<CloseOutlined />}
-              disabled={isSaving}
-              onClick={() => void closeExpanded()}
-            />
+            <Flex align="center" gap={layoutTokens.spacing.xSmall}>
+              <Button
+                type="text"
+                size="small"
+                href="https://messageformat.unicode.org/docs/quick-start/"
+                target="_blank"
+                rel="noreferrer"
+                icon={<ExportOutlined />}
+              >
+                MF2 Guide
+              </Button>
+              <Button
+                type="text"
+                aria-label="Close focus editor"
+                icon={<CloseOutlined />}
+                disabled={isSaving}
+                onClick={() => void closeExpanded()}
+              />
+            </Flex>
           </Flex>
         )}
         styles={{
