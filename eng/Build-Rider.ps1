@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [string] $RiderHome = $env:RIDER_HOME
+    [string] $RiderHome = $env:RIDER_HOME,
+
+    [switch] $Publish
 )
 
 Set-StrictMode -Version Latest
@@ -8,6 +10,10 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $version = [IO.File]::ReadAllText((Join-Path $PSScriptRoot "version.txt")).Trim()
+
+if ($Publish -and [string]::IsNullOrWhiteSpace($env:PUBLISH_TOKEN)) {
+    throw "PUBLISH_TOKEN is required to publish the Rider plugin."
+}
 
 if ([string]::IsNullOrWhiteSpace($RiderHome)) {
     $jetBrainsRoot = Join-Path $env:ProgramFiles "JetBrains"
@@ -48,9 +54,10 @@ try {
     $env:JAVA_HOME = $javaHome
     Push-Location $riderProject
     try {
-        & $gradle clean buildPlugin --no-daemon
+        $gradleTask = if ($Publish) { "publishPlugin" } else { "buildPlugin" }
+        & $gradle clean $gradleTask --no-daemon
         if ($LASTEXITCODE -ne 0) {
-            throw "Rider plugin build failed with exit code $LASTEXITCODE."
+            throw "Rider plugin $gradleTask failed with exit code $LASTEXITCODE."
         }
     }
     finally {
@@ -73,3 +80,6 @@ New-Item -ItemType Directory -Path $output -Force | Out-Null
 Copy-Item -LiteralPath $packages[0].FullName -Destination $output -Force
 
 Write-Host "Rider plugin: $(Join-Path $output $packages[0].Name)"
+if ($Publish) {
+    Write-Host "Rider plugin $version was uploaded to JetBrains Marketplace."
+}

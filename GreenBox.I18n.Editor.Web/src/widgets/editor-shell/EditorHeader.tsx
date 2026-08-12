@@ -1,4 +1,4 @@
-import { CopyOutlined, DownOutlined, ExportOutlined, FolderOpenOutlined, RedoOutlined, SaveOutlined, TranslationOutlined, UndoOutlined } from '@ant-design/icons'
+import { CopyOutlined, DownOutlined, ExportOutlined, FolderOpenOutlined, RedoOutlined, SaveOutlined, UndoOutlined } from '@ant-design/icons'
 import { useCallback, useEffect, useState } from 'react'
 import { Badge, Button, Dropdown, Flex, Modal, Space, Tooltip, Typography, message, theme, type MenuProps } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
@@ -205,7 +205,13 @@ export function EditorHeader({
       {messageContext}
       {modalContext}
       <Flex align="center" gap={layoutTokens.spacing.small}>
-        <TranslationOutlined style={{ color: token.colorPrimary, fontSize: 20 }} />
+        <img
+          src="/greenbox-i18n-icon.png"
+          alt=""
+          width={24}
+          height={24}
+          style={{ display: 'block' }}
+        />
         <Typography.Text strong>GreenBox.I18n</Typography.Text>
       </Flex>
 
@@ -391,4 +397,3 @@ function isTextEditingTarget(target: EventTarget | null) {
     target instanceof HTMLSelectElement ||
     target instanceof HTMLElement && target.isContentEditable
 }
-

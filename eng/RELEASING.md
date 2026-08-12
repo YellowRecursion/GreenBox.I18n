@@ -73,7 +73,8 @@ patch instead.
 - **Unity:** repository tag through Unity Package Manager. The package and Desktop may update at
   different times, so their communication must remain compatibility-aware.
 - **Rider:** JetBrains Marketplace. Publishing needs a Marketplace vendor/plugin registration and
-  token; users receive updates through Rider.
+  token; users receive updates through Rider. The first upload is manual; subsequent updates use
+  `eng/Publish-Rider.ps1`. See `Ide/Rider/MARKETPLACE.md`.
 - **Standalone CLI:** NuGet.org after a package ID and API key are registered. Desktop users do not
   need this package.
 

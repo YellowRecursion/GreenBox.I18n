@@ -73,6 +73,7 @@ $packArguments = @(
     "--packVersion", $version,
     "--packDir", $bundleRoot,
     "--mainExe", "GreenBox.I18n.exe",
+    "--icon", (Join-Path $repositoryRoot "GreenBox.I18n.Desktop\Assets\greenbox-i18n.ico"),
     "--runtime", $Runtime,
     "--channel", "beta",
     "--outputDir", $releasesRoot

@@ -1,5 +1,7 @@
 # GreenBox I18n
 
+<img src="Branding/greenbox-i18n-icon.png" alt="GreenBox I18n" width="96">
+
 GreenBox I18n is a Unity localization runtime and toolchain. One catalog is shared by the Unity
 package, Web editor, CLI, MCP server, and Rider integration.
 
@@ -15,6 +17,13 @@ The project is currently in beta and targets Windows and Unity 6.
   available.
 
 See [INSTALL.md](INSTALL.md) for the complete one-time setup and update behavior.
+
+## License
+
+GreenBox I18n is licensed under the [Apache License 2.0](LICENSE).
+
+Copyright © 2026 Vadim Zinnatullin. The license does not grant permission to use GreenBox trade
+names, product names, or logos except to describe the origin of the software.
 
 ## Repository layout
 

@@ -2,8 +2,12 @@
   <PropertyGroup>
     <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)eng/version.txt').Trim())</Version>
     <Product>GreenBox I18n</Product>
-    <Company>GreenBox</Company>
-    <Authors>GreenBox</Authors>
-    <Copyright>Copyright © GreenBox</Copyright>
+    <Company>Green Box Team</Company>
+    <Authors>Vadim Zinnatullin</Authors>
+    <Copyright>Copyright © 2026 Vadim Zinnatullin</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/YellowRecursion/GreenBox.I18n</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/YellowRecursion/GreenBox.I18n</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 </Project>

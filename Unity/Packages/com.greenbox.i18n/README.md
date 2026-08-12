@@ -1,6 +1,10 @@
 # GreenBox I18n for Unity
 
+<img src="Documentation~/greenbox-i18n-icon.png" alt="GreenBox I18n" width="96">
+
 GreenBox I18n provides the Unity runtime and editor integration for a GreenBox localization project.
+
+Licensed under the Apache License 2.0. See [LICENSE.md](LICENSE.md).
 
 ## Getting started
 

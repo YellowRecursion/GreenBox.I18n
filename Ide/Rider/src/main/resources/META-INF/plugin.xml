@@ -1,11 +1,31 @@
-<idea-plugin require-restart="true">
+<idea-plugin require-restart="true" url="https://github.com/YellowRecursion/GreenBox.I18n">
   <id>com.greenbox.i18n.rider</id>
   <name>GreenBox I18n</name>
-  <vendor>GreenBox</vendor>
+  <vendor url="https://github.com/YellowRecursion/GreenBox.I18n">GreenBox</vendor>
 
   <description><![CDATA[
-    <p>GreenBox I18n support for JetBrains Rider.</p>
+    <p>See localization entry names directly beside GreenBox I18n numeric IDs in C# code.</p>
+    <ul>
+      <li>Shows a compact inlay with the entry name.</li>
+      <li>Shows the full catalog path on hover.</li>
+      <li>Marks valid GreenBox I18n IDs that are missing from the active catalog.</li>
+      <li>Refreshes after the Unity project's catalog changes.</li>
+    </ul>
+    <p>
+      The plugin reads the active <code>localization.json</code> path from
+      <code>ProjectSettings/GreenBox.I18n.asset</code>. It does not modify source code or catalog
+      files.
+    </p>
   ]]></description>
+
+  <change-notes><![CDATA[
+    <p>Initial beta release for Rider 2025.2:</p>
+    <ul>
+      <li>Entry-name inlays for GreenBox I18n IDs.</li>
+      <li>Full catalog paths in tooltips.</li>
+      <li>Warnings for IDs missing from the active catalog.</li>
+    </ul>
+  ]]></change-notes>
 
   <depends>com.intellij.modules.rider</depends>
 

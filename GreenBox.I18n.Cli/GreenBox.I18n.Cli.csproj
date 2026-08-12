@@ -17,6 +17,8 @@
         <PackageReference Include="System.CommandLine" Version="2.0.10" />
         <ProjectReference Include="..\GreenBox.I18n.Core\GreenBox.I18n.Core.csproj" />
         <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="..\NOTICE" Pack="true" PackagePath="\" />
+        <None Include="..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

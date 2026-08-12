@@ -39,9 +39,25 @@ intellijPlatform {
             untilBuild = "252.*"
         }
     }
+
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
+    }
 }
 
 tasks {
+    jar {
+        from("../../LICENSE") {
+            into("META-INF")
+        }
+        from("../../NOTICE") {
+            into("META-INF")
+        }
+        from("../../THIRD-PARTY-NOTICES.md") {
+            into("META-INF")
+        }
+    }
+
     runIde {
         maxHeapSize = "1500m"
     }

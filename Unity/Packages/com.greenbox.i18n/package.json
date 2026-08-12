@@ -3,9 +3,12 @@
   "version": "0.1.0-beta.6",
   "displayName": "GreenBox I18n",
   "description": "Localization tools and runtime for Unity.",
+  "license": "Apache-2.0",
+  "licensesUrl": "https://github.com/YellowRecursion/GreenBox.I18n/blob/master/LICENSE",
   "unity": "6000.0",
   "author": {
-    "name": "GreenBox"
+    "name": "Vadim Zinnatullin",
+    "url": "https://github.com/YellowRecursion"
   },
   "dependencies": {
     "com.unity.nuget.mono-cecil": "1.11.6",

@@ -18,6 +18,7 @@ internal sealed class DesktopForm : Form
     internal DesktopForm()
     {
         Text = $"{DesktopConstants.ProductName} Beta";
+        Icon = DesktopBranding.Icon;
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(720, 440);
         Size = new Size(860, 540);

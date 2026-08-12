@@ -9,6 +9,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>GreenBox.I18n</AssemblyName>
     <StartupObject>GreenBox.I18n.Desktop.Program</StartupObject>
+    <ApplicationIcon>Assets\greenbox-i18n.ico</ApplicationIcon>
     <GreenBoxUpdateFeedUrl Condition="'$(GreenBoxUpdateFeedUrl)' == ''"></GreenBoxUpdateFeedUrl>
   </PropertyGroup>
 
@@ -22,6 +23,9 @@
 
   <ItemGroup>
     <Content Include="..\GreenBox.I18n.Editor.Host\appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\NOTICE" Link="NOTICE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="BuildEditorWeb" BeforeTargets="ComputeFilesToPublish">

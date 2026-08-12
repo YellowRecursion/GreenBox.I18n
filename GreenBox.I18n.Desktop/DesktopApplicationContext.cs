@@ -37,7 +37,7 @@ internal sealed class DesktopApplicationContext : ApplicationContext
 
         _trayIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = DesktopBranding.Icon,
             Text = $"{DesktopConstants.ProductName} Beta",
             ContextMenuStrip = trayMenu,
             Visible = true,
