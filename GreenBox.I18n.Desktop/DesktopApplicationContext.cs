@@ -11,6 +11,7 @@ internal sealed class DesktopApplicationContext : ApplicationContext
     private readonly NotifyIcon _trayIcon;
     private readonly EventWaitHandle _activationEvent;
     private readonly RegisteredWaitHandle _activationWait;
+    private bool _checkingUpdates;
     private bool _exiting;
 
     internal DesktopApplicationContext(EventWaitHandle activationEvent)
@@ -22,6 +23,7 @@ internal sealed class DesktopApplicationContext : ApplicationContext
 
         _form.OpenEditorRequested += OpenEditor;
         _form.RestartHostRequested += RestartHost;
+        _form.CheckUpdatesRequested += CheckForUpdates;
         _form.ApplyUpdateRequested += ApplyUpdateAndRestart;
         _form.FormClosing += HideInsteadOfClose;
         _form.Resize += HideWhenMinimized;
@@ -77,7 +79,7 @@ internal sealed class DesktopApplicationContext : ApplicationContext
             OpenEditor();
         }
 
-        _ = _updates.CheckAndDownloadAsync();
+        _ = CheckForUpdatesAsync();
     }
 
     private void OpenEditor()
@@ -97,6 +99,31 @@ internal sealed class DesktopApplicationContext : ApplicationContext
         _form.AppendLog("Restarting Host...");
         bool ready = await _host.RestartAsync();
         _form.SetHostReady(ready);
+    }
+
+    private async void CheckForUpdates()
+    {
+        await CheckForUpdatesAsync();
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (_checkingUpdates)
+        {
+            return;
+        }
+
+        _checkingUpdates = true;
+        _form.SetUpdateCheckRunning(true);
+        try
+        {
+            await _updates.CheckAndDownloadAsync();
+        }
+        finally
+        {
+            _checkingUpdates = false;
+            _form.SetUpdateCheckRunning(false);
+        }
     }
 
     private void ApplyUpdateAndRestart()

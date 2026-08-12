@@ -24,7 +24,7 @@ application. The editor is never restarted in the middle of work without an expl
 In Unity Package Manager choose **Add package from git URL** and use:
 
 ```text
-https://github.com/YellowRecursion/GreenBox.I18n.git?path=/Unity/Packages/com.greenbox.i18n#v0.1.0-beta.4
+https://github.com/YellowRecursion/GreenBox.I18n.git?path=/Unity/Packages/com.greenbox.i18n#v0.1.0-beta.5
 ```
 
 Change the tag suffix to the desired release. GreenBox creates the project catalog and generated

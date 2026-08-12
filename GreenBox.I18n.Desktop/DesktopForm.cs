@@ -7,10 +7,12 @@ internal sealed class DesktopForm : Form
 {
     private readonly Label _statusLabel;
     private readonly RichTextBox _log;
+    private readonly Button _checkUpdatesButton;
     private readonly Button _updateButton;
 
     internal event Action? OpenEditorRequested;
     internal event Action? RestartHostRequested;
+    internal event Action? CheckUpdatesRequested;
     internal event Action? ApplyUpdateRequested;
 
     internal DesktopForm()
@@ -69,6 +71,8 @@ internal sealed class DesktopForm : Form
         controls.Controls.Add(CreateButton("Open Editor", () => OpenEditorRequested?.Invoke(), primary: true));
         controls.Controls.Add(CreateButton("Copy URL", CopyEditorUrl));
         controls.Controls.Add(CreateButton("Restart Host", () => RestartHostRequested?.Invoke()));
+        _checkUpdatesButton = CreateButton("Check for updates", () => CheckUpdatesRequested?.Invoke());
+        controls.Controls.Add(_checkUpdatesButton);
 
         _updateButton = CreateButton("Restart to update", () => ApplyUpdateRequested?.Invoke(), primary: true);
         _updateButton.Visible = false;
@@ -119,6 +123,15 @@ internal sealed class DesktopForm : Form
         {
             _updateButton.Text = $"Restart to update {version}";
             _updateButton.Visible = true;
+        });
+    }
+
+    internal void SetUpdateCheckRunning(bool running)
+    {
+        RunOnUiThread(() =>
+        {
+            _checkUpdatesButton.Enabled = !running;
+            _checkUpdatesButton.Text = running ? "Checking..." : "Check for updates";
         });
     }
 
