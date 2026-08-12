@@ -21,14 +21,26 @@ final class I18nProjectCatalogLocator {
     private I18nProjectCatalogLocator() {
     }
 
-    static @Nullable CatalogLocation locate(@NotNull Project project) throws IOException {
+    static @Nullable Path projectSettingsPath(@NotNull Project project) {
         String basePath = project.getBasePath();
         if (basePath == null || basePath.isBlank()) {
             return null;
         }
 
-        Path projectRoot = Path.of(basePath).toAbsolutePath().normalize();
-        Path settingsPath = projectRoot.resolve(PROJECT_SETTINGS_PATH).normalize();
+        return Path.of(basePath)
+            .toAbsolutePath()
+            .normalize()
+            .resolve(PROJECT_SETTINGS_PATH)
+            .normalize();
+    }
+
+    static @Nullable CatalogLocation locate(@NotNull Project project) throws IOException {
+        Path settingsPath = projectSettingsPath(project);
+        if (settingsPath == null) {
+            return null;
+        }
+
+        Path projectRoot = settingsPath.getParent().getParent();
         if (!Files.isRegularFile(settingsPath)) {
             return null;
         }
