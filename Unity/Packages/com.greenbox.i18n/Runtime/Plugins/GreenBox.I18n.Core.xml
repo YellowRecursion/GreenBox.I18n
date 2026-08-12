@@ -70,6 +70,26 @@
             <returns>The atomic operation result.</returns>
             <exception cref="T:System.ArgumentNullException">Thrown when an argument is null.</exception>
         </member>
+        <member name="T:GreenBox.I18n.I18nCatalogValueEditing">
+            <summary>
+            Provides safe operations for localized values and entry metadata.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogValueEditing.SetEntryComment(GreenBox.I18n.I18nCatalog,System.Int64,System.String)">
+            <summary>
+            Changes an entry comment without affecting its stable identity or localized values.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogValueEditing.SetEntryText(GreenBox.I18n.I18nCatalog,System.Int64,System.String,System.String)">
+            <summary>
+            Sets or clears localized text for one declared locale.
+            </summary>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogValueEditing.SetEntryAsset(GreenBox.I18n.I18nCatalog,System.Int64,System.String,GreenBox.I18n.I18nAssetReference)">
+            <summary>
+            Sets or clears a localized engine-independent asset reference for one declared locale.
+            </summary>
+        </member>
         <member name="T:GreenBox.I18n.I18nEditCodes">
             <summary>
             Contains stable machine-readable codes produced by catalog editing operations.
@@ -89,6 +109,9 @@
         </member>
         <member name="F:GreenBox.I18n.I18nEditCodes.DuplicatePath">
             <summary>Indicates that another entry already uses the requested path.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nEditCodes.UnknownLocale">
+            <summary>Indicates that the requested locale is not declared by the catalog.</summary>
         </member>
         <member name="F:GreenBox.I18n.I18nEditCodes.IdSpaceExhausted">
             <summary>Indicates that a unique random entry ID could not be allocated.</summary>
@@ -254,6 +277,11 @@
         <member name="P:GreenBox.I18n.I18nCompiledMessage.ArgumentNames">
             <summary>Gets distinct argument names in their first source occurrence order.</summary>
         </member>
+        <member name="P:GreenBox.I18n.I18nCompiledMessage.ArgumentKinds">
+            <summary>
+            Gets the expected kind for each item in <see cref="P:GreenBox.I18n.I18nCompiledMessage.ArgumentNames"/>.
+            </summary>
+        </member>
         <member name="M:GreenBox.I18n.I18nCompiledMessage.Format">
             <summary>Formats a message that has no external arguments.</summary>
         </member>
@@ -310,6 +338,20 @@
         </member>
         <member name="M:GreenBox.I18n.I18nCompiledMessage.Format(System.Globalization.CultureInfo,System.ValueTuple{System.String,System.Object}[])">
             <summary>Formats a locale-aware message with an uncommon number of named arguments.</summary>
+        </member>
+        <member name="T:GreenBox.I18n.I18nMessageArgumentKind">
+            <summary>
+            Describes the value kind expected by an external MessageFormat argument.
+            </summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageArgumentKind.Unspecified">
+            <summary>The message does not impose a more specific value kind.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageArgumentKind.String">
+            <summary>The argument is used as text or by a string selector.</summary>
+        </member>
+        <member name="F:GreenBox.I18n.I18nMessageArgumentKind.Number">
+            <summary>The argument is formatted or selected as a number.</summary>
         </member>
         <member name="T:GreenBox.I18n.I18nMessageCompilation">
             <summary>
@@ -541,6 +583,16 @@
             <returns>The matching entry, or <see langword="null"/> when no entry has the identifier.</returns>
             <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
             <exception cref="T:System.ArgumentOutOfRangeException">Thrown when <paramref name="id"/> is invalid.</exception>
+        </member>
+        <member name="M:GreenBox.I18n.I18nCatalogQueries.FindByPath(GreenBox.I18n.I18nCatalog,System.String)">
+            <summary>
+            Finds an entry by its logical path using the catalog's case-insensitive uniqueness rules.
+            </summary>
+            <param name="catalog">The catalog to search.</param>
+            <param name="path">The complete logical entry path.</param>
+            <returns>The matching entry, or <see langword="null"/> when no entry has the path.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="path"/> is invalid.</exception>
         </member>
         <member name="M:GreenBox.I18n.I18nCatalogQueries.Search(GreenBox.I18n.I18nCatalog,System.String)">
             <summary>

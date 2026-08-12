@@ -20,6 +20,9 @@ namespace GreenBox.I18n
         /// <summary>Indicates that another entry already uses the requested path.</summary>
         public const string DuplicatePath = "duplicate_path";
 
+        /// <summary>Indicates that the requested locale is not declared by the catalog.</summary>
+        public const string UnknownLocale = "unknown_locale";
+
         /// <summary>Indicates that a unique random entry ID could not be allocated.</summary>
         public const string IdSpaceExhausted = "id_space_exhausted";
 

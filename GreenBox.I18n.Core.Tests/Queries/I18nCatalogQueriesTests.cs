@@ -5,6 +5,17 @@ namespace GreenBox.I18n.Core.Tests;
 public sealed class I18nCatalogQueriesTests
 {
     [Fact]
+    public void FindByPath_ExistingPathIgnoringCase_ReturnsEntry()
+    {
+        I18nEntry entry = CreateEntry("3857333080842832461", "Menu.PlayButton");
+        I18nCatalog catalog = CreateCatalog(entry);
+
+        I18nEntry? result = catalog.FindByPath("menu.playbutton");
+
+        Assert.Same(entry, result);
+    }
+
+    [Fact]
     public void FindById_ExistingId_ReturnsEntry()
     {
         I18nEntry expected = CreateEntry("3857333080842830951", "Reports.Title");

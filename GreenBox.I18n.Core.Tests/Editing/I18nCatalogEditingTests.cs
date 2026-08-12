@@ -175,6 +175,70 @@ public sealed class I18nCatalogEditingTests
         Assert.Equal("Reports.Subtitle", first.Path);
     }
 
+    [Fact]
+    public void SetEntryComment_ChangedValue_UpdatesOnlyComment()
+    {
+        I18nEntry entry = CreateEntry("3857333080842830204", "Reports.Title");
+        I18nCatalog catalog = CreateCatalog(entry);
+
+        I18nEditResult result = catalog.SetEntryComment(3857333080842830204, "Shown above reports.");
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.HasChanges);
+        Assert.Same(entry, result.Entry);
+        Assert.Equal("Shown above reports.", entry.Comment);
+        Assert.Equal("Reports.Title", entry.Locales["en"].Text);
+    }
+
+    [Fact]
+    public void SetEntryText_DeclaredLocale_CreatesAndRemovesLocaleValue()
+    {
+        I18nEntry entry = CreateEntry("3857333080842830204", "Reports.Title");
+        I18nCatalog catalog = CreateCatalog(entry);
+
+        I18nEditResult set = catalog.SetEntryText(3857333080842830204, "ru", "Отчёты");
+        I18nEditResult clear = catalog.SetEntryText(3857333080842830204, "ru", null);
+
+        Assert.True(set.IsSuccess);
+        Assert.True(set.HasChanges);
+        Assert.True(clear.IsSuccess);
+        Assert.True(clear.HasChanges);
+        Assert.False(entry.Locales.ContainsKey("ru"));
+    }
+
+    [Fact]
+    public void SetEntryText_UnknownLocale_ReturnsFailureWithoutChanges()
+    {
+        I18nEntry entry = CreateEntry("3857333080842830204", "Reports.Title");
+        I18nCatalog catalog = CreateCatalog(entry);
+
+        I18nEditResult result = catalog.SetEntryText(3857333080842830204, "de", "Berichte");
+
+        AssertFailure(result, I18nEditCodes.UnknownLocale);
+        Assert.False(entry.Locales.ContainsKey("de"));
+    }
+
+    [Fact]
+    public void SetEntryAsset_ClonesReferenceAndPreservesText()
+    {
+        I18nEntry entry = CreateEntry("3857333080842830204", "Reports.Title");
+        I18nCatalog catalog = CreateCatalog(entry);
+        var source = new I18nAssetReference
+        {
+            AssetGuid = "0123456789abcdef0123456789abcdef",
+            LocalFileId = "21300000",
+        };
+
+        I18nEditResult result = catalog.SetEntryAsset(3857333080842830204, "en", source);
+        source.AssetGuid = "changed";
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.HasChanges);
+        Assert.Equal("Reports.Title", entry.Locales["en"].Text);
+        Assert.Equal("0123456789abcdef0123456789abcdef", entry.Locales["en"].Asset!.AssetGuid);
+        Assert.Equal("21300000", entry.Locales["en"].Asset!.LocalFileId);
+    }
+
     private static void AssertFailure(I18nEditResult result, string expectedCode)
     {
         Assert.False(result.IsSuccess);
@@ -188,6 +252,22 @@ public sealed class I18nCatalogEditingTests
     {
         return new I18nCatalog
         {
+            DefaultLocale = "en",
+            Locales = new List<I18nLocaleDefinition>
+            {
+                new()
+                {
+                    Id = "en",
+                    DisplayName = "English",
+                    Culture = "en-US",
+                },
+                new()
+                {
+                    Id = "ru",
+                    DisplayName = "Русский",
+                    Culture = "ru-RU",
+                },
+            },
             Entries = entries.ToList(),
         };
     }

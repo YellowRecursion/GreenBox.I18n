@@ -63,3 +63,33 @@ i18n git install
 ```
 
 The command registers the merge driver once for the current user. Every GreenBox project opts into it through its generated `.gitattributes`, so Git merges `localization.json` structurally by stable locale and entry IDs instead of relying on JSON line positions.
+
+## Generating entries from Unity Editor tools
+
+Editor scripts can create or update many entries as one validated catalog transaction:
+
+```csharp
+using GreenBox.I18n.Unity.Editor;
+using UnityEditor;
+
+I18nKey key = I18nEditor.Edit(edit =>
+{
+    I18nEditorEntry entry = edit.EnsureEntry(
+        existingKey,
+        "Cosmetics.Hat.Name");
+
+    if (entry.WasCreated)
+    {
+        entry.SetDefaultText("Hat");
+    }
+
+    entry.SetComment("Display name of the hat cosmetic item.");
+    return entry.Key;
+});
+
+Undo.RecordObject(cosmetic, "Assign localization key");
+cosmetic.NameKey = key;
+EditorUtility.SetDirty(cosmetic);
+```
+
+`EnsureEntry` preserves an existing stable ID when the desired path changes. An empty or missing key adopts an entry already at that path or creates a new one. Put loops inside one `I18nEditor.Edit` call so the source file is written and imported only once.

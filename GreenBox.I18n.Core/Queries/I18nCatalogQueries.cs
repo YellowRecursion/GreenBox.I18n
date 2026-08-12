@@ -35,6 +35,32 @@ namespace GreenBox.I18n
         }
 
         /// <summary>
+        /// Finds an entry by its logical path using the catalog's case-insensitive uniqueness rules.
+        /// </summary>
+        /// <param name="catalog">The catalog to search.</param>
+        /// <param name="path">The complete logical entry path.</param>
+        /// <returns>The matching entry, or <see langword="null"/> when no entry has the path.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="catalog"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is invalid.</exception>
+        public static I18nEntry? FindByPath(this I18nCatalog catalog, string? path)
+        {
+            if (catalog == null)
+            {
+                throw new ArgumentNullException(nameof(catalog));
+            }
+
+            if (!I18nPathRules.IsValid(path))
+            {
+                throw new ArgumentException(
+                    "The path must contain dot-separated identifier segments using Latin letters, digits, and underscores.",
+                    nameof(path));
+            }
+
+            return catalog.Entries.FirstOrDefault(entry =>
+                string.Equals(entry.Path, path, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
         /// Searches entry paths, comments, and localized text using a case-insensitive query.
         /// </summary>
         /// <param name="catalog">The catalog to search.</param>
