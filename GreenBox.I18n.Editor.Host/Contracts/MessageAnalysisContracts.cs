@@ -29,3 +29,25 @@ public sealed record MessageDiagnosticResponse(
     string Message,
     int Position,
     string? ArgumentName);
+
+/// <summary>
+/// Requests formatting of an unsaved localized message draft with preview values.
+/// </summary>
+/// <param name="Source">The MessageFormat 2 source to format.</param>
+/// <param name="Culture">The .NET culture used for locale-aware formatting and selection.</param>
+/// <param name="Arguments">The primitive preview values indexed by external argument name.</param>
+public sealed record PreviewMessageRequest(
+    string? Source,
+    string? Culture,
+    IReadOnlyDictionary<string, System.Text.Json.JsonElement>? Arguments);
+
+/// <summary>
+/// Describes the formatted preview and any non-throwing diagnostics.
+/// </summary>
+/// <param name="IsSuccess">Whether compilation and formatting completed without diagnostics.</param>
+/// <param name="Text">The formatted output or readable diagnostic fallback.</param>
+/// <param name="Diagnostics">The problems found while compiling or formatting.</param>
+public sealed record MessagePreviewResponse(
+    bool IsSuccess,
+    string Text,
+    IReadOnlyList<MessageDiagnosticResponse> Diagnostics);
