@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.greenbox.i18n"
-version = "0.3.0-dev"
+version = file("../../eng/version.txt").readText().trim()
 
 repositories {
     mavenCentral()

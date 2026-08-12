@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)eng/version.txt').Trim())</Version>
+    <Product>GreenBox I18n</Product>
+    <Company>GreenBox</Company>
+    <Authors>GreenBox</Authors>
+    <Copyright>Copyright © GreenBox</Copyright>
+  </PropertyGroup>
+</Project>

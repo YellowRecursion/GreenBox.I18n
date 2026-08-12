@@ -1,9 +1,28 @@
 using System.CommandLine;
+using System.CommandLine.Parsing;
 
 namespace GreenBox.I18n.Cli;
 
-internal static class CliApplication
+public static class CliApplication
 {
+    public static int Run(string[] args)
+    {
+        RootCommand rootCommand = CreateRootCommand();
+        ParseResult parseResult = rootCommand.Parse(args);
+
+        if (parseResult.Errors.Count > 0)
+        {
+            foreach (ParseError error in parseResult.Errors)
+            {
+                Console.Error.WriteLine(error.Message);
+            }
+
+            return CliExitCodes.ExecutionError;
+        }
+
+        return parseResult.Invoke();
+    }
+
     public static RootCommand CreateRootCommand()
     {
         var rootCommand = new RootCommand("GreenBox localization catalog tools.");

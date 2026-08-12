@@ -2,6 +2,10 @@
 
 The CLI performs small, deterministic catalog operations. Rich project analysis and AI-oriented workflows belong to MCP rather than this tool.
 
+On Windows, installing GreenBox Desktop Tools also installs the `i18n` command and keeps it on the
+same version as Web, Host, and MCP. Automation environments can instead install the
+`GreenBox.I18n.Cli` .NET Tool package.
+
 ## Commands
 
 | Command | Purpose |

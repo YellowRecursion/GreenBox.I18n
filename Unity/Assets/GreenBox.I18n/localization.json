@@ -17,7 +17,7 @@
   "entries": [
     {
       "id": "3857517065065828448",
-      "path": "Picture",
+      "path": "Assets.Picture",
       "locales": {
         "en": {
           "asset": {
@@ -34,8 +34,20 @@
       }
     },
     {
+      "id": "3857487432477178769",
+      "path": "Gameplay.Timer",
+      "locales": {
+        "en": {
+          "text": ".input {$timer :number maximumFractionDigits=0}\n.match $timer\n0 {{Timer started.}}\none {{Elapsed: {$timer} second.}}\n* {{Elapsed: {$timer} seconds.}}"
+        },
+        "ru": {
+          "text": ".input {$timer :number maximumFractionDigits=0}\n.match $timer\n0 {{Таймер запущен.}}\none {{Прошла {$timer} секунда.}}\nfew {{Прошло {$timer} секунды.}}\nmany {{Прошло {$timer} секунд.}}\n* {{Прошло {$timer} секунды.}}"
+        }
+      }
+    },
+    {
       "id": "3857558199779051791",
-      "path": "PlayButton",
+      "path": "UI.PlayButton",
       "locales": {
         "en": {
           "text": "Play"
@@ -46,14 +58,14 @@
       }
     },
     {
-      "id": "3857487432477178769",
-      "path": "Timer",
+      "id": "3857591506553987831",
+      "path": "UI.SettingsButton",
       "locales": {
         "en": {
-          "text": ".input {$timer :number maximumFractionDigits=0}\n.match $timer\n0 {{Timer started.}}\none {{Elapsed: {$timer} second.}}\n* {{Elapsed: {$timer} seconds.}}"
+          "text": "Settings"
         },
         "ru": {
-          "text": ".input {$timer :number maximumFractionDigits=0}\n.match $timer\n0 {{Таймер запущен.}}\none {{Прошла {$timer} секунда.}}\nfew {{Прошло {$timer} секунды.}}\nmany {{Прошло {$timer} секунд.}}\n* {{Прошло {$timer} секунды.}}"
+          "text": "Настройки"
         }
       }
     }

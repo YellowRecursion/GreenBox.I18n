@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}"
 EndProject
@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Mcp.Tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Workspace", "GreenBox.I18n.Workspace\GreenBox.I18n.Workspace.csproj", "{53253ACA-BBE2-400F-B207-3507A9207AFA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GreenBox.I18n.Desktop", "GreenBox.I18n.Desktop\GreenBox.I18n.Desktop.csproj", "{B820A777-BE8D-4FF0-8D09-D06609AFFCCB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,6 +44,7 @@ Global
 		{7B4A96F9-19C7-4D67-95D7-78586D4E5A21} = {3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}
 		{2F96C0D8-10C4-4A35-A397-62D2C6C8D4F0} = {B978230F-F778-46C6-85E0-785078459038}
 		{53253ACA-BBE2-400F-B207-3507A9207AFA} = {3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}
+		{B820A777-BE8D-4FF0-8D09-D06609AFFCCB} = {3DFAE914-2ED4-43B9-9B9D-16DF6CCA8368}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BE6117E5-CA50-4F73-BAE4-F512CA408371}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -84,5 +87,9 @@ Global
 		{53253ACA-BBE2-400F-B207-3507A9207AFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{53253ACA-BBE2-400F-B207-3507A9207AFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{53253ACA-BBE2-400F-B207-3507A9207AFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B820A777-BE8D-4FF0-8D09-D06609AFFCCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B820A777-BE8D-4FF0-8D09-D06609AFFCCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B820A777-BE8D-4FF0-8D09-D06609AFFCCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B820A777-BE8D-4FF0-8D09-D06609AFFCCB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

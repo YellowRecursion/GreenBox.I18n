@@ -2,6 +2,7 @@
 [Oo]bj/
 [Aa]rtifacts/
 [Tt]est[Rr]esults/
+/GreenBox.I18n.Editor.Host/wwwroot/
 
 .idea/
 .vs/

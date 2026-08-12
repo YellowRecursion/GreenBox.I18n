@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, type PropsWithChildren } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, type PropsWithChildren } from 'react'
 import { addCatalogEntry } from '../api/addCatalogEntry'
 import { removeCatalogEntries } from '../api/removeCatalogEntries'
 import { moveCatalogEntries, type CatalogEntryMove } from '../api/moveCatalogEntries'
@@ -8,7 +8,7 @@ import { mergeCatalogSource } from '../api/mergeCatalogSource'
 import { getCatalog } from '../api/getCatalog'
 import { applyCatalogEntryDelta, type CatalogEntryDelta } from '../api/applyCatalogEntryDelta'
 import { applyCatalogLocales, type CatalogLocaleRename } from '../api/applyCatalogLocales'
-import type { CatalogLocale } from './catalog'
+import type { CatalogLocale, CatalogSnapshot } from './catalog'
 import { CatalogContext } from './catalogContext'
 import { catalogReducer, initialCatalogState } from './catalogReducer'
 import { useCatalogSession } from './useCatalogSession'
@@ -16,6 +16,7 @@ import { useCatalogSession } from './useCatalogSession'
 export function CatalogProvider({ children }: PropsWithChildren) {
   const { state: session } = useCatalogSession()
   const [state, dispatch] = useReducer(catalogReducer, initialCatalogState)
+  const catalogIdentityRef = useRef<{ path: string; revision: number } | undefined>(undefined)
   const sessionCatalog = session.status === 'ready' && session.snapshot.hasCatalog
     ? {
         revision: session.snapshot.revision,
@@ -31,11 +32,24 @@ export function CatalogProvider({ children }: PropsWithChildren) {
       return
     }
 
+    const currentIdentity = catalogIdentityRef.current
+    if (currentIdentity?.path === catalogPath && currentIdentity.revision === revision) {
+      return
+    }
+
     const abortController = new AbortController()
+    const isExternalRefresh = currentIdentity !== undefined
     dispatch({ type: 'load_started', catalogPath })
 
     getCatalog(abortController.signal)
-      .then((catalog) => dispatch({ type: 'loaded', catalog, catalogPath }))
+      .then((catalog) => {
+        catalogIdentityRef.current = { path: catalogPath, revision: catalog.revision }
+        dispatch({
+          type: isExternalRefresh ? 'externally_loaded' : 'loaded',
+          catalog,
+          catalogPath,
+        })
+      })
       .catch((error: unknown) => {
         if (!abortController.signal.aborted) {
           const message = error instanceof Error ? error.message : 'Unknown error.'
@@ -46,15 +60,20 @@ export function CatalogProvider({ children }: PropsWithChildren) {
     return () => abortController.abort()
   }, [revision, catalogPath])
 
+  const acceptCatalog = useCallback((catalog: CatalogSnapshot, path: string) => {
+    catalogIdentityRef.current = { path, revision: catalog.revision }
+    dispatch({ type: 'loaded', catalog, catalogPath: path })
+  }, [])
+
   const addEntry = useCallback(async (path: string) => {
     const catalog = await addCatalogEntry(path)
     if (!catalogPath) {
       throw new Error('No catalog is open.')
     }
 
-    dispatch({ type: 'loaded', catalog, catalogPath })
+    acceptCatalog(catalog, catalogPath)
     return catalog
-  }, [catalogPath])
+  }, [acceptCatalog, catalogPath])
 
   const removeEntries = useCallback(async (ids: string[]) => {
     const catalog = await removeCatalogEntries(ids)
@@ -62,9 +81,9 @@ export function CatalogProvider({ children }: PropsWithChildren) {
       throw new Error('No catalog is open.')
     }
 
-    dispatch({ type: 'loaded', catalog, catalogPath })
+    acceptCatalog(catalog, catalogPath)
     return catalog
-  }, [catalogPath])
+  }, [acceptCatalog, catalogPath])
 
   const moveEntries = useCallback(async (moves: CatalogEntryMove[]) => {
     const catalog = await moveCatalogEntries(moves)
@@ -72,9 +91,9 @@ export function CatalogProvider({ children }: PropsWithChildren) {
       throw new Error('No catalog is open.')
     }
 
-    dispatch({ type: 'loaded', catalog, catalogPath })
+    acceptCatalog(catalog, catalogPath)
     return catalog
-  }, [catalogPath])
+  }, [acceptCatalog, catalogPath])
 
   const applyEntryDelta = useCallback(async (delta: CatalogEntryDelta, expectedRevision: number) => {
     const catalog = await applyCatalogEntryDelta(delta, expectedRevision)
@@ -82,9 +101,9 @@ export function CatalogProvider({ children }: PropsWithChildren) {
       throw new Error('No catalog is open.')
     }
 
-    dispatch({ type: 'loaded', catalog, catalogPath })
+    acceptCatalog(catalog, catalogPath)
     return catalog
-  }, [catalogPath])
+  }, [acceptCatalog, catalogPath])
 
   const applyLocales = useCallback(async (
     locales: CatalogLocale[],
@@ -98,9 +117,9 @@ export function CatalogProvider({ children }: PropsWithChildren) {
       throw new Error('No catalog is open.')
     }
 
-    dispatch({ type: 'loaded', catalog, catalogPath })
+    acceptCatalog(catalog, catalogPath)
     return catalog
-  }, [catalogPath])
+  }, [acceptCatalog, catalogPath])
 
   const save = useCallback(async (overwriteExternalChanges = false) => {
     const catalog = await saveCatalog(overwriteExternalChanges)
@@ -108,9 +127,9 @@ export function CatalogProvider({ children }: PropsWithChildren) {
       throw new Error('No catalog is open.')
     }
 
-    dispatch({ type: 'loaded', catalog, catalogPath })
+    acceptCatalog(catalog, catalogPath)
     return catalog
-  }, [catalogPath])
+  }, [acceptCatalog, catalogPath])
 
   const revert = useCallback(async () => {
     const catalog = await revertCatalog()
@@ -118,9 +137,9 @@ export function CatalogProvider({ children }: PropsWithChildren) {
       throw new Error('No catalog is open.')
     }
 
-    dispatch({ type: 'loaded', catalog, catalogPath })
+    acceptCatalog(catalog, catalogPath)
     return catalog
-  }, [catalogPath])
+  }, [acceptCatalog, catalogPath])
 
   const mergeSource = useCallback(async () => {
     const catalog = await mergeCatalogSource()
@@ -128,9 +147,9 @@ export function CatalogProvider({ children }: PropsWithChildren) {
       throw new Error('No catalog is open.')
     }
 
-    dispatch({ type: 'loaded', catalog, catalogPath })
+    acceptCatalog(catalog, catalogPath)
     return catalog
-  }, [catalogPath])
+  }, [acceptCatalog, catalogPath])
 
   const context = useMemo(
     () => ({ state, addEntry, removeEntries, moveEntries, applyEntryDelta, applyLocales, save, revert, mergeSource }),

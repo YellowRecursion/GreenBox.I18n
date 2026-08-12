@@ -57,6 +57,7 @@ export type CatalogState =
       catalog: CatalogSnapshot
       catalogPath: string
       isRefreshing: boolean
+      externalRefreshRevision?: number
       refreshError?: string
     }
   | { status: 'error'; message: string }
@@ -65,4 +66,5 @@ export type CatalogAction =
   | { type: 'unavailable' }
   | { type: 'load_started'; catalogPath: string }
   | { type: 'loaded'; catalog: CatalogSnapshot; catalogPath: string }
+  | { type: 'externally_loaded'; catalog: CatalogSnapshot; catalogPath: string }
   | { type: 'failed'; message: string }

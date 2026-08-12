@@ -7,6 +7,8 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>i18n</ToolCommandName>
         <PackageId>GreenBox.I18n.Cli</PackageId>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Description>Command-line validation, CRUD, ID generation, and structural merge tools for GreenBox I18n catalogs.</Description>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
@@ -14,6 +16,7 @@
     <ItemGroup>
         <PackageReference Include="System.CommandLine" Version="2.0.10" />
         <ProjectReference Include="..\GreenBox.I18n.Core\GreenBox.I18n.Core.csproj" />
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

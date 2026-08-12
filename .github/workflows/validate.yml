@@ -1,0 +1,35 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: GreenBox.I18n.Editor.Web/package-lock.json
+      - name: Restore
+        run: dotnet restore GreenBox.I18n.sln
+      - name: Test versions
+        shell: powershell
+        run: .\eng\Test-Version.ps1
+      - name: Test .NET
+        run: dotnet test GreenBox.I18n.sln -c Release --no-restore --verbosity minimal
+      - name: Verify packaged Unity Core
+        shell: powershell
+        run: .\Build-UnityPackage.ps1 -Verify
+      - name: Build and smoke-test Desktop bundle
+        shell: powershell
+        run: |
+          .\eng\Build-Desktop.ps1 -SkipTests
+          .\eng\Verify-Beta.ps1

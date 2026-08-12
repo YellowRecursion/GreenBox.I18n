@@ -19,6 +19,7 @@ export type CatalogSessionState =
 
 export type CatalogSessionAction =
   | { type: 'loaded'; snapshot: CatalogSessionSnapshot }
+  | { type: 'refreshed'; snapshot: CatalogSessionSnapshot }
   | { type: 'failed'; message: string }
   | { type: 'open_started' }
   | { type: 'open_succeeded'; snapshot: CatalogSessionSnapshot }

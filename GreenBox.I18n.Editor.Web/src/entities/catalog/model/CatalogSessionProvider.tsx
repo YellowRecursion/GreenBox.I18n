@@ -9,8 +9,9 @@ export function CatalogSessionProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const abortController = new AbortController()
+    let requestPending = false
 
-    getCatalogSession(abortController.signal)
+    const loadInitial = getCatalogSession(abortController.signal)
       .then((snapshot) => dispatch({ type: 'loaded', snapshot }))
       .catch((error: unknown) => {
         if (!abortController.signal.aborted) {
@@ -19,7 +20,31 @@ export function CatalogSessionProvider({ children }: PropsWithChildren) {
         }
       })
 
-    return () => abortController.abort()
+    const refresh = async () => {
+      if (requestPending || abortController.signal.aborted || document.hidden) return
+      requestPending = true
+      try {
+        const snapshot = await getCatalogSession(abortController.signal)
+        dispatch({ type: 'refreshed', snapshot })
+      } catch {
+        // A transient background failure must not replace the working editor with an error page.
+      } finally {
+        requestPending = false
+      }
+    }
+
+    const timer = window.setInterval(() => void refresh(), 1000)
+    const refreshWhenVisible = () => {
+      if (!document.hidden) void refresh()
+    }
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+
+    return () => {
+      void loadInitial
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      abortController.abort()
+    }
   }, [])
 
   const openCatalog = useCallback(async (path: string) => {

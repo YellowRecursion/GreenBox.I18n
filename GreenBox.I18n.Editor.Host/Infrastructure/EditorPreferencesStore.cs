@@ -20,7 +20,8 @@ public sealed class EditorPreferencesStore
     public EditorPreferencesStore()
         : this(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "GreenBox.I18n",
+            "GreenBox",
+            "I18n",
             "preferences.json"))
     {
     }

@@ -16,6 +16,15 @@ export function catalogReducer(state: CatalogState, action: CatalogAction): Cata
         catalog: action.catalog,
         catalogPath: action.catalogPath,
         isRefreshing: false,
+        externalRefreshRevision: state.status === 'ready' ? state.externalRefreshRevision : undefined,
+      }
+    case 'externally_loaded':
+      return {
+        status: 'ready',
+        catalog: action.catalog,
+        catalogPath: action.catalogPath,
+        isRefreshing: false,
+        externalRefreshRevision: action.catalog.revision,
       }
     case 'failed':
       return state.status === 'ready'

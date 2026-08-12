@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Key, type ReactNode } from 'react'
 import {
+  ApiOutlined,
+  CheckCircleOutlined,
+  CopyOutlined,
   EditOutlined,
   ProjectOutlined,
   SettingOutlined,
@@ -34,6 +37,11 @@ import { useCatalogSourceMonitor } from '../../entities/catalog/model/useCatalog
 import { useUnityProjectStatus } from '../../entities/unity-project/model/useUnityProjectStatus'
 import { useUsageIndexSummary } from '../../entities/usage-index/model/useUsageIndexSummary'
 import type { UsageEntrySummary } from '../../entities/usage-index/api/getUsageIndexSummary'
+import {
+  connectCodexIntegration,
+  getCodexIntegration,
+  type CodexIntegrationStatus,
+} from '../../entities/integrations/api/codexIntegration'
 import {
   getEditorPreferences,
   updateEditorPreferences,
@@ -124,6 +132,7 @@ export function EditorShell() {
       key={session.snapshot.catalogPath ?? ''}
       catalog={catalog.catalog}
       catalogPath={session.snapshot.catalogPath ?? ''}
+      externalRefreshRevision={catalog.externalRefreshRevision}
       onAddEntry={addEntry}
       onRemoveEntries={removeEntries}
       onMoveEntries={moveEntries}
@@ -139,6 +148,7 @@ export function EditorShell() {
 function CatalogWorkspace({
   catalog,
   catalogPath,
+  externalRefreshRevision,
   onAddEntry,
   onRemoveEntries,
   onMoveEntries,
@@ -150,6 +160,7 @@ function CatalogWorkspace({
 }: {
   catalog: CatalogSnapshot
   catalogPath: string
+  externalRefreshRevision?: number
   onAddEntry(path: string): Promise<CatalogSnapshot>
   onRemoveEntries(ids: string[]): Promise<CatalogSnapshot>
   onMoveEntries(moves: CatalogEntryMove[]): Promise<CatalogSnapshot>
@@ -217,6 +228,12 @@ function CatalogWorkspace({
     const item = tree.selectionByKey.get(String(key))
     return item ? [item] : []
   })
+
+  useEffect(() => {
+    if (externalRefreshRevision !== undefined) {
+      setHistory(emptyEditorHistory)
+    }
+  }, [externalRefreshRevision])
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -1206,7 +1223,7 @@ function SettingsPage({
         <div>
           <Typography.Title level={3} style={{ margin: 0 }}>Settings</Typography.Title>
           <Typography.Text type="secondary">
-            Configure the Unity project and your personal editor preferences.
+            Configure the Unity project, personal preferences, and integrations.
           </Typography.Text>
         </div>
 
@@ -1239,10 +1256,110 @@ function SettingsPage({
                 />
               ),
             },
+            {
+              key: 'integrations',
+              label: 'Integrations',
+              children: <IntegrationsSettings />,
+            },
           ]}
         />
       </Flex>
     </div>
+  )
+}
+
+function IntegrationsSettings() {
+  const [codex, setCodex] = useState<CodexIntegrationStatus>()
+  const [error, setError] = useState<string>()
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const abortController = new AbortController()
+    getCodexIntegration(abortController.signal)
+      .then(setCodex)
+      .catch((reason: unknown) => {
+        if (!abortController.signal.aborted) {
+          setError(reason instanceof Error ? reason.message : 'Integration status could not be loaded.')
+        }
+      })
+    return () => abortController.abort()
+  }, [])
+
+  const connect = async () => {
+    setIsConnecting(true)
+    setError(undefined)
+    try {
+      setCodex(await connectCodexIntegration())
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Codex could not be connected.')
+    } finally {
+      setIsConnecting(false)
+    }
+  }
+
+  const copyCommand = async () => {
+    if (!codex?.setupCommand) return
+    await navigator.clipboard.writeText(codex.setupCommand)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <Flex vertical gap={layoutTokens.spacing.large}>
+      <Typography.Text type="secondary">
+        Connect GreenBox to development tools installed on this computer.
+      </Typography.Text>
+
+      {error && <Alert type="error" showIcon message={error} />}
+
+      <Card size="small" loading={!codex && !error}>
+        <Flex align="center" justify="space-between" gap={layoutTokens.spacing.xLarge} wrap>
+          <Flex vertical gap={layoutTokens.spacing.xSmall} style={{ minWidth: 0 }}>
+            <Flex align="center" gap={layoutTokens.spacing.small}>
+              <ApiOutlined />
+              <Typography.Text strong>Codex MCP</Typography.Text>
+              {codex?.isConfigured ? (
+                <Tag bordered={false} color="success" icon={<CheckCircleOutlined />}>Connected</Tag>
+              ) : (
+                <Tag bordered={false}>Not connected</Tag>
+              )}
+            </Flex>
+            <Typography.Text type="secondary">
+              Lets Codex inspect, review, translate, and safely edit the active catalog.
+            </Typography.Text>
+            {codex && <Typography.Text type="secondary">{codex.message}</Typography.Text>}
+          </Flex>
+
+          <Flex gap={layoutTokens.spacing.small}>
+            {!codex?.isConfigured && (
+              <Button
+                type="primary"
+                loading={isConnecting}
+                disabled={!codex?.canConfigure}
+                onClick={() => void connect()}
+              >
+                Connect
+              </Button>
+            )}
+            {codex?.setupCommand && !codex.isConfigured && (
+              <Tooltip title={copied ? 'Copied' : 'Copy manual setup command'}>
+                <Button icon={<CopyOutlined />} aria-label="Copy manual setup command" onClick={() => void copyCommand()} />
+              </Tooltip>
+            )}
+          </Flex>
+        </Flex>
+
+        {codex?.restartRequired && (
+          <Alert
+            showIcon
+            type="info"
+            message="Restart Codex to activate GreenBox MCP."
+            style={{ marginTop: layoutTokens.spacing.large }}
+          />
+        )}
+      </Card>
+    </Flex>
   )
 }
 

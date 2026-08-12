@@ -2,6 +2,15 @@
 
 The local stdio MCP server gives an LLM safe access to the same catalog working copy used by the Web editor. The MCP process is a thin adapter; GreenBox Editor Host remains the single owner of revisions, unsaved changes, validation, usage data, and disk writes.
 
+## Installed Desktop Tools
+
+Desktop Tools ships the Host and MCP server together. Configure an MCP client once with the
+installed `GreenBox.I18n.exe` as the command and `mcp` as its only argument. The command stays
+stable across updates, starts the Host when necessary, and keeps MCP protocol messages on STDIO.
+
+Updating Desktop Tools also updates Web, Host, CLI, and MCP; MCP client settings do not need to be
+changed for each release.
+
 ## Development run
 
 Start the Editor Host first:
@@ -18,7 +27,7 @@ dotnet run --project C:\Projects\GreenBox.I18n\GreenBox.I18n.Mcp\GreenBox.I18n.M
 
 The default Host URL is `http://127.0.0.1:5111`. Development and tests can override it with `GREENBOX_I18N_HOST_URL`.
 
-The shipped Desktop Tools installer will provide a stable MCP executable and register it once. Automatic Host startup and the final installer layout are intentionally deferred until Desktop Tools distribution is designed; the MCP protocol and catalog API do not depend on that choice.
+The development commands above are not intended for end users.
 
 ## Tool workflow
 

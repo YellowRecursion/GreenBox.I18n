@@ -27,12 +27,12 @@ public sealed class McpWorkflowTests
             "bin",
             configuration,
             "net10.0",
-            "GreenBox.I18n.Editor.Host.dll");
+            "greenbox-i18n-host.dll");
         using Process host = StartHost(hostAssembly, hostUrl, repositoryRoot);
 
         try
         {
-            await WaitForHostAsync(hostUrl, timeout.Token);
+            await WaitForHostAsync(host, hostUrl, timeout.Token);
             var transport = new StdioClientTransport(new StdioClientTransportOptions
             {
                 Name = "GreenBox I18n integration test",
@@ -170,12 +170,23 @@ public sealed class McpWorkflowTests
         return Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start the Editor Host.");
     }
 
-    private static async Task WaitForHostAsync(string hostUrl, CancellationToken cancellationToken)
+    private static async Task WaitForHostAsync(
+        Process host,
+        string hostUrl,
+        CancellationToken cancellationToken)
     {
         using var http = new HttpClient { BaseAddress = new Uri(hostUrl) };
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (host.HasExited)
+            {
+                string standardOutput = await host.StandardOutput.ReadToEndAsync(cancellationToken);
+                string standardError = await host.StandardError.ReadToEndAsync(cancellationToken);
+                throw new InvalidOperationException(
+                    $"Host exited with code {host.ExitCode}.\n{standardOutput}\n{standardError}");
+            }
+
             try
             {
                 using HttpResponseMessage response = await http.GetAsync("/api/session", cancellationToken);

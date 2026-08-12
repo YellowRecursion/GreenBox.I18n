@@ -1,0 +1,61 @@
+name: Release beta
+
+on:
+  push:
+    tags: ['v*-beta.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: GreenBox.I18n.Editor.Web/package-lock.json
+      - name: Validate release tag
+        shell: powershell
+        run: |
+          $version = (Get-Content .\eng\version.txt -Raw).Trim()
+          if ($env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag '$env:GITHUB_REF_NAME' does not match product version '$version'."
+          }
+      - name: Build release
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          .\eng\Build-Release.ps1 `
+            -UpdateSource "https://github.com/${{ github.repository }}" `
+            -ReleaseNotes .\RELEASE_NOTES.md `
+            -DownloadPrevious `
+            -SkipRider
+      - name: Verify generated Unity package was committed
+        run: git diff --exit-code -- Unity/Packages/com.greenbox.i18n/Runtime/Plugins Unity/Packages/com.greenbox.i18n/package.json
+      - name: Publish Desktop beta
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          .\eng\Publish-GitHub-Beta.ps1 `
+            -RepositoryUrl "https://github.com/${{ github.repository }}" `
+            -Tag $env:GITHUB_REF_NAME
+      - name: Attach standalone CLI package
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $packages = @(Get-ChildItem .\artifacts\nuget\GreenBox.I18n.Cli.*.nupkg)
+          if ($packages.Count -ne 1) {
+            throw "Expected one CLI package, found $($packages.Count)."
+          }
+          gh release upload $env:GITHUB_REF_NAME $packages[0].FullName --clobber

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>GreenBox.I18n</AssemblyName>
+    <StartupObject>GreenBox.I18n.Desktop.Program</StartupObject>
+    <GreenBoxUpdateFeedUrl Condition="'$(GreenBoxUpdateFeedUrl)' == ''"></GreenBoxUpdateFeedUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="GreenBoxUpdateFeedUrl" Value="$(GreenBoxUpdateFeedUrl)" />
+    <PackageReference Include="Velopack" Version="1.2.0" />
+    <ProjectReference Include="..\GreenBox.I18n.Cli\GreenBox.I18n.Cli.csproj" />
+    <ProjectReference Include="..\GreenBox.I18n.Editor.Host\GreenBox.I18n.Editor.Host.csproj" />
+    <ProjectReference Include="..\GreenBox.I18n.Mcp\GreenBox.I18n.Mcp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\GreenBox.I18n.Editor.Host\appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="BuildEditorWeb" BeforeTargets="ComputeFilesToPublish">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\eng\Build-Web.ps1&quot; -OutputPath &quot;$(MSBuildProjectDirectory)\..\GreenBox.I18n.Editor.Host\wwwroot&quot;" />
+    <ItemGroup>
+      <Content Include="$(MSBuildProjectDirectory)\..\GreenBox.I18n.Editor.Host\wwwroot\**\*">
+        <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+    </ItemGroup>
+  </Target>
+
+</Project>
