@@ -7,7 +7,55 @@
       "id": "en",
       "displayName": "English",
       "culture": "en-US"
+    },
+    {
+      "id": "ru",
+      "displayName": "Русский",
+      "culture": "ru-RU"
     }
   ],
-  "entries": []
+  "entries": [
+    {
+      "id": "3857517065065828448",
+      "path": "Picture",
+      "locales": {
+        "en": {
+          "asset": {
+            "assetGuid": "6dceac888770529419d9d08c835fe090",
+            "localFileId": "21300000"
+          }
+        },
+        "ru": {
+          "asset": {
+            "assetGuid": "e19b91b724922ef4091b53de61a32003",
+            "localFileId": "21300000"
+          }
+        }
+      }
+    },
+    {
+      "id": "3857558199779051791",
+      "path": "PlayButton",
+      "locales": {
+        "en": {
+          "text": "Play"
+        },
+        "ru": {
+          "text": "Играть"
+        }
+      }
+    },
+    {
+      "id": "3857487432477178769",
+      "path": "Timer",
+      "locales": {
+        "en": {
+          "text": ".input {$timer :number maximumFractionDigits=0}\n.match $timer\n0 {{Timer started.}}\none {{Elapsed: {$timer} second.}}\n* {{Elapsed: {$timer} seconds.}}"
+        },
+        "ru": {
+          "text": ".input {$timer :number maximumFractionDigits=0}\n.match $timer\n0 {{Таймер запущен.}}\none {{Прошла {$timer} секунда.}}\nfew {{Прошло {$timer} секунды.}}\nmany {{Прошло {$timer} секунд.}}\n* {{Прошло {$timer} секунды.}}"
+        }
+      }
+    }
+  ]
 }

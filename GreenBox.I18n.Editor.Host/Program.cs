@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<EditorSession>();
 builder.Services.AddSingleton<CatalogFileLoader>();
+builder.Services.AddSingleton<CatalogFilePicker>();
 builder.Services.AddSingleton<UnityProjectLocator>();
 builder.Services.AddSingleton<UnityProjectPresenceService>();
 builder.Services.AddSingleton<UnityAssetReferenceService>();

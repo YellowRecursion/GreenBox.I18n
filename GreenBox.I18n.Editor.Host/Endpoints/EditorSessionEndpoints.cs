@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using GreenBox.I18n.Editor.Host.Editor;
 using GreenBox.I18n.Editor.Host.Contracts;
 using GreenBox.I18n.Editor.Host.Infrastructure;
@@ -21,6 +22,7 @@ public static class EditorSessionEndpoints
 
         sessionEndpoints.MapGet(string.Empty, (EditorSession session) => session.GetSnapshot());
         sessionEndpoints.MapPost("/open", OpenCatalogAsync);
+        sessionEndpoints.MapPost("/pick-file", PickCatalogFileAsync);
         sessionEndpoints.MapPost("/open-file", OpenCatalogFile);
 
         return endpoints;
@@ -57,6 +59,22 @@ public static class EditorSessionEndpoints
         }
 
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> PickCatalogFileAsync(CatalogFilePicker picker)
+    {
+        try
+        {
+            string? path = await picker.PickAsync();
+            return Results.Ok(new PickCatalogFileResponse(path));
+        }
+        catch (Exception exception) when (
+            exception is PlatformNotSupportedException or COMException)
+        {
+            return Results.Json(
+                new EditorErrorResponse(EditorErrorCodes.CatalogOpenFailed, exception.Message),
+                statusCode: StatusCodes.Status501NotImplemented);
+        }
     }
 
     private static IResult OpenCatalogFile(EditorSession session)
