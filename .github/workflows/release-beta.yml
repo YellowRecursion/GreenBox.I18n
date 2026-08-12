@@ -37,7 +37,6 @@ jobs:
           .\eng\Build-Release.ps1 `
             -UpdateSource "https://github.com/${{ github.repository }}" `
             -ReleaseNotes .\RELEASE_NOTES.md `
-            -DownloadPrevious `
             -SkipRider
       - name: Verify generated Unity package was committed
         run: git diff --exit-code -- Unity/Packages/com.greenbox.i18n/Runtime/Plugins Unity/Packages/com.greenbox.i18n/package.json
