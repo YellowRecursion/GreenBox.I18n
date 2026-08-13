@@ -4,8 +4,17 @@
   <vendor>GreenBox</vendor>
 
   <description><![CDATA[
-    <p>GreenBox I18n support for JetBrains Rider.</p>
+    <p>GreenBox I18n support for Unity projects in JetBrains Rider.</p>
+    <p>
+      Displays the final catalog path segment as an inline hint beside known GreenBox I18n entry
+      IDs in C# source files. The plugin reads the source catalog configured in
+      <code>ProjectSettings/GreenBox.I18n.asset</code> and does not modify source code.
+    </p>
   ]]></description>
+
+  <change-notes><![CDATA[
+    <p>Initial beta release with Rider 2025.3 support.</p>
+  ]]></change-notes>
 
   <depends>com.intellij.modules.rider</depends>
 
