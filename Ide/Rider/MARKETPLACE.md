@@ -35,5 +35,5 @@ The token is read only from the current process environment and must never be co
 users receive the new compatible version through Rider's standard plugin updater; no settings need
 to be changed on their computers.
 
-The plugin currently declares compatibility with Rider 2025.2 (`252.*`). Expand that range only
+The plugin currently declares compatibility with Rider 2025.3 (`253.*`). Expand that range only
 after a build or Plugin Verifier check against the additional Rider version.

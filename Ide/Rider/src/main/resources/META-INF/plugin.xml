@@ -20,7 +20,7 @@
   ]]></description>
 
   <change-notes><![CDATA[
-    <p>Initial beta release for Rider 2025.2 and 2025.3:</p>
+    <p>Initial beta release for Rider 2025.3:</p>
     <ul>
       <li>Entry-name inlays for GreenBox I18n IDs.</li>
       <li>Full catalog paths in tooltips.</li>
