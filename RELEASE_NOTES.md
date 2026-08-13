@@ -6,4 +6,5 @@
 - Apache 2.0 licensing and third-party notices in distributed packages.
 - Desktop shutdown reliability fix.
 - Rider 2025.3 support.
+- Marketplace-compatible Rider plugin identity.
 - Unity package and Rider integration remain independently updateable.

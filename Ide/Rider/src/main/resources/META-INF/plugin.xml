@@ -1,5 +1,5 @@
 <idea-plugin require-restart="true" url="https://github.com/YellowRecursion/GreenBox.I18n">
-  <id>com.greenbox.i18n.rider</id>
+  <id>com.greenbox.i18n</id>
   <name>GreenBox I18n</name>
   <vendor url="https://github.com/YellowRecursion/GreenBox.I18n">GreenBox</vendor>
 
