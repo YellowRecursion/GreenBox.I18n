@@ -4,22 +4,23 @@
   <vendor url="https://github.com/YellowRecursion/GreenBox.I18n">GreenBox</vendor>
 
   <description><![CDATA[
-    <p>See localization entry names directly beside GreenBox I18n numeric IDs in C# code.</p>
+    <p>GreenBox I18n support for Unity projects in JetBrains Rider.</p>
+    <p>
+      See localization entry names directly beside GreenBox I18n numeric IDs in C# code.
+      The plugin reads the active <code>localization.json</code> path from
+      <code>ProjectSettings/GreenBox.I18n.asset</code> and does not modify source code or catalog
+      files.
+    </p>
     <ul>
       <li>Shows a compact inlay with the entry name.</li>
       <li>Shows the full catalog path on hover.</li>
       <li>Marks valid GreenBox I18n IDs that are missing from the active catalog.</li>
       <li>Refreshes after the Unity project's catalog changes.</li>
     </ul>
-    <p>
-      The plugin reads the active <code>localization.json</code> path from
-      <code>ProjectSettings/GreenBox.I18n.asset</code>. It does not modify source code or catalog
-      files.
-    </p>
   ]]></description>
 
   <change-notes><![CDATA[
-    <p>Initial beta release for Rider 2025.2:</p>
+    <p>Initial beta release for Rider 2025.2 and 2025.3:</p>
     <ul>
       <li>Entry-name inlays for GreenBox I18n IDs.</li>
       <li>Full catalog paths in tooltips.</li>
