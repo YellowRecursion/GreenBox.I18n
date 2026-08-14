@@ -7,4 +7,5 @@
 - Desktop shutdown reliability fix.
 - Rider 2025.3 support.
 - Marketplace-compatible Rider plugin identity.
+- Fixed Rider entry-name inlays not attaching to restored C# editors.
 - Unity package and Rider integration remain independently updateable.

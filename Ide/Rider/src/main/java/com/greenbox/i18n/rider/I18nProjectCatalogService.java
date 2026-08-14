@@ -3,6 +3,10 @@ package com.greenbox.i18n.rider;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.FileEditorManagerListener;
+import com.intellij.openapi.fileEditor.TextEditor;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.Alarm;
 import com.intellij.openapi.vfs.VirtualFileManager;
@@ -38,6 +42,24 @@ public final class I18nProjectCatalogService implements Disposable {
                 public void after(@NotNull List<? extends VFileEvent> events) {
                     if (events.stream().anyMatch(I18nProjectCatalogService.this::isRelevant)) {
                         reload();
+                    }
+                }
+            });
+        project.getMessageBus().connect(this).subscribe(
+            FileEditorManagerListener.FILE_EDITOR_MANAGER,
+            new FileEditorManagerListener() {
+                @Override
+                public void fileOpened(
+                    @NotNull FileEditorManager source,
+                    @NotNull com.intellij.openapi.vfs.VirtualFile file) {
+                    if (!"cs".equalsIgnoreCase(file.getExtension())) {
+                        return;
+                    }
+
+                    for (FileEditor fileEditor : source.getEditors(file)) {
+                        if (fileEditor instanceof TextEditor textEditor) {
+                            EntryIdInlayEditorListener.attach(textEditor.getEditor());
+                        }
                     }
                 }
             });
