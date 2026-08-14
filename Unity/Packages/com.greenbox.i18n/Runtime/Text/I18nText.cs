@@ -12,6 +12,7 @@ namespace GreenBox.I18n.Unity.Text
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("GreenBox/i18n/I18n Text")]
+    [Icon("Packages/com.greenbox.i18n/Editor/Assets/ComponentIcons/GreenBox.I18n.png")]
     public sealed class I18nText : I18nComponent
     {
         [SerializeField]

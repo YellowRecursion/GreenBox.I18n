@@ -11,6 +11,7 @@ namespace GreenBox.I18n.Unity.Audio
     [DisallowMultipleComponent]
     [RequireComponent(typeof(AudioSource))]
     [AddComponentMenu("GreenBox/i18n/I18n Audio Source")]
+    [Icon("Packages/com.greenbox.i18n/Editor/Assets/ComponentIcons/GreenBox.I18n.png")]
     public sealed class I18nAudioSource : I18nComponent
     {
         private AudioSource? _target;

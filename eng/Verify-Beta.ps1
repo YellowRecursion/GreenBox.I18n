@@ -14,6 +14,7 @@ $requiredFiles = @(
     "GreenBox.I18n.exe",
     "i18n.cmd",
     "wwwroot\index.html",
+    "wwwroot\greenbox-i18n-icon.png",
     "release-manifest.json"
 )
 

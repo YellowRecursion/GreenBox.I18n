@@ -6,6 +6,7 @@ namespace GreenBox.I18n.Unity
     /// <summary>
     /// Stores generated runtime data and Unity objects compiled from the source catalog.
     /// </summary>
+    [Icon("Packages/com.greenbox.i18n/Editor/Assets/ComponentIcons/GreenBox.I18n.png")]
     public sealed class I18nCatalogAsset : ScriptableObject
     {
         /// <summary>

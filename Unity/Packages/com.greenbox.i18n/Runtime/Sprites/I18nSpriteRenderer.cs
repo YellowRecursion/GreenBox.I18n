@@ -10,6 +10,7 @@ namespace GreenBox.I18n.Unity.Sprites
     [DisallowMultipleComponent]
     [RequireComponent(typeof(SpriteRenderer))]
     [AddComponentMenu("GreenBox/i18n/I18n Sprite Renderer")]
+    [Icon("Packages/com.greenbox.i18n/Editor/Assets/ComponentIcons/GreenBox.I18n.png")]
     public sealed class I18nSpriteRenderer : I18nSpriteComponent
     {
         private SpriteRenderer? _target;

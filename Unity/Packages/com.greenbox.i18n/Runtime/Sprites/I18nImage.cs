@@ -11,6 +11,7 @@ namespace GreenBox.I18n.Unity.Sprites
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Image))]
     [AddComponentMenu("GreenBox/i18n/I18n Image")]
+    [Icon("Packages/com.greenbox.i18n/Editor/Assets/ComponentIcons/GreenBox.I18n.png")]
     public sealed class I18nImage : I18nSpriteComponent
     {
         private Image? _target;

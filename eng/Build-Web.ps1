@@ -34,6 +34,10 @@ try {
         -LiteralPath (Join-Path $sourceRoot "src") `
         -Destination (Join-Path $stagingRoot "src") `
         -Recurse
+    Copy-Item `
+        -LiteralPath (Join-Path $sourceRoot "public") `
+        -Destination (Join-Path $stagingRoot "public") `
+        -Recurse
     if (!(Test-Path -LiteralPath (Join-Path $stagingRoot "src\main.tsx") -PathType Leaf)) {
         throw "Web source staging is incomplete."
     }
