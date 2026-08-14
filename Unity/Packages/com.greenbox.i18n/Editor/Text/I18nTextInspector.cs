@@ -60,7 +60,7 @@ namespace GreenBox.I18n.Unity.Editor.Text
 
         private void RefreshPreview()
         {
-            if (_keyProperty == null || !target)
+            if (EditorApplication.isPlayingOrWillChangePlaymode || _keyProperty == null || !target)
             {
                 return;
             }
@@ -142,7 +142,8 @@ namespace GreenBox.I18n.Unity.Editor.Text
             string currentText,
             string previewText)
         {
-            if (string.Equals(currentText, previewText, StringComparison.Ordinal))
+            if (EditorApplication.isPlayingOrWillChangePlaymode ||
+                string.Equals(currentText, previewText, StringComparison.Ordinal))
             {
                 return;
             }
