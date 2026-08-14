@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace GreenBox.I18n.Unity
@@ -9,6 +10,8 @@ namespace GreenBox.I18n.Unity
     {
         [SerializeField]
         private I18nKey _key;
+
+        private bool _hasWarnedAboutUnassignedKey;
 
         /// <summary>
         /// Gets or sets the localization key used by this component.
@@ -33,10 +36,21 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         public void Refresh()
         {
-            if (global::I18n.IsInitialized)
+            if (!global::I18n.IsInitialized)
             {
-                UpdateContent();
+                return;
             }
+
+            if (!_key.IsAssigned)
+            {
+                WarnAboutUnassignedKey();
+            }
+            else
+            {
+                _hasWarnedAboutUnassignedKey = false;
+            }
+
+            UpdateContent();
         }
 
         /// <summary>
@@ -44,6 +58,7 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         protected virtual void OnEnable()
         {
+            _hasWarnedAboutUnassignedKey = false;
             global::I18n.LocaleChanged += HandleLocaleChanged;
             Refresh();
         }
@@ -72,6 +87,37 @@ namespace GreenBox.I18n.Unity
         private void HandleLocaleChanged(I18nRuntimeLocale _)
         {
             Refresh();
+        }
+
+        private void WarnAboutUnassignedKey()
+        {
+            if (_hasWarnedAboutUnassignedKey)
+            {
+                return;
+            }
+
+            _hasWarnedAboutUnassignedKey = true;
+            Debug.LogWarning(
+                $"An unassigned localization key was requested by {GetType().Name} on " +
+                $"'{GetObjectPath()}'. Returning '{(global::I18n.NonePlaceholder)}'.",
+                this);
+        }
+
+        private string GetObjectPath()
+        {
+            var segments = new Stack<string>();
+            Transform current = transform;
+            while (current)
+            {
+                segments.Push(current.name);
+                current = current.parent;
+            }
+
+            string hierarchyPath = string.Join("/", segments);
+            string sceneName = gameObject.scene.name;
+            return string.IsNullOrEmpty(sceneName)
+                ? hierarchyPath
+                : $"{sceneName}/{hierarchyPath}";
         }
     }
 }

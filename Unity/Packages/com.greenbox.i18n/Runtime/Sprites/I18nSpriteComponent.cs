@@ -17,18 +17,21 @@ namespace GreenBox.I18n.Unity.Sprites
         /// </summary>
         protected sealed override void UpdateContent()
         {
-            Sprite? sprite;
-            try
+            Sprite? sprite = null;
+            if (Key.IsAssigned)
             {
-                sprite = global::I18n.Asset<Sprite>(Key);
-            }
-            catch (Exception exception) when (
-                exception is InvalidCastException ||
-                exception is InvalidOperationException ||
-                exception is ArgumentOutOfRangeException)
-            {
-                ReportError(exception.Message);
-                return;
+                try
+                {
+                    sprite = global::I18n.Asset<Sprite>(Key);
+                }
+                catch (Exception exception) when (
+                    exception is InvalidCastException ||
+                    exception is InvalidOperationException ||
+                    exception is ArgumentOutOfRangeException)
+                {
+                    ReportError(exception.Message);
+                    return;
+                }
             }
 
             if (!TryApplySprite(sprite))

@@ -77,9 +77,10 @@ namespace GreenBox.I18n.Unity.Text
                 return;
             }
 
-            string localizedText = global::I18n.Text(Key);
+            string localizedText = global::I18n.NonePlaceholder;
             if (Key.IsAssigned)
             {
+                localizedText = global::I18n.Text(Key);
                 localizedText = I18nTextTransformUtility.Apply(
                     localizedText,
                     _textTransform,

@@ -46,18 +46,21 @@ namespace GreenBox.I18n.Unity.Audio
         /// <inheritdoc />
         protected override void UpdateContent()
         {
-            AudioClip? clip;
-            try
+            AudioClip? clip = null;
+            if (Key.IsAssigned)
             {
-                clip = global::I18n.Asset<AudioClip>(Key);
-            }
-            catch (Exception exception) when (
-                exception is InvalidCastException ||
-                exception is InvalidOperationException ||
-                exception is ArgumentOutOfRangeException)
-            {
-                ReportError(exception.Message);
-                return;
+                try
+                {
+                    clip = global::I18n.Asset<AudioClip>(Key);
+                }
+                catch (Exception exception) when (
+                    exception is InvalidCastException ||
+                    exception is InvalidOperationException ||
+                    exception is ArgumentOutOfRangeException)
+                {
+                    ReportError(exception.Message);
+                    return;
+                }
             }
 
             AudioSource? target = Target;
