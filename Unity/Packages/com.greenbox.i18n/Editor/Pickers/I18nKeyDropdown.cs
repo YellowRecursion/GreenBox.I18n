@@ -105,9 +105,9 @@ namespace GreenBox.I18n.Unity.Editor.Pickers
                 KeyId = keyId;
 
                 // AdvancedDropdown renders the content created by its constructor, but searches
-                // the public name property. Keeping the complete path here makes every path
-                // segment searchable without repeating the path in the visible tree leaf.
-                name = path;
+                // the public name property. Keeping the complete path and stable ID here makes
+                // both searchable without repeating them in the visible tree leaf.
+                name = $"{path} {keyId.ToString(CultureInfo.InvariantCulture)}";
             }
 
             /// <summary>
