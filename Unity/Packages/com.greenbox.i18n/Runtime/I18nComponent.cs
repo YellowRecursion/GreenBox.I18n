@@ -36,7 +36,7 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         public void Refresh()
         {
-            if (!global::I18n.IsInitialized)
+            if (!isActiveAndEnabled || !global::I18n.IsInitialized)
             {
                 return;
             }
@@ -58,7 +58,6 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         protected virtual void OnEnable()
         {
-            _hasWarnedAboutUnassignedKey = false;
             global::I18n.LocaleChanged += HandleLocaleChanged;
             Refresh();
         }
