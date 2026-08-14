@@ -99,9 +99,9 @@ public sealed class GreenBoxHostClient
         {
             return McpToolResponse<T>.Failed(new McpToolError(
                 "host_unavailable",
-                "GreenBox Desktop Tools is not reachable.",
+                "GreenBox.I18n is not reachable.",
                 true,
-                "Start GreenBox Desktop Tools, then retry the operation. " +
+                "Start GreenBox.I18n, then retry the operation. " +
                 "For development, ensure the Editor Host is listening on GREENBOX_I18N_HOST_URL."));
         }
     }
@@ -156,7 +156,9 @@ public sealed class GreenBoxHostClient
 
     private static string Remediation(string code) => code switch
     {
-        "catalog_not_open" => "Call open_catalog with the intended localization.json, then retry.",
+        "catalog_not_open" =>
+            "Ask the user to open the intended project in the GreenBox.I18n editor, then retry get_workspace. " +
+            "Call open_catalog only when the user explicitly selected or provided the catalog path.",
         "catalog_revision_mismatch" => "Read the workspace again and prepare a new change set from its current revision.",
         "workspace_has_unsaved_changes" => "Ask the user to save or revert the Web editor changes before applying MCP writes.",
         "catalog_changed_externally" => "Ask the user to reopen or merge the externally changed catalog, then prepare again.",

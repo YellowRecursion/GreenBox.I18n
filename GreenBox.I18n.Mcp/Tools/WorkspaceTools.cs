@@ -15,12 +15,12 @@ public sealed class WorkspaceTools
     }
 
     [McpServerTool(Name = "get_workspace", ReadOnly = true, Idempotent = true, UseStructuredContent = true)]
-    [Description("Returns the active GreenBox catalog, revision, locales, unsaved state, and source-file state. Call this before catalog work.")]
+    [Description("Start here automatically for GreenBox.I18n localization work. Returns the shared active catalog, revision, locales, unsaved state, and source-file state.")]
     public Task<McpToolResponse<WorkspaceContextResponse>> GetWorkspace(CancellationToken cancellationToken) =>
         _host.SafeAsync(() => _host.GetWorkspaceAsync(cancellationToken));
 
     [McpServerTool(Name = "open_catalog", ReadOnly = false, Destructive = false, Idempotent = true, UseStructuredContent = true)]
-    [Description("Opens a localization.json in the shared GreenBox workspace. This changes the active catalog for both Web and MCP but does not edit the file.")]
+    [Description("Opens a user-selected localization.json in the shared GreenBox.I18n editor and MCP workspace without editing it. If the user has not selected a catalog, ask them to open the intended project in the editor instead.")]
     public Task<McpToolResponse<WorkspaceResponse>> OpenCatalog(
         [Description("Absolute path to localization.json.")] string path,
         CancellationToken cancellationToken) =>

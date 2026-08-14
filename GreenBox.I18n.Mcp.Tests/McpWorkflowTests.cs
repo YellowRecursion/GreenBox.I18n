@@ -61,6 +61,8 @@ public sealed class McpWorkflowTests
             Assert.Contains(resources, resource => resource.Name == "workspace");
             Assert.Contains(resourceTemplates, resource => resource.Name == "entry_locale_text");
             Assert.Contains(prompts, prompt => prompt.Name == "audit_catalog");
+            Assert.Contains("use this server automatically", client.ServerInstructions, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("user need not mention MCP", client.ServerInstructions, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("prepare first", client.ServerInstructions, StringComparison.OrdinalIgnoreCase);
 
             JsonElement opened = await CallDataAsync(
