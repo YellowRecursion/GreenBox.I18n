@@ -50,3 +50,15 @@ body {
   width: 0;
   height: 0;
 }
+
+.catalog-tree-node-title__actions {
+  display: none !important;
+}
+
+.catalog-tree-node-title:hover > .catalog-tree-node-title__actions {
+  display: inline-flex !important;
+}
+
+.catalog-tree-node-title--has-actions:hover > .catalog-tree-node-title__status {
+  display: none !important;
+}

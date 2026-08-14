@@ -1,12 +1,15 @@
 import {
+  memo,
+  useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type ComponentRef,
   type Key,
   type ReactNode,
 } from 'react'
-import { createPortal } from 'react-dom'
 import {
   AimOutlined,
   CopyOutlined,
@@ -35,12 +38,18 @@ import {
   theme,
   type InputRef,
   type MenuProps,
+  type TreeProps,
 } from 'antd'
 import { layoutTokens } from '../../design/layoutTokens'
 import { LocaleFlag } from '../../entities/catalog/ui/LocaleFlag'
 import type { CatalogLocale } from '../../entities/catalog/model/catalog'
 import type { EditorPreferences } from '../../entities/preferences/api/editorPreferences'
-import { filterCatalogTree, type CatalogTreeModel, type CatalogTreeNode } from './catalogTree'
+import {
+  filterCatalogTree,
+  findMatchingCatalogKeys,
+  type CatalogTreeModel,
+  type CatalogTreeNode,
+} from './catalogTree'
 import { getCatalogNodeIconColor, renderCatalogNodeIcon } from './catalogNodeVisuals'
 import { commonCultureOptions } from './localeCultures'
 
@@ -92,6 +101,8 @@ interface LocaleDraft {
 
 const nodeDraftKey = 'draft:node'
 const pathSegmentPattern = /^[A-Za-z_][A-Za-z0-9_]*$/
+// Ant Design treats null as "use the default motion"; rc-tree requires false to skip motion rows.
+const disabledTreeMotion = false as unknown as TreeProps['motion']
 
 export function CatalogTreePanel({
   tree,
@@ -121,16 +132,48 @@ export function CatalogTreePanel({
   const [localeDraft, setLocaleDraft] = useState<LocaleDraft>()
   const [pendingRevealKey, setPendingRevealKey] = useState<Key>()
   const [revealedKey, setRevealedKey] = useState<Key>()
+  const [contextMenuNode, setContextMenuNode] = useState<CatalogTreeNode>()
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
   const treeContainerRef = useRef<HTMLDivElement>(null)
-  const filteredNodes = useMemo(() => filterCatalogTree(tree.nodes, query), [tree.nodes, query])
+  const treeRef = useRef<ComponentRef<typeof Tree>>(null)
+  const [treeHeight, setTreeHeight] = useState(() =>
+    typeof window === 'undefined' ? 600 : window.innerHeight)
+  const hasQuery = Boolean(query.trim())
+  const matchingKeys = useMemo(
+    () => findMatchingCatalogKeys(tree.searchRecords, query),
+    [query, tree.searchRecords],
+  )
+  const filteredNodes = useMemo(
+    () => hasQuery
+      ? matchingKeys ? filterCatalogTree(tree.nodes, matchingKeys) : []
+      : tree.nodes,
+    [hasQuery, matchingKeys, tree.nodes],
+  )
   const nodes = useMemo(
     () => nodeDraft ? insertNodeDraft(filteredNodes, nodeDraft) : filteredNodes,
     [filteredNodes, nodeDraft],
   )
-  const visibleExpandedKeys = query.trim()
-    ? collectExpandableKeys(nodes)
-    : expandedKeys
-  const visibleSelectionKeys = collectVisibleSelectionKeys(nodes, new Set(visibleExpandedKeys))
+  const visibleExpandedKeys = useMemo(
+    () => hasQuery ? collectExpandableKeys(nodes) : expandedKeys,
+    [expandedKeys, hasQuery, nodes],
+  )
+
+  useLayoutEffect(() => {
+    const container = treeContainerRef.current
+    if (!container) {
+      return
+    }
+
+    const updateHeight = () => {
+      const nextHeight = Math.max(1, Math.floor(container.getBoundingClientRect().height))
+      setTreeHeight((currentHeight) => currentHeight === nextHeight ? currentHeight : nextHeight)
+    }
+    updateHeight()
+
+    const resizeObserver = new ResizeObserver(updateHeight)
+    resizeObserver.observe(container)
+    return () => resizeObserver.disconnect()
+  }, [])
 
   const revealInTree = (key?: Key) => {
     setQuery('')
@@ -156,10 +199,7 @@ export function CatalogTreePanel({
       return
     }
 
-    const element = treeContainerRef.current?.querySelector<HTMLElement>(
-      `[data-node-key="${CSS.escape(String(pendingRevealKey))}"]`,
-    )
-    element?.scrollIntoView({ block: 'nearest' })
+    treeRef.current?.scrollTo({ key: pendingRevealKey })
     setRevealedKey(pendingRevealKey)
     setPendingRevealKey(undefined)
   }, [expandedKeys, pendingRevealKey, query])
@@ -383,6 +423,16 @@ export function CatalogTreePanel({
     }
   }
 
+  const handleDraftChange = useCallback((name: string) => setNodeDraft((draft) =>
+    draft ? { ...draft, name, error: undefined } : draft), [])
+  const handleDraftCancel = useCallback(() => setNodeDraft(undefined), [])
+  const handleRenameChange = useCallback((name: string) => setNodeRenameDraft((draft) =>
+    draft ? { ...draft, name, error: undefined } : draft), [])
+  const handleRenameCancel = useCallback(() => setNodeRenameDraft(undefined), [])
+  const handleDraftSubmit = useLatestCallback(submitNodeDraft)
+  const handleRenameSubmit = useLatestCallback(submitNodeRename)
+  const handleNodeAction = useLatestCallback(handleAction)
+
   return (
     <Flex
       vertical
@@ -527,20 +577,43 @@ export function CatalogTreePanel({
           />
         </Popover>
       </Flex>
-      <div ref={treeContainerRef} style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        <Tree<CatalogTreeNode>
-          blockNode
-          multiple
-          motion={null}
-          autoExpandParent={Boolean(query.trim())}
-          expandedKeys={visibleExpandedKeys}
-          selectedKeys={selectedKeys}
-          treeData={nodes}
-          draggable={{
+      <Dropdown
+        open={isContextMenuOpen}
+        trigger={['contextMenu']}
+        menu={{
+          items: contextMenuNode ? getContextMenuItems(contextMenuNode, hasQuery) : [],
+          onClick: ({ key, domEvent }) => {
+            domEvent.stopPropagation()
+            setIsContextMenuOpen(false)
+            if (contextMenuNode) {
+              void handleAction(contextMenuNode, key)
+            }
+          },
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsContextMenuOpen(false)
+            setContextMenuNode(undefined)
+          }
+        }}
+      >
+        <div ref={treeContainerRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <Tree<CatalogTreeNode>
+            ref={treeRef}
+            blockNode
+            virtual
+            height={treeHeight}
+            multiple
+            motion={disabledTreeMotion}
+            autoExpandParent={hasQuery}
+            expandedKeys={visibleExpandedKeys}
+            selectedKeys={selectedKeys}
+            treeData={nodes}
+            draggable={{
             icon: false,
             nodeDraggable: (node) => {
               const kind = (node as CatalogTreeNode).kind
-              return !query.trim() && (kind === 'folder' || kind === 'entry')
+              return !hasQuery && (kind === 'folder' || kind === 'entry')
             },
           }}
           allowDrop={({ dragNode, dropNode, dropPosition }) => {
@@ -562,37 +635,38 @@ export function CatalogTreePanel({
               node={node as CatalogTreeNode}
               iconColor={getCatalogNodeIconColor((node as CatalogTreeNode).kind, token)}
               dirtyColor={token.colorWarning}
+              infoColor={token.colorInfo}
+              warningColor={token.colorWarning}
+              secondaryColor={token.colorTextSecondary}
               revealColor={token.colorWarningBg}
+              borderRadius={token.borderRadiusSM}
               rowHeight={token.controlHeightSM}
               isRevealed={revealedKey === node.key}
               nodeDraft={nodeDraft}
               nodeRenameDraft={nodeRenameDraft}
-              canReveal={Boolean(query.trim())}
-              onDraftChange={(name) => setNodeDraft((draft) =>
-                draft ? { ...draft, name, error: undefined } : draft)}
-              onDraftSubmit={submitNodeDraft}
-              onDraftCancel={() => setNodeDraft(undefined)}
-              onRenameChange={(name) => setNodeRenameDraft((draft) =>
-                draft ? { ...draft, name, error: undefined } : draft)}
-              onRenameSubmit={submitNodeRename}
-              onRenameCancel={() => setNodeRenameDraft(undefined)}
-              onAction={handleAction}
+              onDraftChange={handleDraftChange}
+              onDraftSubmit={handleDraftSubmit}
+              onDraftCancel={handleDraftCancel}
+              onRenameChange={handleRenameChange}
+              onRenameSubmit={handleRenameSubmit}
+              onRenameCancel={handleRenameCancel}
+              onAction={handleNodeAction}
             />
           )}
-          onExpand={(_, info) => {
-            if (!query.trim()) {
+          onExpand={(nextExpandedKeys, info) => {
+            if (!hasQuery) {
               if (info.nativeEvent.altKey) {
-                const branchKeys = collectExpandableKeys([info.node as CatalogTreeNode])
-                const branchKeySet = new Set(branchKeys)
+                const branchKeys: Key[] = [
+                  ...(tree.expandableKeysByKey.get(String(info.node.key)) ?? []),
+                ]
+                const branchKeySet = new Set<Key>(branchKeys)
                 onExpandedKeysChange(info.expanded
                   ? mergeKeys(expandedKeys, branchKeys)
                   : expandedKeys.filter((key) => !branchKeySet.has(key)))
                 return
               }
 
-              onExpandedKeysChange(info.expanded
-                ? mergeKeys(expandedKeys, [info.node.key])
-                : expandedKeys.filter((key) => key !== info.node.key))
+              onExpandedKeysChange(nextExpandedKeys)
             }
           }}
           onDragStart={(info) => {
@@ -603,7 +677,7 @@ export function CatalogTreePanel({
             }
           }}
           onDragEnter={(info) => {
-            if (!query.trim()) {
+            if (!hasQuery) {
               onExpandedKeysChange(info.expandedKeys)
             }
           }}
@@ -623,6 +697,10 @@ export function CatalogTreePanel({
             const event = info.nativeEvent
 
             if (event.shiftKey && selectionAnchor !== undefined) {
+              const visibleSelectionKeys = collectVisibleSelectionKeys(
+                nodes,
+                new Set(visibleExpandedKeys),
+              )
               const range = getSelectionRange(visibleSelectionKeys, selectionAnchor, key)
               onSelectionChange(event.ctrlKey || event.metaKey
                 ? mergeKeys(selectedKeys, range)
@@ -647,8 +725,14 @@ export function CatalogTreePanel({
 
             onSelectionChange([key])
           }}
-        />
-      </div>
+          onRightClick={({ event, node }) => {
+            event.preventDefault()
+            setContextMenuNode(node as CatalogTreeNode)
+            setIsContextMenuOpen(true)
+          }}
+          />
+        </div>
+      </Dropdown>
     </Flex>
   )
 }
@@ -712,16 +796,19 @@ function canDropInto(tree: CatalogTreeModel, dragKeys: Key[], target: CatalogTre
   })
 }
 
-function TreeNodeTitle({
+const TreeNodeTitle = memo(function TreeNodeTitle({
   node,
   iconColor,
   dirtyColor,
+  infoColor,
+  warningColor,
+  secondaryColor,
   revealColor,
+  borderRadius,
   rowHeight,
   isRevealed,
   nodeDraft,
   nodeRenameDraft,
-  canReveal,
   onDraftChange,
   onDraftSubmit,
   onDraftCancel,
@@ -733,12 +820,15 @@ function TreeNodeTitle({
   node: CatalogTreeNode
   iconColor: string
   dirtyColor: string
+  infoColor: string
+  warningColor: string
+  secondaryColor: string
   revealColor: string
+  borderRadius: number
   rowHeight: number
   isRevealed: boolean
   nodeDraft?: NodeDraft
   nodeRenameDraft?: NodeRenameDraft
-  canReveal: boolean
   onDraftChange: (name: string) => void
   onDraftSubmit: () => void
   onDraftCancel: () => void
@@ -747,25 +837,7 @@ function TreeNodeTitle({
   onRenameCancel: () => void
   onAction: (node: CatalogTreeNode, action: string) => void
 }) {
-  const { token } = theme.useToken()
-  const [isHovered, setIsHovered] = useState(false)
-  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
   const quickActions = getQuickActions(node.kind)
-
-  useEffect(() => {
-    if (!isContextMenuOpen) {
-      return
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsContextMenuOpen(false)
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [isContextMenuOpen])
 
   if ((node.kind === 'entry-draft' || node.kind === 'folder-draft') && nodeDraft) {
     return (
@@ -794,50 +866,10 @@ function TreeNodeTitle({
   }
 
   return (
-    <>
-      {isContextMenuOpen && createPortal(
-        <div
-          aria-hidden
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: token.zIndexPopupBase - 1,
-          }}
-          onMouseDown={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-          }}
-          onClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            setIsContextMenuOpen(false)
-          }}
-          onContextMenu={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            setIsContextMenuOpen(false)
-          }}
-        />,
-        document.body,
-      )}
-      <Dropdown
-        open={isContextMenuOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            setIsContextMenuOpen(true)
-          }
-        }}
-        menu={{
-          items: getContextMenuItems(node, canReveal),
-          onClick: ({ key, domEvent }) => {
-            domEvent.stopPropagation()
-            setIsContextMenuOpen(false)
-            onAction(node, key)
-          },
-        }}
-        trigger={['contextMenu']}
-      >
       <span
+        className={quickActions.length > 0
+          ? 'catalog-tree-node-title catalog-tree-node-title--has-actions'
+          : 'catalog-tree-node-title'}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -847,11 +879,9 @@ function TreeNodeTitle({
           height: rowHeight,
           minWidth: 0,
           backgroundColor: isRevealed ? revealColor : 'transparent',
-          borderRadius: token.borderRadiusSM,
+          borderRadius,
           transition: 'background-color 600ms ease-out',
         }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         <span
           style={{
@@ -864,19 +894,20 @@ function TreeNodeTitle({
           {node.kind === 'locale' && node.culture
             ? <LocaleFlag culture={node.culture} />
             : renderCatalogNodeIcon(node.kind, iconColor)}
-          <Typography.Text
-            type={node.isTemporary ? 'secondary' : undefined}
+          <span
             style={{
-              color: node.isDirty ? dirtyColor : undefined,
+              color: node.isDirty ? dirtyColor : node.isTemporary ? secondaryColor : undefined,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
             {node.title}
-          </Typography.Text>
+          </span>
         </span>
-        {isHovered && quickActions.length > 0 ? (
+        {quickActions.length > 0 && (
           <span
+            className="catalog-tree-node-title__actions"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -901,8 +932,10 @@ function TreeNodeTitle({
               </Tooltip>
             ))}
           </span>
-        ) : node.hasWarning ? (
+        )}
+        {node.hasWarning ? (
           <span
+            className="catalog-tree-node-title__status"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -911,50 +944,39 @@ function TreeNodeTitle({
             }}
           >
             {node.kind === 'entry' && !node.hasUnusedWarning && node.count !== undefined && (
-              <Typography.Text style={{ color: token.colorInfo, fontSize: 12 }}>
+              <span style={{ color: infoColor, fontSize: 12 }}>
                 {node.count}
-              </Typography.Text>
+              </span>
             )}
             {node.kind === 'entry' && node.warningMessages ? (
-              <Tooltip
-                mouseEnterDelay={0.35}
-                title={(
-                  <Flex vertical gap={2}>
-                    {node.warningMessages.map((warning) => (
-                      <span key={warning}>{warning}</span>
-                    ))}
-                  </Flex>
-                )}
-              >
+              <span title={node.warningMessages.join('\n')}>
                 <WarningOutlined
                   aria-label={node.warningMessages.join('. ')}
-                  style={{ color: token.colorWarning }}
+                  style={{ color: warningColor }}
                 />
-              </Tooltip>
+              </span>
             ) : (
               <WarningOutlined
                 aria-label="Contains an entry with a warning"
-                style={{ color: token.colorWarning }}
+                style={{ color: warningColor }}
               />
             )}
           </span>
         ) : node.count !== undefined ? (
-          <Typography.Text
-            type={node.kind === 'entry' ? undefined : 'secondary'}
+          <span
+            className="catalog-tree-node-title__status"
             style={{
-              color: node.kind === 'entry' ? token.colorInfo : undefined,
+              color: node.kind === 'entry' ? infoColor : secondaryColor,
               flex: '0 0 auto',
               fontSize: 12,
             }}
           >
             {node.count}
-          </Typography.Text>
+          </span>
         ) : null}
       </span>
-      </Dropdown>
-    </>
   )
-}
+})
 
 function DraftNodeTitle({
   draft,
@@ -1173,6 +1195,15 @@ function getSelectionRange(keys: Key[], anchor: Key, target: Key): Key[] {
 
 function mergeKeys(current: Key[], added: Key[]): Key[] {
   return [...new Set([...current, ...added])]
+}
+
+function useLatestCallback<Arguments extends unknown[], Result>(
+  callback: (...args: Arguments) => Result,
+) {
+  const callbackRef = useRef(callback)
+  callbackRef.current = callback
+
+  return useCallback((...args: Arguments) => callbackRef.current(...args), [])
 }
 
 function insertNodeDraft(nodes: CatalogTreeNode[], draft: NodeDraft): CatalogTreeNode[] {

@@ -41,6 +41,13 @@ export type CatalogSelectionItem =
 export interface CatalogTreeModel {
   nodes: CatalogTreeNode[]
   selectionByKey: ReadonlyMap<string, CatalogSelectionItem>
+  searchRecords: readonly CatalogTreeSearchRecord[]
+  expandableKeysByKey: ReadonlyMap<string, readonly string[]>
+}
+
+export interface CatalogTreeSearchRecord {
+  key: string
+  normalizedText: string
 }
 
 interface FolderBuilder {
@@ -97,56 +104,110 @@ export function buildCatalogTree(
       warningOptions,
     ))
 
+  const nodes: CatalogTreeNode[] = [
+    {
+      key: 'root:locales',
+      title: 'Locales',
+      kind: 'locales-root',
+      searchText: 'locales',
+      count: catalog.locales.length,
+      isDirty: dirtyLocaleIds.size > 0,
+      selectable: false,
+      children: localeNodes,
+    },
+    {
+      key: 'root:entries',
+      title: 'Entries',
+      kind: 'entries-root',
+      searchText: 'entries',
+      count: catalog.entries.length,
+      hasWarning: entryNodes.some((node) => node.hasWarning),
+      path: '',
+      isDirty: dirtyPaths.size > 0 || dirtyEntryIds.size > 0 || temporaryFolderPaths.length > 0,
+      selectable: false,
+      children: entryNodes,
+    },
+  ]
+
   return {
-    nodes: [
-      {
-        key: 'root:locales',
-        title: 'Locales',
-        kind: 'locales-root',
-        searchText: 'locales',
-        count: catalog.locales.length,
-        isDirty: dirtyLocaleIds.size > 0,
-        selectable: false,
-        children: localeNodes,
-      },
-      {
-        key: 'root:entries',
-        title: 'Entries',
-        kind: 'entries-root',
-        searchText: 'entries',
-        count: catalog.entries.length,
-        hasWarning: entryNodes.some((node) => node.hasWarning),
-        path: '',
-        isDirty: dirtyPaths.size > 0 || dirtyEntryIds.size > 0 || temporaryFolderPaths.length > 0,
-        selectable: false,
-        children: entryNodes,
-      },
-    ],
+    nodes,
     selectionByKey,
+    searchRecords: collectSearchRecords(nodes),
+    expandableKeysByKey: createExpandableKeyIndex(nodes),
   }
 }
 
-export function filterCatalogTree(nodes: CatalogTreeNode[], query: string): CatalogTreeNode[] {
-  const normalizedQuery = query.trim().toLocaleLowerCase()
-  if (!normalizedQuery) {
-    return nodes
-  }
-
+export function filterCatalogTree(
+  nodes: CatalogTreeNode[],
+  matchingKeys: ReadonlySet<string>,
+): CatalogTreeNode[] {
   return nodes
-    .map((node) => filterNode(node, normalizedQuery))
+    .map((node) => filterNode(node, matchingKeys))
     .filter((node): node is CatalogTreeNode => node != null)
 }
 
-function filterNode(node: CatalogTreeNode, query: string): CatalogTreeNode | null {
-  if (node.searchText.toLocaleLowerCase().includes(query)) {
-    return node
+export function findMatchingCatalogKeys(
+  records: readonly CatalogTreeSearchRecord[],
+  query: string,
+): ReadonlySet<string> | undefined {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) {
+    return undefined
   }
 
+  return new Set(records
+    .filter((record) => record.normalizedText.includes(normalizedQuery))
+    .map((record) => record.key))
+}
+
+function filterNode(
+  node: CatalogTreeNode,
+  matchingKeys: ReadonlySet<string>,
+): CatalogTreeNode | null {
   const children = node.children
-    ?.map((child) => filterNode(child, query))
+    ?.map((child) => filterNode(child, matchingKeys))
     .filter((child): child is CatalogTreeNode => child != null)
 
-  return children?.length ? { ...node, children } : null
+  if (!matchingKeys.has(node.key) && !children?.length) {
+    return null
+  }
+
+  return children?.length ? { ...node, children } : { ...node, children: undefined }
+}
+
+function collectSearchRecords(nodes: readonly CatalogTreeNode[]): CatalogTreeSearchRecord[] {
+  return nodes.flatMap((node) => [
+    ...(node.kind === 'locales-root' || node.kind === 'entries-root'
+      ? []
+      : [{ key: node.key, normalizedText: node.searchText.toLowerCase() }]),
+    ...collectSearchRecords(node.children ?? []),
+  ])
+}
+
+function createExpandableKeyIndex(
+  nodes: readonly CatalogTreeNode[],
+): ReadonlyMap<string, readonly string[]> {
+  const index = new Map<string, readonly string[]>()
+
+  const visit = (node: CatalogTreeNode): string[] => {
+    if (!node.children?.length) {
+      return []
+    }
+
+    const branchKeys = [node.key]
+    for (const child of node.children) {
+      branchKeys.push(...visit(child))
+    }
+
+    index.set(node.key, branchKeys)
+    return branchKeys
+  }
+
+  for (const node of nodes) {
+    visit(node)
+  }
+
+  return index
 }
 
 function createFolder(path: string, title: string): FolderBuilder {
