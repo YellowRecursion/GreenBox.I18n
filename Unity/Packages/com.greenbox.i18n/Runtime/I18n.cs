@@ -123,7 +123,10 @@ public static class I18n
 
             I18nCompiledCatalog catalog = catalogAsset.DeserializeCompiledCatalog();
             var runtime = new I18nRuntime(catalog);
-            ApplyInitialLocale(runtime);
+            if (Application.isPlaying)
+            {
+                ApplyInitialLocale(runtime);
+            }
             var assetResolver = new I18nUnityAssetResolver(catalogAsset.AssetBindings);
 
             _runtime = runtime;
@@ -481,6 +484,14 @@ public static class I18n
     /// </summary>
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetState()
+    {
+        ResetRuntime();
+    }
+
+    /// <summary>
+    /// Clears the cached catalog so editor infrastructure can reload compiled project data.
+    /// </summary>
+    internal static void ResetRuntime()
     {
         _runtime = null;
         _assetResolver = null;

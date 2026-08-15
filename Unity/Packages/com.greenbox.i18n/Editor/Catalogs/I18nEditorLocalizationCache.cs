@@ -118,6 +118,11 @@ namespace GreenBox.I18n.Unity.Editor.Catalogs
         {
             _catalogAsset = null;
             _context = null;
+            if (!EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                global::I18n.ResetRuntime();
+            }
+
             I18nRuntimeDiagnosticReporter.Clear();
         }
     }

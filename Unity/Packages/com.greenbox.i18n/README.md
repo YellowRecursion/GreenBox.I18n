@@ -98,18 +98,14 @@ EditorUtility.SetDirty(cosmetic);
 
 `EnsureEntry` preserves an existing stable ID when the desired path changes. An empty or missing key adopts an entry already at that path or creates a new one. Put loops inside one `I18nEditor.Edit` call so the source file is written and imported only once.
 
-Editor tools can preview the generated catalog without changing the locale used by the game:
+Editor tools use the same text API as the game:
 
 ```csharp
-string defaultText = I18nEditor.Text(task.DescriptionKey);
-string russianText = I18nEditor.Text(task.DescriptionKey, localeId: "ru");
-string progress = I18nEditor.Text(
-    task.ProgressKey,
-    ("count", completedCount),
-    localeId: "en");
+string defaultText = I18n.Text(task.DescriptionKey);
+string progress = I18n.Text(task.ProgressKey, ("count", completedCount));
 
 Sprite defaultImage = I18nEditor.Asset<Sprite>(task.ImageKey);
 Sprite russianImage = I18nEditor.Asset<Sprite>(task.ImageKey, localeId: "ru");
 ```
 
-When `localeId` is omitted, `I18nEditor` uses the catalog default locale. Preview reads use the generated `localization.asset` and cache the prepared catalog, so they are safe to call from `OnInspectorGUI`. The cache is replaced automatically after catalog compilation. Unlike `I18nEditor.Edit`, preview reads do not parse or write `localization.json`.
+In Edit Mode, `I18n.Text` uses the catalog default locale. In Play Mode, it uses the active game locale. Both modes read the generated `localization.asset`, and the Editor invalidates the cached runtime automatically after catalog compilation. Unlike `I18nEditor.Edit`, localization reads do not parse or write `localization.json`.

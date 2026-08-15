@@ -32,11 +32,11 @@ namespace GreenBox.I18n.Unity
         }
 
         /// <summary>
-        /// Updates the component from the active localization runtime when it is initialized.
+        /// Updates the component from the active localization runtime.
         /// </summary>
         public void Refresh()
         {
-            if (!isActiveAndEnabled || !global::I18n.IsInitialized)
+            if (!isActiveAndEnabled)
             {
                 return;
             }
@@ -71,7 +71,7 @@ namespace GreenBox.I18n.Unity
         }
 
         /// <summary>
-        /// Applies serialized key changes when the active runtime is available.
+        /// Applies serialized key changes in both Edit Mode and Play Mode.
         /// </summary>
         protected virtual void OnValidate()
         {

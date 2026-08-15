@@ -74,8 +74,8 @@ namespace GreenBox.I18n.Unity.Editor.Tests
             var russian = new Texture2D(1, 1) { name = "Russian" };
             var bindings = new List<I18nAssetBinding>
             {
-                new("english-guid", string.Empty, english),
-                new("russian-guid", string.Empty, russian),
+                new("11111111111111111111111111111111", string.Empty, english),
+                new("22222222222222222222222222222222", string.Empty, russian),
             };
             I18nCatalogAsset asset = CreateCatalogAsset(
                 new I18nEntry
@@ -86,11 +86,17 @@ namespace GreenBox.I18n.Unity.Editor.Tests
                     {
                         ["en"] = new()
                         {
-                            Asset = new I18nAssetReference { AssetGuid = "english-guid" },
+                            Asset = new I18nAssetReference
+                            {
+                                AssetGuid = "11111111111111111111111111111111",
+                            },
                         },
                         ["ru"] = new()
                         {
-                            Asset = new I18nAssetReference { AssetGuid = "russian-guid" },
+                            Asset = new I18nAssetReference
+                            {
+                                AssetGuid = "22222222222222222222222222222222",
+                            },
                         },
                     },
                 },

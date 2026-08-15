@@ -5,12 +5,7 @@
     "GreenBox.I18n.Usage.Analysis",
     "GreenBox.I18n.Usage.Cecil",
     "GreenBox.I18n.Usage.Index",
-    "GreenBox.I18n.Unity",
-    "GreenBox.I18n.Unity.Audio",
-    "GreenBox.I18n.Unity.Sprites",
-    "GreenBox.I18n.Unity.Text",
-    "Unity.TextMeshPro",
-    "UnityEngine.UI"
+    "GreenBox.I18n.Unity"
   ],
   "includePlatforms": [
     "Editor"
