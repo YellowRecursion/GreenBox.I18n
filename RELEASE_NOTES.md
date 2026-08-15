@@ -8,4 +8,5 @@
 - Rider 2025.3 support.
 - Marketplace-compatible Rider plugin identity.
 - Fixed Rider entry-name inlays not attaching to restored C# editors.
+- Fixed Unity usage indexing for I18nKey values serialized by Odin Inspector.
 - Unity package and Rider integration remain independently updateable.

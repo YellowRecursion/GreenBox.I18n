@@ -23,6 +23,7 @@ namespace GreenBox.I18n.Usage.Analysis
             I18nSerializedDocument? document = null;
             var propertyPath = new I18nSerializedPropertyPathBuilder();
             PrefabModification? prefabModification = null;
+            OdinEntryIdNode? odinEntryIdNode = null;
             int lineNumber = 0;
 
             using var reader = new StreamReader(absolutePath, Encoding.UTF8, true, ReadBufferSize);
@@ -35,6 +36,7 @@ namespace GreenBox.I18n.Usage.Analysis
                     model.Documents[documentLocalId] = document;
                     propertyPath.Reset();
                     prefabModification = null;
+                    odinEntryIdNode = null;
                     continue;
                 }
 
@@ -64,6 +66,11 @@ namespace GreenBox.I18n.Usage.Analysis
                         out bool isSequenceItem))
                 {
                     continue;
+                }
+
+                if (odinEntryIdNode != null && indentation <= odinEntryIdNode.SequenceIndentation)
+                {
+                    odinEntryIdNode = null;
                 }
 
                 if (indentation == 2 && !isSequenceItem)
@@ -120,9 +127,51 @@ namespace GreenBox.I18n.Usage.Analysis
                         0,
                         warnings);
                 }
+                else if (isSequenceItem &&
+                         key == "Name" &&
+                         TrimYamlScalar(scalarValue) == EntryIdPropertyName &&
+                         IsOdinSerializationNodePath(currentPropertyPath))
+                {
+                    odinEntryIdNode = new OdinEntryIdNode(indentation);
+                }
+                else if (odinEntryIdNode != null &&
+                         !isSequenceItem &&
+                         indentation > odinEntryIdNode.SequenceIndentation &&
+                         key == "Data")
+                {
+                    model.KeyDocumentLocalIds.Add(document.LocalId);
+                    AddCandidate(
+                        model,
+                        document,
+                        ReplacePropertyPathLeaf(currentPropertyPath, key, EntryIdPropertyName),
+                        scalarValue,
+                        lineNumber,
+                        false,
+                        string.Empty,
+                        0,
+                        warnings);
+                    odinEntryIdNode = null;
+                }
             }
 
             return model;
+        }
+
+        private static bool IsOdinSerializationNodePath(string propertyPath)
+        {
+            return propertyPath.IndexOf(
+                       ".SerializationNodes.Array.data[",
+                       StringComparison.Ordinal) >= 0;
+        }
+
+        private static string ReplacePropertyPathLeaf(
+            string propertyPath,
+            string currentLeaf,
+            string replacementLeaf)
+        {
+            return propertyPath.EndsWith(currentLeaf, StringComparison.Ordinal)
+                ? propertyPath.Substring(0, propertyPath.Length - currentLeaf.Length) + replacementLeaf
+                : propertyPath + "." + replacementLeaf;
         }
 
         private static void AddCandidate(
@@ -334,6 +383,16 @@ namespace GreenBox.I18n.Usage.Analysis
             public long TargetLocalId { get; }
             public string TargetAssetGuid { get; }
             public string PropertyPath { get; set; }
+        }
+
+        private sealed class OdinEntryIdNode
+        {
+            public OdinEntryIdNode(int sequenceIndentation)
+            {
+                SequenceIndentation = sequenceIndentation;
+            }
+
+            public int SequenceIndentation { get; }
         }
     }
 }
