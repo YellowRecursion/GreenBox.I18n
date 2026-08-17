@@ -90,7 +90,7 @@ namespace GreenBox.I18n.Unity
 
         private void WarnAboutUnassignedKey()
         {
-            if (_hasWarnedAboutUnassignedKey)
+            if (!Application.isPlaying || _hasWarnedAboutUnassignedKey)
             {
                 return;
             }

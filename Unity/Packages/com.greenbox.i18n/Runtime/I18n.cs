@@ -541,7 +541,7 @@ public static class I18n
 
     private static void WarnAboutNone()
     {
-        if (_hasWarnedAboutNone)
+        if (!Application.isPlaying || _hasWarnedAboutNone)
         {
             return;
         }
