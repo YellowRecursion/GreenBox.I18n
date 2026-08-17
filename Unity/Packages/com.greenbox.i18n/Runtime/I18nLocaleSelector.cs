@@ -60,7 +60,7 @@ namespace GreenBox.I18n.Unity
             IReadOnlyList<I18nRuntimeLocale> locales,
             string? languageTag)
         {
-            if (string.IsNullOrWhiteSpace(languageTag))
+            if (languageTag == null || string.IsNullOrWhiteSpace(languageTag))
             {
                 return null;
             }
@@ -117,7 +117,7 @@ namespace GreenBox.I18n.Unity
 
         private static string? GetLanguageSubtag(string? languageTag)
         {
-            if (string.IsNullOrWhiteSpace(languageTag))
+            if (languageTag == null || string.IsNullOrWhiteSpace(languageTag))
             {
                 return null;
             }
