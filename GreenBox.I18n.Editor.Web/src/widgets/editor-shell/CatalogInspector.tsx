@@ -855,6 +855,8 @@ function EntryTextInput({
       </Flex>
       <Input.TextArea
         aria-label={`${locale.displayName} localized text`}
+        lang={locale.culture}
+        spellCheck
         autoSize={{ minRows: 1, maxRows: 3 }}
         placeholder="No translation"
         value={draft}
@@ -973,6 +975,8 @@ function EntryTextInput({
           <Suspense fallback={<div style={{ flex: 1, minHeight: 0 }} />}>
             <Mf2CodeEditor
               ariaLabel={`${locale.displayName} focus editor`}
+              language={locale.culture}
+              spellCheck
               placeholder="No translation"
               value={draft}
               disabled={isSaving}

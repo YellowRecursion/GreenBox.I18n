@@ -27,6 +27,8 @@ export interface CodeEditorProps {
   disabled?: boolean
   status?: 'error'
   autoFocus?: boolean
+  spellCheck?: boolean
+  language?: string
   diagnostics?: readonly CodeEditorDiagnostic[]
   extensions?: Extension
   onChange: (value: string) => void
@@ -48,6 +50,8 @@ export default function CodeEditor({
   disabled = false,
   status,
   autoFocus = false,
+  spellCheck = false,
+  language,
   diagnostics = [],
   extensions = [],
   onChange,
@@ -218,7 +222,11 @@ export default function CodeEditor({
         oneDarkTheme,
         syntaxHighlighting(oneDarkHighlightStyle),
         EditorView.lineWrapping,
-        EditorView.contentAttributes.of({ 'aria-label': ariaLabel }),
+        EditorView.contentAttributes.of({
+          'aria-label': ariaLabel,
+          spellcheck: spellCheck ? 'true' : 'false',
+          ...(language ? { lang: language } : {}),
+        }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !synchronizingRef.current) {
             onChangeRef.current(update.state.doc.toString())
@@ -284,7 +292,7 @@ export default function CodeEditor({
       viewRef.current = null
       view.destroy()
     }
-  }, [ariaLabel, autoFocus, disabled, editorTheme, extensions, placeholder])
+  }, [ariaLabel, autoFocus, disabled, editorTheme, extensions, language, placeholder, spellCheck])
 
   useEffect(() => {
     const view = viewRef.current
