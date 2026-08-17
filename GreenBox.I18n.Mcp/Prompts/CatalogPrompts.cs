@@ -27,7 +27,7 @@ public static class CatalogPrompts
         [Description("Optional entry path prefix.")] string? pathPrefix = null) =>
         $"""
         Review locale `{localeId}`{(string.IsNullOrWhiteSpace(pathPrefix) ? string.Empty : $" under `{pathPrefix}`")}.
-        Use get_catalog_issues for validation and missingLocale issues, then page through search_entries.
+        Use get_catalog_issues for validation and incomplete issues, then page through search_entries.
         Check terminology, tone, punctuation, placeholders, MF2 contracts, accidental source-language text, and inconsistent translations.
         Return findings grouped by severity with entry IDs and paths. Do not write changes unless explicitly requested.
         """;
@@ -38,7 +38,7 @@ public static class CatalogPrompts
         """
         Audit the active GreenBox catalog. Call get_workspace and get_catalog_issues, following every cursor.
         Keep `unused` distinct from `unknown`: only trust unused issues emitted by the tool.
-        For dangling usages, inspect get_entry_usages. Summarize validation, missing locale values, unused entries, and references to absent IDs.
+        For dangling usages, inspect get_entry_usages. Summarize validation, incomplete localization, unused entries, and references to absent IDs.
         Do not delete or create anything during the audit.
         """;
 

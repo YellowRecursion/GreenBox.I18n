@@ -80,6 +80,22 @@ public sealed class McpWorkflowTests
             JsonElement found = Assert.Single(search.GetProperty("entries").EnumerateArray());
             Assert.Equal(EntryId, found.GetProperty("id").GetString());
 
+            JsonElement issues = await CallDataAsync(
+                client,
+                "get_catalog_issues",
+                new Dictionary<string, object?>
+                {
+                    ["kinds"] = new[] { "incomplete" },
+                },
+                timeout.Token);
+            Assert.Equal(1, issues.GetProperty("totalCount").GetInt32());
+            JsonElement incomplete = Assert.Single(
+                issues.GetProperty("issues").EnumerateArray());
+            Assert.Equal("incomplete", incomplete.GetProperty("kind").GetString());
+            Assert.Equal("missing_locale_text", incomplete.GetProperty("code").GetString());
+            Assert.Equal(EntryId, incomplete.GetProperty("entryId").GetString());
+            Assert.Equal("ru", incomplete.GetProperty("localeId").GetString());
+
             JsonElement message = await CallDataAsync(
                 client,
                 "analyze_message",
@@ -254,6 +270,11 @@ public sealed class McpWorkflowTests
               "id": "en",
               "displayName": "English",
               "culture": "en-US"
+            },
+            {
+              "id": "ru",
+              "displayName": "Русский",
+              "culture": "ru-RU"
             }
           ],
           "entries": [

@@ -209,6 +209,18 @@ public static class WorkspaceEndpoints
                 }
             }
 
+            if (Includes(requestedKinds, "incomplete"))
+            {
+                foreach (WorkspaceIssueResponse issue in
+                         IncompleteLocalizationIssueCollector.Enumerate(catalog))
+                {
+                    if (ShouldIncludeIssue(totalCount++, offset, limit))
+                    {
+                        page.Add(issue);
+                    }
+                }
+            }
+
             bool usageReliable = usageSummary.Availability == UsageIndexAvailability.Available &&
                 string.Equals(usageSummary.Status, "ready", StringComparison.Ordinal) &&
                 usageSummary.FailedSourceCount == 0;

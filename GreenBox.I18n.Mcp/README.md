@@ -33,7 +33,7 @@ The development commands above are not intended for end users.
 
 1. Call `get_workspace` before catalog work.
 2. Use paged `search_entries`, then request complete values with `get_entries` only where needed.
-3. Use `get_catalog_issues` and `get_entry_usages` for audits. Usage `unknown` must never be treated as unused.
+3. Use `get_catalog_issues` and `get_entry_usages` for audits. Request the `incomplete` kind for the same localization-completeness warnings shown by the Web editor. Usage `unknown` must never be treated as unused.
 4. Validate advanced text with `analyze_message`.
 5. Prepare all writes with `prepare_entry_changes` or `prepare_locale_changes`.
 6. Review the returned diff, warnings, and blockers.

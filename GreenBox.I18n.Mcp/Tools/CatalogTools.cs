@@ -48,9 +48,9 @@ public sealed class CatalogTools
         _host.SafeAsync(() => _host.GetEntriesAsync(entryIds, cancellationToken));
 
     [McpServerTool(Name = "get_catalog_issues", ReadOnly = true, Idempotent = true, UseStructuredContent = true)]
-    [Description("Returns paged validation, missing-locale, unused-entry, and dangling-usage issues. Unused entries are reported only when Unity usage data is reliable.")]
+    [Description("Returns paged validation, incomplete-localization, missing-locale, unused-entry, and dangling-usage issues. Unused entries are reported only when Unity usage data is reliable.")]
     public Task<McpToolResponse<McpWorkspaceIssuesResponse>> GetCatalogIssues(
-        [Description("Optional kinds: validation, missingLocale, unused, danglingUsage. Omit for all.")] IReadOnlyList<string>? kinds = null,
+        [Description("Optional kinds: validation, incomplete, missingLocale, unused, danglingUsage. Use incomplete for the same per-text and per-asset completeness warnings shown by the Web editor. Omit for all.")] IReadOnlyList<string>? kinds = null,
         [Description("Opaque cursor returned by the previous page.")] string? cursor = null,
         [Description("Page size from 1 to 500; defaults to 100.")] int? limit = null,
         CancellationToken cancellationToken = default) =>
