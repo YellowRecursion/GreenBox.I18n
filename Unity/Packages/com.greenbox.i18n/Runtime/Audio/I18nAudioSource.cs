@@ -70,7 +70,12 @@ namespace GreenBox.I18n.Unity.Audio
                 return;
             }
 
-            target.clip = clip;
+            if (target.clip != clip)
+            {
+                target.clip = clip;
+                MarkLocalizedContentDirty(target);
+            }
+
             _lastReportedError = null;
         }
 

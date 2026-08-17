@@ -83,6 +83,29 @@ namespace GreenBox.I18n.Unity
         /// </summary>
         protected abstract void UpdateContent();
 
+        /// <summary>
+        /// Registers an Edit Mode change made to the component that stores localized content.
+        /// </summary>
+        /// <remarks>
+        /// Call this after changing a serialized field on a target component. It has no effect
+        /// in Play Mode or in a player build.
+        /// </remarks>
+        protected static void MarkLocalizedContentDirty(Object target)
+        {
+#if UNITY_EDITOR
+            if (!target || UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                return;
+            }
+
+            UnityEditor.EditorUtility.SetDirty(target);
+            if (UnityEditor.PrefabUtility.IsPartOfPrefabInstance(target))
+            {
+                UnityEditor.PrefabUtility.RecordPrefabInstancePropertyModifications(target);
+            }
+#endif
+        }
+
         private void HandleLocaleChanged(I18nRuntimeLocale _)
         {
             Refresh();

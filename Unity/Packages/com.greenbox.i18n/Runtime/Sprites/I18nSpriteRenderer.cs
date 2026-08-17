@@ -54,7 +54,12 @@ namespace GreenBox.I18n.Unity.Sprites
                 return false;
             }
 
-            target.sprite = sprite;
+            if (target.sprite != sprite)
+            {
+                target.sprite = sprite;
+                MarkLocalizedContentDirty(target);
+            }
+
             return true;
         }
     }

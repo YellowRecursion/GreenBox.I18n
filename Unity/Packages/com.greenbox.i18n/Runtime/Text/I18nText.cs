@@ -90,10 +90,22 @@ namespace GreenBox.I18n.Unity.Text
             switch (target)
             {
                 case TMP_Text textMeshPro:
+                    if (string.Equals(textMeshPro.text, localizedText, System.StringComparison.Ordinal))
+                    {
+                        return;
+                    }
+
                     textMeshPro.text = localizedText;
+                    MarkLocalizedContentDirty(textMeshPro);
                     break;
                 case LegacyText legacyText:
+                    if (string.Equals(legacyText.text, localizedText, System.StringComparison.Ordinal))
+                    {
+                        return;
+                    }
+
                     legacyText.text = localizedText;
+                    MarkLocalizedContentDirty(legacyText);
                     break;
             }
         }
