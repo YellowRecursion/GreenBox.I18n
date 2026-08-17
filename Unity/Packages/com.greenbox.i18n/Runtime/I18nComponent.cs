@@ -41,6 +41,20 @@ namespace GreenBox.I18n.Unity
                 return;
             }
 
+            RefreshContent();
+        }
+
+        /// <summary>
+        /// Updates this component even when it is currently disabled or inactive.
+        /// </summary>
+        [ContextMenu("Refresh Localization")]
+        public void ForceRefresh()
+        {
+            RefreshContent();
+        }
+
+        private void RefreshContent()
+        {
             if (!_key.IsAssigned)
             {
                 WarnAboutUnassignedKey();
