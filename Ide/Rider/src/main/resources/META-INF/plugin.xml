@@ -20,11 +20,10 @@
   ]]></description>
 
   <change-notes><![CDATA[
-    <p>Initial beta release for Rider 2025.3:</p>
+    <p>GreenBox I18n 0.1.0-beta.10:</p>
     <ul>
-      <li>Entry-name inlays for GreenBox I18n IDs.</li>
-      <li>Full catalog paths in tooltips.</li>
-      <li>Warnings for IDs missing from the active catalog.</li>
+      <li>Fixed entry-name inlays not attaching to restored C# editors.</li>
+      <li>Updated the plugin icon to the new GreenBox.I18n branding.</li>
     </ul>
   ]]></change-notes>
 

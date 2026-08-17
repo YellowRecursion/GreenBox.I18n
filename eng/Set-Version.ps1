@@ -15,14 +15,16 @@ $unityPackage = Join-Path $repositoryRoot "Unity\Packages\com.greenbox.i18n\pack
 [IO.File]::WriteAllText($versionFile, "$Version`n", [Text.UTF8Encoding]::new($false))
 
 $packageJson = [IO.File]::ReadAllText($unityPackage)
-$updatedPackageJson = [Text.RegularExpressions.Regex]::Replace(
-    $packageJson,
-    '(?m)^(\s*"version"\s*:\s*")[^"]+("\s*,\s*)$',
-    "`${1}$Version`${2}",
-    1)
-if ($updatedPackageJson -eq $packageJson) {
+$versionPattern = '(?m)^(\s*"version"\s*:\s*")[^"]+("\s*,\s*)$'
+if (![Text.RegularExpressions.Regex]::IsMatch($packageJson, $versionPattern)) {
     throw "Unity package version was not found in $unityPackage."
 }
+
+$updatedPackageJson = [Text.RegularExpressions.Regex]::Replace(
+    $packageJson,
+    $versionPattern,
+    "`${1}$Version`${2}",
+    1)
 
 [IO.File]::WriteAllText(
     $unityPackage,

@@ -1,12 +1,11 @@
 # GreenBox I18n beta
 
-- Initial unified Desktop Tools package with Web, Host, CLI, and MCP.
-- Automatic background download with explicit restart-to-update behavior.
-- Product branding across Desktop Tools, Web, Unity, and Rider.
-- Apache 2.0 licensing and third-party notices in distributed packages.
-- Desktop shutdown reliability fix.
-- Rider 2025.3 support.
-- Marketplace-compatible Rider plugin identity.
+- Significantly faster Web editor hierarchy expansion, scrolling, and search for large catalogs.
+- New GreenBox.I18n branding across Desktop Tools, Web, Unity components, and Rider.
+- Native locale-aware browser spellcheck for translation fields.
+- Unity components now refresh directly through their runtime lifecycle, persist Edit Mode previews,
+  respect their enabled state, and can be refreshed manually or after catalog compilation.
+- Improved Unity diagnostics for unassigned keys and ID search in the I18nKey picker.
+- Unity usage indexing now recognizes I18nKey values serialized by Odin Inspector.
+- MCP can report incomplete localization and gives LLM clients concise workspace guidance.
 - Fixed Rider entry-name inlays not attaching to restored C# editors.
-- Fixed Unity usage indexing for I18nKey values serialized by Odin Inspector.
-- Unity package and Rider integration remain independently updateable.
