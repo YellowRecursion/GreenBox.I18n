@@ -9,6 +9,19 @@ namespace GreenBox.I18n.Unity.Editor.Tests
     public sealed class I18nLocaleSelectorTests
     {
         [Test]
+        public void EditorPreview_AfterRuntimeLocaleChange_RestoresDefaultLocale()
+        {
+            I18nRuntime runtime = CreateRuntime(
+                ("en", "en-US"),
+                ("ru", "ru-RU"));
+            runtime.SetLocale("ru");
+
+            global::I18n.SelectDefaultLocaleForEditorPreview(runtime);
+
+            Assert.That(runtime.CurrentLocale.Id, Is.EqualTo("en"));
+        }
+
+        [Test]
         public void SelectDeviceLocale_ExactCultureMatch_Wins()
         {
             I18nRuntime runtime = CreateRuntime(

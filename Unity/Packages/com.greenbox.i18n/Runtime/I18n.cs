@@ -53,9 +53,25 @@ public static class I18n
         get
         {
             EnsureLoaded();
+#if UNITY_EDITOR
+            SelectDefaultLocaleForEditorPreview(_runtime!);
+#endif
             return _runtime!;
         }
     }
+
+#if UNITY_EDITOR
+    /// <summary>
+    /// Keeps Edit Mode previews independent from the locale selected by a Play Mode session.
+    /// </summary>
+    internal static void SelectDefaultLocaleForEditorPreview(I18nRuntime runtime)
+    {
+        if (!Application.isPlaying)
+        {
+            runtime.SetLocale(runtime.DefaultLocale.Id);
+        }
+    }
+#endif
 
     private static I18nUnityAssetResolver AssetResolver
     {

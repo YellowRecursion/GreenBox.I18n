@@ -85,10 +85,17 @@ namespace GreenBox.I18n.Unity
         }
 
         /// <summary>
-        /// Applies serialized key changes in both Edit Mode and Play Mode.
+        /// Applies serialized key changes when this component's object is selected.
         /// </summary>
         protected virtual void OnValidate()
         {
+#if UNITY_EDITOR
+            if (!UnityEditor.Selection.Contains(gameObject))
+            {
+                return;
+            }
+#endif
+
             Refresh();
         }
 

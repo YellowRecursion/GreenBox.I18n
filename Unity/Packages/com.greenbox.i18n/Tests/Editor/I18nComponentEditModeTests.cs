@@ -87,6 +87,37 @@ namespace GreenBox.I18n.Unity.Editor.Tests
         }
 
         [Test]
+        public void OnValidate_RefreshesOnlyComponentOnDirectlySelectedObject()
+        {
+            Object[] previousSelection = Selection.objects;
+            var selected = new GameObject("Selected");
+            var unselected = new GameObject("Unselected");
+
+            try
+            {
+                TestI18nComponent selectedComponent =
+                    selected.AddComponent<TestI18nComponent>();
+                TestI18nComponent unselectedComponent =
+                    unselected.AddComponent<TestI18nComponent>();
+                int selectedRefreshCount = selectedComponent.RefreshCount;
+                int unselectedRefreshCount = unselectedComponent.RefreshCount;
+                Selection.objects = new Object[] { selected };
+
+                selectedComponent.InvokeOnValidate();
+                unselectedComponent.InvokeOnValidate();
+
+                Assert.That(selectedComponent.RefreshCount, Is.EqualTo(selectedRefreshCount + 1));
+                Assert.That(unselectedComponent.RefreshCount, Is.EqualTo(unselectedRefreshCount));
+            }
+            finally
+            {
+                Selection.objects = previousSelection;
+                Object.DestroyImmediate(selected);
+                Object.DestroyImmediate(unselected);
+            }
+        }
+
+        [Test]
         public void RefreshSelectedObjects_UpdatesOnlyComponentsDirectlyOnSelectedObjects()
         {
             Object[] previousSelection = Selection.objects;
@@ -129,6 +160,11 @@ namespace GreenBox.I18n.Unity.Editor.Tests
             public TestContentTarget ContentTarget { get; set; }
 
             public int RefreshCount { get; private set; }
+
+            public void InvokeOnValidate()
+            {
+                OnValidate();
+            }
 
             protected override void UpdateContent()
             {
