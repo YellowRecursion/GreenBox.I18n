@@ -109,3 +109,52 @@ Sprite russianImage = I18nEditor.Asset<Sprite>(task.ImageKey, localeId: "ru");
 ```
 
 In Edit Mode, `I18n.Text` uses the catalog default locale. In Play Mode, it uses the active game locale. Both modes read the generated `localization.asset`, and the Editor invalidates the cached runtime automatically after catalog compilation. Unlike `I18nEditor.Edit`, localization reads do not parse or write `localization.json`.
+
+## UI Toolkit
+
+UI Toolkit elements are stored in a `UIDocument` visual tree rather than as GameObject components. Bind the property that displays localized content to a GreenBox entry in UI Builder:
+
+1. Select a `Label`, `Button`, or another text element and add an `I18nTextBinding` to its `text` property.
+2. Enter the entry's stable numeric ID in **Entry Id**.
+3. For a localized sprite, add an `I18nSpriteBinding` to a `VisualElement`'s `style.backgroundImage` property or an `Image` element's `sprite` property.
+
+The bindings use the same compiled catalog and current locale as `I18nText` and `I18nImage`. They refresh when `I18n.SetLocale` changes the locale. No second localization table or `UIDocument` companion component is needed.
+
+The equivalent UXML can be written directly (replace the example IDs with IDs from your catalog):
+
+```xml
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:gb="GreenBox.I18n.Unity.UIElements">
+    <ui:Label name="title">
+        <Bindings>
+            <gb:I18nTextBinding property="text" entry-id="1234567890123456789" />
+        </Bindings>
+    </ui:Label>
+    <ui:VisualElement name="icon">
+        <Bindings>
+            <gb:I18nSpriteBinding property="style.backgroundImage" entry-id="1234567890123456789" />
+        </Bindings>
+    </ui:VisualElement>
+</ui:UXML>
+```
+
+Bindings can also be added from code after the document has loaded:
+
+```csharp
+using GreenBox.I18n.Unity.UIElements;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+public sealed class LocalizedMenu : MonoBehaviour
+{
+    [SerializeField] private UIDocument _document;
+    [SerializeField] private I18nKey _titleKey;
+
+    private void OnEnable()
+    {
+        Label title = _document.rootVisualElement.Q<Label>("title");
+        title.SetBinding("text", new I18nTextBinding { EntryId = _titleKey.Id });
+    }
+}
+```
+
+For dynamic text with formatting arguments, call `I18n.Text(key, ...)` from the UI controller and refresh it on `I18n.LocaleChanged`. The declarative text binding currently handles entries without arguments.

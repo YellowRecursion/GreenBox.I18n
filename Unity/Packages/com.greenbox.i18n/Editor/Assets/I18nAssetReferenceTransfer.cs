@@ -28,7 +28,11 @@ namespace GreenBox.I18n.Unity.Editor.Assets
         static I18nAssetReferenceTransfer()
         {
             Selection.selectionChanged += WriteActiveSelection;
+#if UNITY_6000_4_OR_NEWER
+            EditorApplication.projectWindowItemByEntityIdOnGUI += HandleProjectWindowItemGui;
+#else
             EditorApplication.projectWindowItemInstanceOnGUI += HandleProjectWindowItemGui;
+#endif
             EditorApplication.delayCall += WriteActiveSelection;
         }
 
@@ -62,12 +66,20 @@ namespace GreenBox.I18n.Unity.Editor.Assets
             WriteActiveSelection(Selection.activeObject);
         }
 
+#if UNITY_6000_4_OR_NEWER
+        private static void HandleProjectWindowItemGui(EntityId entityId, Rect selectionRect)
+#else
         private static void HandleProjectWindowItemGui(int instanceId, Rect selectionRect)
+#endif
         {
             Event currentEvent = Event.current;
             if (currentEvent.type == EventType.MouseDrag && selectionRect.Contains(currentEvent.mousePosition))
             {
+#if UNITY_6000_4_OR_NEWER
+                WriteActiveSelection(EditorUtility.EntityIdToObject(entityId));
+#else
                 WriteActiveSelection(EditorUtility.EntityIdToObject(instanceId));
+#endif
             }
         }
 

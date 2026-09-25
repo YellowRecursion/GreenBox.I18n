@@ -12,7 +12,11 @@ namespace GreenBox.I18n.Unity.Editor.Catalogs
     /// </summary>
     internal static class I18nEditorCatalogProvider
     {
+#if UNITY_6000_4_OR_NEWER
+        private static EntityId _sourceEntityId;
+#else
         private static int _sourceInstanceId;
+#endif
         private static Hash128 _sourceHash;
         private static bool _isInitialized;
         private static I18nCatalog? _catalog;
@@ -27,10 +31,18 @@ namespace GreenBox.I18n.Unity.Editor.Catalogs
         {
             TextAsset? source = I18nProjectSettings.instance.SourceCatalog;
             Hash128 sourceHash = GetDependencyHash(source);
+#if UNITY_6000_4_OR_NEWER
+            EntityId sourceEntityId = source ? source.GetEntityId() : default;
+#else
             int sourceInstanceId = source ? source.GetInstanceID() : 0;
+#endif
 
             if (!_isInitialized ||
+#if UNITY_6000_4_OR_NEWER
+                _sourceEntityId != sourceEntityId ||
+#else
                 _sourceInstanceId != sourceInstanceId ||
+#endif
                 _sourceHash != sourceHash)
             {
                 Reload(source, sourceHash);
@@ -58,7 +70,11 @@ namespace GreenBox.I18n.Unity.Editor.Catalogs
             Hash128 sourceHash)
         {
             _isInitialized = true;
+#if UNITY_6000_4_OR_NEWER
+            _sourceEntityId = source ? source.GetEntityId() : default;
+#else
             _sourceInstanceId = source ? source.GetInstanceID() : 0;
+#endif
             _sourceHash = sourceHash;
             _catalog = null;
             _error = null;
